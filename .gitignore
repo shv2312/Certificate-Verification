@@ -1,0 +1,90 @@
+# ============================================================
+# SIET Academic Background Verification Portal – .gitignore
+# ============================================================
+
+# ----- Python -----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyd
+*.pyo
+.Python
+*.egg
+*.egg-info/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+backend/.venv/
+backend/venv/
+
+# Distribution / packaging
+dist/
+build/
+MANIFEST
+
+# pytest / coverage / mypy / ruff
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.tox/
+
+# ----- Environment / Secrets -----
+# NEVER commit real .env files
+.env
+.env.*
+!.env.example
+backend/.env
+!backend/.env.example
+*.pem
+*.key
+*.crt
+secrets.json
+credentials.json
+
+# ----- Database / Data -----
+# Never commit real DB data
+*.sqlite3
+*.db
+*.sql.gz
+*.dump
+*.backup
+real_student_data/
+production_exports/
+college_data_import/
+
+# ----- Node / Frontend (Sanjay's work) -----
+node_modules/
+dist/
+.next/
+.nuxt/
+
+# ----- IDEs -----
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+*.suo
+*.user
+
+# ----- OS -----
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ----- Docker -----
+*.override.yml
+
+# ----- Logs & Temporary -----
+*.log
+logs/
+*.tmp
+*.temp
+scratch/

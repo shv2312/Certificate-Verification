@@ -1,0 +1,135 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Base resets & defaults ───────────────────────────────────────── */
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply font-sans text-siet-slate bg-white antialiased;
+    min-height: 100vh;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display text-siet-navy;
+  }
+
+  /* Visible focus rings for keyboard nav */
+  :focus-visible {
+    outline: 2px solid theme('colors.siet.sky');
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Remove focus ring from mouse users */
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+}
+
+/* ── Utility classes ──────────────────────────────────────────────── */
+@layer components {
+  /* Section container */
+  .page-container {
+    @apply max-w-5xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .section-container {
+    @apply max-w-6xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Horizontal rule separator */
+  .section-divider {
+    @apply border-t border-siet-border my-10;
+  }
+
+  /* Primary CTA button */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2
+           bg-siet-sky text-white font-semibold
+           px-6 py-3 rounded
+           border border-transparent
+           transition-all duration-200
+           hover:bg-siet-sky600 hover:shadow-card-md
+           focus-visible:ring-2 focus-visible:ring-siet-sky focus-visible:ring-offset-2
+           active:scale-[0.98]
+           disabled:opacity-50 disabled:cursor-not-allowed
+           select-none;
+  }
+
+  /* Secondary outline button */
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2
+           bg-white text-siet-navy font-semibold
+           px-6 py-3 rounded
+           border border-siet-border
+           transition-all duration-200
+           hover:border-siet-sky hover:text-siet-sky hover:shadow-card
+           focus-visible:ring-2 focus-visible:ring-siet-sky focus-visible:ring-offset-2
+           active:scale-[0.98]
+           disabled:opacity-50 disabled:cursor-not-allowed
+           select-none;
+  }
+
+  /* Form label */
+  .form-label {
+    @apply block text-sm font-medium text-siet-navy mb-1;
+  }
+
+  /* Mandatory indicator */
+  .required-star {
+    @apply text-siet-error ml-0.5;
+  }
+
+  /* Form input */
+  .form-input {
+    @apply block w-full rounded border border-siet-border
+           bg-white text-siet-slate placeholder-siet-muted
+           px-3 py-2.5 text-sm
+           transition-colors duration-150
+           focus:outline-none focus:border-siet-sky focus:ring-1 focus:ring-siet-sky
+           disabled:bg-siet-silver disabled:cursor-not-allowed;
+  }
+
+  /* Form select */
+  .form-select {
+    @apply form-input appearance-none bg-no-repeat;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2394A3B8' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.75rem center;
+    background-size: 1.25em 1.25em;
+    padding-right: 2.5rem;
+  }
+
+  /* Status badges */
+  .badge-success {
+    @apply inline-flex items-center gap-1 text-xs font-medium
+           text-siet-success bg-green-50 border border-green-200
+           px-2.5 py-1 rounded-full;
+  }
+
+  .badge-error {
+    @apply inline-flex items-center gap-1 text-xs font-medium
+           text-siet-error bg-red-50 border border-red-200
+           px-2.5 py-1 rounded-full;
+  }
+
+  .badge-pending {
+    @apply inline-flex items-center gap-1 text-xs font-medium
+           text-siet-amber bg-amber-50 border border-amber-200
+           px-2.5 py-1 rounded-full;
+  }
+
+  /* Surface card */
+  .surface-card {
+    @apply bg-white border border-siet-border rounded shadow-card;
+  }
+}
