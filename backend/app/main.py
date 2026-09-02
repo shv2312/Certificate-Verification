@@ -25,7 +25,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.middleware.error_handlers import register_error_handlers
-from app.routes import email_verification, health, payment, verification
+from app.routes import email_verification, health, payment, verification, auth, admin
+from app.db.session import engine, Base
 
 # ------------------------------------------------------------------ #
 # Logging configuration                                                #
@@ -141,6 +142,8 @@ def create_app() -> FastAPI:
     # -------------------------------------------------------------- #
     app.include_router(health.router)
     app.include_router(email_verification.router)
+    app.include_router(auth.router)
+    app.include_router(admin.router)
     app.include_router(payment.router)
     app.include_router(verification.router)
 

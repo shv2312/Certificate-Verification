@@ -24,9 +24,11 @@ SECURITY:
 import logging
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings, get_settings
-from app.dependencies import verify_session_token
+from app.db.session import get_db
+from app.dependencies import verify_session_token, require_role
 from app.schemas.common import APIResponse
 from app.schemas.payment import (
     PaymentInitiateRequest,
@@ -51,7 +53,8 @@ router = APIRouter(prefix="/api/v1/payment", tags=["Payment"])
 )
 async def initiate_payment(
     _body: PaymentInitiateRequest,
-    session: dict = Depends(verify_session_token),
+    session: dict = Depends(require_role(["HR"])),
+    db: AsyncSession = Depends(get_db),
 ) -> APIResponse[PaymentInitiateResponse]:
     """
     Requires: Authorization: Bearer <session_token>
@@ -60,6 +63,7 @@ async def initiate_payment(
     The secret key is NEVER returned here.
     """
     data = await payment_service.initiate_payment(
+        db=db,
         company_name=session["company_name"],
         hr_email=session["hr_email"],
     )
@@ -115,14 +119,15 @@ async def payment_webhook(
 )
 async def get_payment_status(
     payment_session_id: str,
-    session: dict = Depends(verify_session_token),
+    session: dict = Depends(require_role(["HR"])),
+    db: AsyncSession = Depends(get_db),
 ) -> APIResponse[PaymentStatusResponse]:
     """
     Requires: Authorization: Bearer <session_token>
 
     Returns current status: PENDING | PAID_UNUSED | FAILED | EXPIRED
     """
-    data = await payment_service.get_payment_status(payment_session_id)
+    data = await payment_service.get_payment_status(db, payment_session_id)
     return APIResponse(
         success=True,
         message=f"Payment status: {data.status}",
@@ -147,8 +152,9 @@ async def get_payment_status(
 )
 async def dev_confirm_payment(
     payment_session_id: str,
-    session: dict = Depends(verify_session_token),
+    session: dict = Depends(require_role(["HR"])),
     settings: Settings = Depends(get_settings),
+    db: AsyncSession = Depends(get_db),
 ) -> APIResponse[PaymentStatusResponse]:
     """
     DEV ONLY: Instantly marks a PAYMENT_PENDING session as PAID_UNUSED.
@@ -162,7 +168,7 @@ async def dev_confirm_payment(
             detail="Not found.",  # Don't reveal the endpoint in production
         )
 
-    data = await payment_service.confirm_payment_mock(payment_session_id)
+    data = await payment_service.confirm_payment_mock(db, payment_session_id, session["company_name"], session["hr_email"])
     return APIResponse(
         success=True,
         message=(

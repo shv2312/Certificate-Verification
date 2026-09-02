@@ -100,6 +100,10 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------------ #
     VERIFICATION_BASE_URL: str = "http://localhost:8000"
 
+    # Sprint 2: When True, verification is simulated to return a VERIFIED
+    # response for frontend testing without Parthiban's DB.
+    DEV_MOCK_VERIFICATION: bool = True
+
     # ------------------------------------------------------------------ #
     # Guards                                                               #
     # ------------------------------------------------------------------ #

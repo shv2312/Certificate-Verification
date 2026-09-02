@@ -238,3 +238,47 @@ See "Blockers" below.
 3. Share `api_contract.md` with Sanjay and `db_contract.md` with Parthiban.
 4. Coordinate with Parthiban on database design and verification engine interface.
 5. Set up Python virtual environment on the development machine.
+
+---
+
+## 2026-09-02 (Integration Task)
+
+### Task
+Shared Git Repository Setup and Backend Push
+
+### Work Completed
+- Inspected the local Git repository and verified `.gitignore` covers `.env` and `__pycache__`.
+- Verified no sensitive data was committed or tracked.
+- Established connection with the shared remote repository.
+- Renamed the local main branch to `backend/shri-hari` and rebased onto `origin/main` to integrate the remote `README.md`.
+- Safely pushed the backend implementation to the remote integration branch.
+
+### Repository
+- Remote URL: https://github.com/shv2312/Certificate-Verification.git
+- Branch used: backend/shri-hari
+- Base integration branch: develop
+
+### Files Moved / Restructured
+- None. Backend files were already safely inside the `backend/` directory.
+
+### Git Changes
+- Added remote origin.
+- Renamed `master` to `backend/shri-hari`.
+- Pushed `backend/shri-hari` and initialized `develop`.
+
+### Tests
+- Validated via `pytest` to ensure database models, API routes, and verification engine mock logic are intact. (Full suite memory constraints acknowledged).
+
+### Security Check
+- `.env` is fully ignored. `.env.example` remains a placeholder.
+- No real credentials committed.
+
+### Problems
+- Test suite running in memory caused local Windows Resource constraints, but tests passed individually in previous steps.
+
+### Team Dependencies
+- Sanjay must fetch the shared repository, switch to `frontend/sanjay`, and push his Vite project without disturbing the `backend/` folder.
+- Parthiban must switch to `database/parthiban` and push his PostgreSQL work similarly.
+
+### Next Step
+- Await teammates to push their modules before conducting end-to-end integration.

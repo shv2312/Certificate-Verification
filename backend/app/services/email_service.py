@@ -39,32 +39,22 @@ import hmac
 import logging
 import secrets
 import time
-from dataclasses import dataclass, field
-from typing import Dict, Optional
+from typing import Optional
+
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, delete
 
 from app.config import get_settings
 from app.schemas.email_verification import SendOTPResponse, VerifyOTPResponse
+from app.db.models import EmailChallenge, AdminAccount
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
 # ------------------------------------------------------------------ #
-# In-process challenge store (Sprint 1 only – see limitations above) #
+# Internal helpers                                                     #
 # ------------------------------------------------------------------ #
-@dataclass
-class _OTPChallenge:
-    challenge_id: str
-    company_name: str
-    hr_email: str
-    otp_hmac: str         # HMAC-SHA256 of the OTP (not plain text)
-    created_at: float     # Unix timestamp
-    attempts: int = 0
-    verified: bool = False
-    last_sent_at: float = field(default_factory=time.time)
-
-
-_challenge_store: Dict[str, _OTPChallenge] = {}  # challenge_id → challenge
 
 
 # ------------------------------------------------------------------ #
@@ -158,6 +148,7 @@ async def _send_otp_email(hr_email: str, company_name: str, otp: str) -> None:
 # Public service functions                                             #
 # ------------------------------------------------------------------ #
 async def create_and_send_otp(
+    db: AsyncSession,
     company_name: str,
     hr_email: str,
 ) -> SendOTPResponse:
@@ -174,15 +165,17 @@ async def create_and_send_otp(
     email_lower = hr_email.lower().strip()
 
     # Check for existing non-expired challenge with cooldown
-    for challenge in _challenge_store.values():
-        if (
-            challenge.hr_email == email_lower
-            and not challenge.verified
-            and time.time() - challenge.last_sent_at < settings.OTP_RESEND_COOLDOWN_SECONDS
-        ):
-            wait = int(
-                settings.OTP_RESEND_COOLDOWN_SECONDS - (time.time() - challenge.last_sent_at)
-            )
+    stmt = select(EmailChallenge).where(
+        EmailChallenge.email == email_lower,
+        EmailChallenge.verified == False
+    )
+    result = await db.execute(stmt)
+    existing_challenges = result.scalars().all()
+    
+    current_time = int(time.time())
+    for challenge in existing_challenges:
+        if current_time - challenge.last_sent_at < settings.OTP_RESEND_COOLDOWN_SECONDS:
+            wait = settings.OTP_RESEND_COOLDOWN_SECONDS - (current_time - challenge.last_sent_at)
             raise ValueError(
                 f"Please wait {wait} seconds before requesting a new OTP."
             )
@@ -191,14 +184,16 @@ async def create_and_send_otp(
     otp = _generate_otp()
     challenge_id = secrets.token_urlsafe(32)
 
-    challenge = _OTPChallenge(
-        challenge_id=challenge_id,
+    challenge = EmailChallenge(
+        id=challenge_id,
         company_name=company_name.strip(),
-        hr_email=email_lower,
+        email=email_lower,
         otp_hmac=_hmac_otp(otp),
-        created_at=time.time(),
+        created_at=current_time,
+        last_sent_at=current_time
     )
-    _challenge_store[challenge_id] = challenge
+    db.add(challenge)
+    await db.flush()
 
     # Send (or mock-log)
     await _send_otp_email(email_lower, company_name, otp)
@@ -212,6 +207,7 @@ async def create_and_send_otp(
 
 
 async def verify_otp(
+    db: AsyncSession,
     challenge_id: str,
     submitted_otp: str,
 ) -> VerifyOTPResponse:
@@ -225,14 +221,16 @@ async def verify_otp(
         ValueError: On invalid challenge ID, expired OTP, max attempts
                     exceeded, or wrong OTP.
     """
-    challenge = _challenge_store.get(challenge_id)
+    challenge = await db.get(EmailChallenge, challenge_id)
     if not challenge:
         raise ValueError("Invalid or expired verification session.")
 
+    current_time = int(time.time())
     # Check expiry
-    age_seconds = time.time() - challenge.created_at
+    age_seconds = current_time - challenge.created_at
     if age_seconds > settings.OTP_EXPIRY_MINUTES * 60:
-        del _challenge_store[challenge_id]
+        await db.delete(challenge)
+        await db.flush()
         raise ValueError("The OTP has expired. Please request a new one.")
 
     # Already verified
@@ -241,7 +239,8 @@ async def verify_otp(
 
     # Check max attempts
     if challenge.attempts >= settings.OTP_MAX_ATTEMPTS:
-        del _challenge_store[challenge_id]
+        await db.delete(challenge)
+        await db.flush()
         raise ValueError(
             f"Maximum verification attempts ({settings.OTP_MAX_ATTEMPTS}) exceeded. "
             "Please request a new OTP."
@@ -249,6 +248,7 @@ async def verify_otp(
 
     # Verify OTP via HMAC comparison
     challenge.attempts += 1
+    await db.flush()
     expected_hmac = _hmac_otp(submitted_otp.strip())
     if not hmac.compare_digest(expected_hmac, challenge.otp_hmac):
         remaining = settings.OTP_MAX_ATTEMPTS - challenge.attempts
@@ -259,12 +259,13 @@ async def verify_otp(
     # Mark verified and invalidate
     challenge.verified = True
     company_name = challenge.company_name
-    hr_email = challenge.hr_email
+    hr_email = challenge.email
     # Clean up the store (single-use)
-    del _challenge_store[challenge_id]
+    await db.delete(challenge)
+    await db.flush()
 
     # Issue a lightweight session token
-    session_token = _issue_session_token(company_name, hr_email)
+    session_token = await _issue_session_token(db, company_name, hr_email)
     logger.info("Email verified for %s (%s)", _mask_email(hr_email), company_name)
 
     return VerifyOTPResponse(
@@ -274,26 +275,19 @@ async def verify_otp(
     )
 
 
-def _issue_session_token(company_name: str, hr_email: str) -> str:
+async def _issue_session_token(db: AsyncSession, company_name: str, hr_email: str) -> str:
     """
     Issue a short-lived, signed session token after successful OTP verification.
-
-    Sprint 1 implementation:
-        HMAC-SHA256 of 'company_name|hr_email|timestamp' using APP_SECRET_KEY.
-        This is NOT a JWT and does not carry claims.
-
-    Sprint 2+ recommendation:
-        Evaluate whether a proper JWT with expiry claims, or a server-side
-        session stored in PostgreSQL/Redis, better suits the production
-        architecture.  Discuss with the team before changing this.
-
-    SECURITY NOTE:
-        The token must be treated as a Bearer token.
-        The frontend stores it in memory (React state) during the session.
-        It must NOT be stored in localStorage without careful XSS consideration.
+    Includes role resolution.
     """
+    stmt = select(AdminAccount).where(AdminAccount.email == hr_email, AdminAccount.is_active == True)
+    result = await db.execute(stmt)
+    admin_account = result.scalar_one_or_none()
+    
+    role = "ADMIN" if admin_account else "HR"
+    
     timestamp = int(time.time())
-    payload = f"{company_name}|{hr_email}|{timestamp}"
+    payload = f"{company_name}|{hr_email}|{role}|{timestamp}"
     signature = hmac.new(
         settings.APP_SECRET_KEY.encode(),
         payload.encode(),

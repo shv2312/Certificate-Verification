@@ -29,8 +29,10 @@ ONE-PAYMENT-ONE-CANDIDATE:
 import logging
 
 from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.dependencies import verify_session_token
+from app.db.session import get_db
+from app.dependencies import verify_session_token, require_role
 from app.schemas.common import APIResponse
 from app.schemas.verification import (
     BindCandidateRequest,
@@ -57,7 +59,8 @@ router = APIRouter(prefix="/api/v1/verification", tags=["Verification"])
 )
 async def bind_candidate(
     body: BindCandidateRequest,
-    session: dict = Depends(verify_session_token),
+    session: dict = Depends(require_role(["HR"])),
+    db: AsyncSession = Depends(get_db),
 ) -> APIResponse[BindCandidateResponse]:
     """
     Requires: Authorization: Bearer <session_token>
@@ -68,6 +71,7 @@ async def bind_candidate(
     can only be used for one candidate.
     """
     data = await verification_service.bind_candidate(
+        db=db,
         request=body,
         session_company=session["company_name"],
         session_email=session["hr_email"],
@@ -91,7 +95,8 @@ async def bind_candidate(
 )
 async def confirm_verification(
     body: ConfirmVerificationRequest,
-    session: dict = Depends(verify_session_token),
+    session: dict = Depends(require_role(["HR"])),
+    db: AsyncSession = Depends(get_db),
 ) -> APIResponse[VerificationResultResponse]:
     """
     Requires: Authorization: Bearer <session_token>
@@ -110,6 +115,7 @@ async def confirm_verification(
     Returns 503 until Parthiban's engine is available.
     """
     data = await verification_service.confirm_and_verify(
+        db=db,
         request=body,
         session_email=session["hr_email"],
     )
@@ -140,7 +146,8 @@ async def confirm_verification(
 )
 async def get_verification_status(
     request_id: str,
-    session: dict = Depends(verify_session_token),
+    session: dict = Depends(require_role(["HR"])),
+    db: AsyncSession = Depends(get_db),
 ) -> APIResponse[VerificationStatusResponse]:
     """
     Requires: Authorization: Bearer <session_token>
@@ -148,6 +155,7 @@ async def get_verification_status(
     AUTHORIZATION: Returns 403 if the session does not own this request.
     """
     data = await verification_service.get_verification_status(
+        db=db,
         verification_request_id=request_id,
         session_email=session["hr_email"],
     )

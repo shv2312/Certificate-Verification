@@ -15,8 +15,10 @@ Rate limiting:
     Sprint 2+: Add IP-level rate limiting middleware.
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.session import get_db
 from app.schemas.common import APIResponse
 from app.schemas.email_verification import (
     SendOTPRequest,
@@ -39,7 +41,7 @@ router = APIRouter(prefix="/api/v1/email", tags=["Email Verification"])
     ),
     status_code=200,
 )
-async def send_otp(body: SendOTPRequest) -> APIResponse[SendOTPResponse]:
+async def send_otp(body: SendOTPRequest, db: AsyncSession = Depends(get_db)) -> APIResponse[SendOTPResponse]:
     """
     Step 1 of the email verification flow.
 
@@ -55,6 +57,7 @@ async def send_otp(body: SendOTPRequest) -> APIResponse[SendOTPResponse]:
         422 – If request body fails validation.
     """
     response_data = await email_service.create_and_send_otp(
+        db=db,
         company_name=body.company_name,
         hr_email=str(body.hr_email),
     )
@@ -76,7 +79,7 @@ async def send_otp(body: SendOTPRequest) -> APIResponse[SendOTPResponse]:
     ),
     status_code=200,
 )
-async def verify_otp(body: VerifyOTPRequest) -> APIResponse[VerifyOTPResponse]:
+async def verify_otp(body: VerifyOTPRequest, db: AsyncSession = Depends(get_db)) -> APIResponse[VerifyOTPResponse]:
     """
     Step 2 of the email verification flow.
 
@@ -95,6 +98,7 @@ async def verify_otp(body: VerifyOTPRequest) -> APIResponse[VerifyOTPResponse]:
         422 – If request body fails validation.
     """
     response_data = await email_service.verify_otp(
+        db=db,
         challenge_id=body.challenge_id,
         submitted_otp=body.otp,
     )

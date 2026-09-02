@@ -34,10 +34,13 @@ from __future__ import annotations
 import logging
 import secrets
 import time
-from dataclasses import dataclass, field
-from typing import Dict, Optional
+from typing import Optional
+
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from app.config import get_settings
+from app.db.models import PaymentSession, VerificationRequest
 from app.schemas.payment import PaymentInitiateResponse, PaymentStatusResponse
 
 logger = logging.getLogger(__name__)
@@ -68,23 +71,8 @@ class RequestStatus:
 
 
 # ------------------------------------------------------------------ #
-# In-process payment session store (Sprint 1 only)                   #
+# Internal helpers                                                     #
 # ------------------------------------------------------------------ #
-@dataclass
-class _PaymentSession:
-    payment_session_id: str
-    gateway_order_id: str
-    company_name: str
-    hr_email: str
-    amount_paise: int
-    status: str  # PAYMENT_PENDING | PAID_UNUSED | FAILED | EXPIRED
-    created_at: float = field(default_factory=time.time)
-    verification_request_id: Optional[str] = None
-    display_request_id: Optional[str] = None
-
-
-_payment_store: Dict[str, _PaymentSession] = {}   # payment_session_id → session
-_request_counter: int = 0  # used for human-readable IDs (Sprint 1 only)
 
 
 def _generate_display_request_id() -> str:
@@ -108,6 +96,7 @@ def _generate_display_request_id() -> str:
 # Public service functions                                            #
 # ------------------------------------------------------------------ #
 async def initiate_payment(
+    db: AsyncSession,
     company_name: str,
     hr_email: str,
 ) -> PaymentInitiateResponse:
@@ -139,15 +128,15 @@ async def initiate_payment(
             "Set DEV_MOCK_PAYMENT=true for development."
         )
 
-    session = _PaymentSession(
-        payment_session_id=payment_session_id,
+    session = PaymentSession(
+        id=payment_session_id,
         gateway_order_id=gateway_order_id,
-        company_name=company_name,
-        hr_email=hr_email,
         amount_paise=amount_paise,
         status="PAYMENT_PENDING",
+        created_at=int(time.time()),
     )
-    _payment_store[payment_session_id] = session
+    db.add(session)
+    await db.flush()
 
     return PaymentInitiateResponse(
         payment_session_id=payment_session_id,
@@ -157,7 +146,7 @@ async def initiate_payment(
     )
 
 
-async def confirm_payment_mock(payment_session_id: str) -> PaymentStatusResponse:
+async def confirm_payment_mock(db: AsyncSession, payment_session_id: str, company_name: str, hr_email: str) -> PaymentStatusResponse:
     """
     DEV-ONLY: Simulate a successful payment callback.
 
@@ -170,7 +159,7 @@ async def confirm_payment_mock(payment_session_id: str) -> PaymentStatusResponse
     if not settings.DEV_MOCK_PAYMENT:
         raise PermissionError("Mock payment confirmation is disabled in this environment.")
 
-    session = _payment_store.get(payment_session_id)
+    session = await db.get(PaymentSession, payment_session_id)
     if not session:
         raise ValueError(f"Payment session not found: {payment_session_id}")
 
@@ -185,7 +174,18 @@ async def confirm_payment_mock(payment_session_id: str) -> PaymentStatusResponse
 
     session.status = "PAID_UNUSED"
     session.verification_request_id = verification_request_id
-    session.display_request_id = display_id
+    
+    # Also create the VerificationRequest
+    v_req = VerificationRequest(
+        id=verification_request_id,
+        display_request_id=display_id,
+        status="PAID_UNUSED",
+        company_name=company_name,
+        hr_email=hr_email,
+        created_at=int(time.time())
+    )
+    db.add(v_req)
+    await db.flush()
 
     logger.warning(
         "[DEV-ONLY] Mock payment confirmed: %s → request %s (%s)",
@@ -234,26 +234,30 @@ async def process_payment_webhook(
     )
 
 
-async def get_payment_status(payment_session_id: str) -> PaymentStatusResponse:
+async def get_payment_status(db: AsyncSession, payment_session_id: str) -> PaymentStatusResponse:
     """Return the current status of a payment session."""
-    session = _payment_store.get(payment_session_id)
+    session = await db.get(PaymentSession, payment_session_id)
     if not session:
         raise ValueError(f"Payment session not found: {payment_session_id}")
+
+    display_request_id = None
+    if session.verification_request_id:
+        v_req = await db.get(VerificationRequest, session.verification_request_id)
+        if v_req:
+            display_request_id = v_req.display_request_id
 
     return PaymentStatusResponse(
         payment_session_id=payment_session_id,
         status=session.status,
         verification_request_id=session.verification_request_id,
-        display_request_id=session.display_request_id,
+        display_request_id=display_request_id,
     )
 
 
-def get_session_by_request_id(verification_request_id: str) -> Optional[_PaymentSession]:
+async def get_session_by_request_id(db: AsyncSession, verification_request_id: str) -> Optional[PaymentSession]:
     """
     Look up a payment session by its verification_request_id.
-    Used by the verification service to confirm payment ownership.
     """
-    for session in _payment_store.values():
-        if session.verification_request_id == verification_request_id:
-            return session
-    return None
+    stmt = select(PaymentSession).where(PaymentSession.verification_request_id == verification_request_id)
+    result = await db.execute(stmt)
+    return result.scalar_one_or_none()
