@@ -1,0 +1,74 @@
+# ============================================================
+# SIET Academic Background Verification Portal – .gitignore
+# ============================================================
+
+# ----- Python -----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyd
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+backend/.venv/
+backend/venv/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+MANIFEST
+
+# pytest / coverage
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# mypy / ruff / type checkers
+.mypy_cache/
+.ruff_cache/
+
+# ----- Environment / Secrets -----
+# NEVER commit real .env files
+.env
+.env.local
+.env.*.local
+backend/.env
+# Keep the example file
+!backend/.env.example
+
+# ----- Node / Frontend (Sanjay's future work) -----
+node_modules/
+dist/
+.next/
+.nuxt/
+
+# ----- IDEs -----
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# ----- OS -----
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ----- Docker -----
+*.override.yml
+
+# ----- Logs -----
+*.log
+logs/
+
+# ----- Database -----
+# Never commit real DB data
+*.sqlite3
+*.db
