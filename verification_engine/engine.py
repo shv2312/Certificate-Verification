@@ -37,7 +37,7 @@ VERIFICATION FLOW:
 """
 
 from dataclasses import dataclass, field as datafield
-from typing import Optional, Callable, List
+from typing import Optional, Callable, List, Awaitable
 from enum import Enum
 
 from .normalizer import validate_and_normalize, ValidationError
@@ -115,7 +115,7 @@ class VerificationEngine:
     def __init__(
         self,
         alias_map: dict,
-        student_lookup_fn: Callable[[str], Optional[StudentRecord]],
+        student_lookup_fn: Callable[[str], Awaitable[Optional[StudentRecord]]],
     ):
         """
         Args:
@@ -137,7 +137,7 @@ class VerificationEngine:
         self._alias_map = alias_map
         self._lookup = student_lookup_fn
 
-    def verify(self, request: VerificationRequest) -> VerificationOutcome:
+    async def verify(self, request: VerificationRequest) -> VerificationOutcome:
         """
         Run the full verification flow for a candidate.
 
@@ -167,7 +167,7 @@ class VerificationEngine:
         # -------------------------------------------------------------------
         # Step 2: Look up student by register number (exact, parameterized)
         # -------------------------------------------------------------------
-        official_record: Optional[StudentRecord] = self._lookup(
+        official_record: Optional[StudentRecord] = await self._lookup(
             normalized.register_number
         )
 

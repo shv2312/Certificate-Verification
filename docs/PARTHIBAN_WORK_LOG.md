@@ -303,3 +303,22 @@ Blocked (No `develop` or backend branches found on remote)
 
 ### Next Step
 - Wait for Shri Hari to establish the shared integration repository structure on GitHub.
+
+
+---
+
+## 2026-09-02 (Sprint 3: Database Lookup & Matching)
+
+### Task
+Implement real PostgreSQL lookup and deterministic matching engine for Sprint 3.
+
+### Work Completed
+- Created `verification_engine/lookup.py` containing PostgreSQL lookup logic (`lookup_student_by_register_number`, `load_alias_map`) using `sqlalchemy.ext.asyncio.AsyncSession`.
+- Refactored `VerificationEngine` to be fully asynchronous to support real database lookups.
+- Updated `backend/app/engine/verification.py` to await the engine and documented the exact interface Shri Hari must connect (injecting `db: AsyncSession`).
+- Refactored the test suite (`test_engine.py`) to use `pytest.mark.asyncio`.
+- Added new tests in `test_lookup.py` to verify SQL query parameters and mapping.
+- Ran all 89 tests; all passed successfully.
+
+### Next Step
+- Shri Hari needs to update the backend adapter (`backend/app/engine/verification.py`) to inject the live `db: AsyncSession` and swap the dummy functions with the real PostgreSQL lookups.

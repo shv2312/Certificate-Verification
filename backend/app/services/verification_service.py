@@ -87,7 +87,7 @@ settings = get_settings()
 # ------------------------------------------------------------------ #
 # Internal helpers                                                     #
 # ------------------------------------------------------------------ #
-async def _call_verification_engine(candidate: CandidateDetails) -> dict:
+async def _call_verification_engine(db: AsyncSession, candidate: CandidateDetails) -> dict:
     """
     Call the verification engine interface.
 
@@ -96,6 +96,7 @@ async def _call_verification_engine(candidate: CandidateDetails) -> dict:
     from app.engine.verification import verify_candidate
     
     result = await verify_candidate(
+        db=db,
         candidate_name=candidate.candidate_name,
         register_number=candidate.register_number,
         course=candidate.course,
@@ -263,7 +264,7 @@ async def confirm_and_verify(
 
     # Call Parthiban's verification engine
     try:
-        engine_result = await _call_verification_engine(candidate_obj)
+        engine_result = await _call_verification_engine(db, candidate_obj)
     except NotImplementedError as exc:
         # Reset status so the request is not stuck – but payment is still consumed
         vr.status = RequestStatus.NOT_VERIFIED

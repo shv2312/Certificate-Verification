@@ -138,3 +138,17 @@
 
 **Next Step:**
 - Shri Hari to perform controlled three-module integration.
+
+
+### Sprint 3 Database Lookup & Deterministic Matching Update
+- **Parthiban V** has completed the real PostgreSQL lookup implementation (`verification_engine/lookup.py`) and refactored the `VerificationEngine` to be asynchronous.
+- All 89 verification engine tests are passing.
+
+### Sprint 3 Backend Integration (Shri Hari Vishnu S)
+- **Task:** Real FastAPI → VerificationEngine Integration
+- **Status:** Complete.
+- **Backend ↔ VerificationEngine:** `backend/app/engine/verification.py` now consumes `AsyncSession` and utilizes the real Postgres `lookup_student_by_register_number` and `load_alias_map` functions.
+- **Validation:** 39/39 backend tests and 89/89 verification engine tests passed.
+- **Privacy Enforcement:** Confirmed that `NOT_VERIFIED` outcomes do not leak any DB fields.
+- **Tests:** Route tests use mocked `_call_verification_engine` since SQLite in-memory DB cannot natively process the PostgreSQL schemas owned by Parthiban. This correctly isolates route tests from database tests.
+- **Next Step:** Sanjay to fix frontend textual typos and pending layout issues. Real SMTP and Payment configuration pending SIET approval.
