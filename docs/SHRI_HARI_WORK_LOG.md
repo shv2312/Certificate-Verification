@@ -282,3 +282,44 @@ Shared Git Repository Setup and Backend Push
 
 ### Next Step
 - Await teammates to push their modules before conducting end-to-end integration.
+
+---
+
+## 2026-09-02 (Sprint 3 Integration)
+
+### Sprint
+Sprint 3
+
+### Task
+Real FastAPI → VerificationEngine Integration
+
+### Work Completed
+- Inspected the newly pushed `origin/database/sprint-3` branch from Parthiban.
+- Created `integration/sprint-3` and merged Parthiban's database changes.
+- Refactored `backend/app/engine/verification.py`:
+  - Removed dummy student records and `DUMMY_ALIAS_MAP`.
+  - Updated `verify_candidate` signature to accept `db: AsyncSession`.
+  - Loaded alias map directly from PostgreSQL via `load_alias_map(db)`.
+  - Integrated `lookup_student_by_register_number(db, reg_num)` into the `VerificationEngine` instance.
+  - Added a secondary query in `verify_candidate` to fetch full student details ONLY on a `VERIFIED` outcome to populate the API response securely.
+- Updated `backend/app/services/verification_service.py` to pass the async DB session to the verification engine adapter.
+- Patched tests in `backend/tests/test_verification.py` to ensure route tests mock the verification engine correctly, since the route tests use an in-memory SQLite database missing Parthiban's PostgreSQL schemas.
+
+### Verification Flow
+Frontend → FastAPI → `verification_service` → `verify_candidate(db)` → `VerificationEngine.verify` → `lookup_student_by_register_number(db)` → PostgreSQL.
+
+### Security Checks
+- Ensured `NOT_VERIFIED` results do not query or leak any database fields beyond the status string.
+- Kept the matching rules strictly deterministic (no fuzzy fallback).
+- No database credentials hardcoded; existing environment dependency structure preserved.
+
+### Tests
+- Verification Engine Tests: 89 passed, 0 failed.
+- Backend Tests: 39 passed, 0 failed.
+
+### Blockers / Decisions
+- Decided to mock the `_call_verification_engine` in the FastAPI route tests because `schema.sql` (owned by DB) is not currently portable to SQLite. Real SQL validation is heavily covered by Parthiban's `test_lookup.py`.
+
+### Next Dependency
+- Real SMTP / Payment Gateway configuration when approved.
+- Sanjay to complete the Frontend UI cleanup (removing "coming soon" texts and fixing typos).

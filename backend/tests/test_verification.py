@@ -6,6 +6,7 @@ from app.db.models import PaymentSession, VerificationRequest
 from app.services.payment_service import RequestStatus
 import json
 import time
+from unittest.mock import patch
 
 @pytest.fixture
 def auth_headers_hr(client: TestClient):
@@ -77,11 +78,16 @@ async def test_bind_candidate_success(
     assert data["data"]["candidate"]["candidate_name"] == "John Doe"
 
 @pytest.mark.asyncio
+@patch("app.services.verification_service._call_verification_engine")
 async def test_confirm_verification_success(
+    mock_call_verification_engine,
     client: TestClient,
     db_session: AsyncSession,
     auth_headers_hr: dict,
 ):
+    # Mock the engine to return NOT_VERIFIED
+    mock_call_verification_engine.return_value = {"status": "NOT_VERIFIED"}
+
     # Seed a bound verification request
     request_id = "test-req-456"
     display_id = "SIET-456"
