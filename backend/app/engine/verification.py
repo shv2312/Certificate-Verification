@@ -42,7 +42,7 @@ DUMMY_STUDENTS = {
     "911021104005": StudentRecord(student_id=5, register_number="911021104005", full_name_normalized="TEST STUDENT EPSILON", branch_id=5, year_of_passing=2021),
 }
 
-def dummy_lookup(reg_num: str) -> Optional[StudentRecord]:
+async def dummy_lookup(reg_num: str) -> Optional[StudentRecord]:
     return DUMMY_STUDENTS.get(reg_num)
 
 
@@ -58,6 +58,19 @@ async def verify_candidate(
     
     This function uses Parthiban's VerificationEngine. Since PostgreSQL is not yet 
     wired in Sprint 2 integration, it uses a dummy lookup function with test data.
+    
+    IMPORTANT: NEXT TASK FOR SHRI HARI
+    In your upcoming backend task, you must:
+    1. Update this function signature to accept the database session:
+       async def verify_candidate(..., db: AsyncSession) -> VerificationResult:
+    2. Import the real Postgres lookup tools:
+       from verification_engine.lookup import load_alias_map, lookup_student_by_register_number
+    3. Remove the DUMMY_ALIAS_MAP and dummy_lookup.
+    4. Provide the db session to the lookup function:
+       engine = VerificationEngine(
+           alias_map=await load_alias_map(db),
+           student_lookup_fn=lambda reg_num: lookup_student_by_register_number(db, reg_num)
+       )
     """
     engine = VerificationEngine(
         alias_map=DUMMY_ALIAS_MAP,
@@ -72,7 +85,7 @@ async def verify_candidate(
         year_of_passing=year_of_passing
     )
 
-    outcome = engine.verify(req)
+    outcome = await engine.verify(req)
 
     # If verification is successful, populate the report data.
     # In production, this would query the DB for the full student record using outcome.student_id.

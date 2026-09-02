@@ -66,7 +66,7 @@ IN_MEMORY_STUDENTS = {
 }
 
 
-def mock_lookup(register_number: str):
+async def mock_lookup(register_number: str):
     """Mock database lookup — simulates parameterized SELECT by register_number."""
     return IN_MEMORY_STUDENTS.get(register_number)
 
@@ -94,18 +94,19 @@ def make_request(**overrides) -> VerificationRequest:
 # Tests: Successful verification (VERIFIED)
 # ===========================================================================
 
+@pytest.mark.asyncio
 class TestEngineVerified:
 
-    def test_all_correct_details_verified(self):
+    async def test_all_correct_details_verified(self):
         engine = make_engine()
-        outcome = engine.verify(make_request())
+        outcome = await engine.verify(make_request())
         assert outcome.status == "VERIFIED"
         assert outcome.student_id == 1
         assert outcome.errors == []
 
-    def test_verified_includes_student_id(self):
+    async def test_verified_includes_student_id(self):
         engine = make_engine()
-        outcome = engine.verify(make_request(
+        outcome = await engine.verify(make_request(
             register_number="911021104002",
             candidate_name="Test Student Beta",
             branch="ECE",
@@ -114,37 +115,37 @@ class TestEngineVerified:
         assert outcome.status == "VERIFIED"
         assert outcome.student_id == 2
 
-    def test_case_insensitive_name_verified(self):
+    async def test_case_insensitive_name_verified(self):
         """Name submitted in different case should still verify."""
         engine = make_engine()
-        outcome = engine.verify(make_request(candidate_name="test student alpha"))
+        outcome = await engine.verify(make_request(candidate_name="test student alpha"))
         assert outcome.status == "VERIFIED"
 
-    def test_extra_spaces_in_name_verified(self):
+    async def test_extra_spaces_in_name_verified(self):
         """Extra internal spaces in name normalized correctly."""
         engine = make_engine()
-        outcome = engine.verify(make_request(candidate_name="Test  Student  Alpha"))
+        outcome = await engine.verify(make_request(candidate_name="Test  Student  Alpha"))
         assert outcome.status == "VERIFIED"
 
-    def test_branch_full_name_alias_verified(self):
+    async def test_branch_full_name_alias_verified(self):
         """HR using full branch name resolves correctly."""
         engine = make_engine()
-        outcome = engine.verify(make_request(
+        outcome = await engine.verify(make_request(
             branch="Computer Science and Engineering"
         ))
         assert outcome.status == "VERIFIED"
 
-    def test_year_as_string_verified(self):
+    async def test_year_as_string_verified(self):
         """Year submitted as string is normalized and verifies correctly."""
         engine = make_engine()
-        outcome = engine.verify(make_request(year_of_passing="2024"))
+        outcome = await engine.verify(make_request(year_of_passing="2024"))
         assert outcome.status == "VERIFIED"
 
-    def test_request_id_echoed_in_outcome(self):
+    async def test_request_id_echoed_in_outcome(self):
         """Outcome must echo back the request_id."""
         engine = make_engine()
         req = make_request(request_id="test-request-abc-123")
-        outcome = engine.verify(req)
+        outcome = await engine.verify(req)
         assert outcome.request_id == "test-request-abc-123"
 
 
@@ -152,64 +153,65 @@ class TestEngineVerified:
 # Tests: Failed verification (NOT_VERIFIED)
 # ===========================================================================
 
+@pytest.mark.asyncio
 class TestEngineNotVerified:
 
-    def test_register_not_found_not_verified(self):
+    async def test_register_not_found_not_verified(self):
         """Register number not in DB → NOT_VERIFIED."""
         engine = make_engine()
-        outcome = engine.verify(make_request(register_number="999999999999"))
+        outcome = await engine.verify(make_request(register_number="999999999999"))
         assert outcome.status == "NOT_VERIFIED"
         assert outcome.student_id is None
 
-    def test_wrong_name_not_verified(self):
+    async def test_wrong_name_not_verified(self):
         """Correct register, wrong name → NOT_VERIFIED."""
         engine = make_engine()
-        outcome = engine.verify(make_request(candidate_name="Wrong Name Here"))
+        outcome = await engine.verify(make_request(candidate_name="Wrong Name Here"))
         assert outcome.status == "NOT_VERIFIED"
         assert outcome.student_id is None
 
-    def test_wrong_branch_not_verified(self):
+    async def test_wrong_branch_not_verified(self):
         """Correct register, wrong branch → NOT_VERIFIED."""
         engine = make_engine()
-        outcome = engine.verify(make_request(branch="ECE"))  # should be CSE
+        outcome = await engine.verify(make_request(branch="ECE"))  # should be CSE
         assert outcome.status == "NOT_VERIFIED"
 
-    def test_wrong_year_not_verified(self):
+    async def test_wrong_year_not_verified(self):
         """Correct register, wrong year → NOT_VERIFIED."""
         engine = make_engine()
-        outcome = engine.verify(make_request(year_of_passing=2023))
+        outcome = await engine.verify(make_request(year_of_passing=2023))
         assert outcome.status == "NOT_VERIFIED"
 
-    def test_off_by_one_register_not_verified(self):
+    async def test_off_by_one_register_not_verified(self):
         """Register number off by one digit must NOT verify."""
         engine = make_engine()
-        outcome = engine.verify(make_request(register_number="911021104002"))
+        outcome = await engine.verify(make_request(register_number="911021104002"))
         # 911021104002 is TEST STUDENT BETA (ECE, 2024), not ALPHA (CSE, 2024)
         # The engine will find BETA but name/branch won't match ALPHA's request
-        outcome2 = engine.verify(make_request(
+        outcome2 = await engine.verify(make_request(
             register_number="911021104002",
             candidate_name="Test Student Alpha",
             branch="CSE",
         ))
         assert outcome2.status == "NOT_VERIFIED"
 
-    def test_not_verified_exposes_no_student_id(self):
+    async def test_not_verified_exposes_no_student_id(self):
         """NOT_VERIFIED result must never include a student_id."""
         engine = make_engine()
-        outcome = engine.verify(make_request(candidate_name="Completely Wrong Name"))
+        outcome = await engine.verify(make_request(candidate_name="Completely Wrong Name"))
         assert outcome.status == "NOT_VERIFIED"
         assert outcome.student_id is None
 
-    def test_not_verified_exposes_no_error_details(self):
+    async def test_not_verified_exposes_no_error_details(self):
         """
         NOT_VERIFIED due to field mismatch must NOT expose which field failed.
         errors list must be empty (errors are only for INVALID_INPUT).
         """
         engine = make_engine()
-        outcome = engine.verify(make_request(year_of_passing=9999))
+        outcome = await engine.verify(make_request(year_of_passing=9999))
         # 9999 is out of range → INVALID_INPUT, not NOT_VERIFIED
         # Test with a valid-but-wrong year instead:
-        outcome2 = engine.verify(make_request(year_of_passing=2020))
+        outcome2 = await engine.verify(make_request(year_of_passing=2020))
         assert outcome2.status == "NOT_VERIFIED"
         assert outcome2.errors == []  # No field-level detail on mismatch
 
@@ -218,29 +220,30 @@ class TestEngineNotVerified:
 # Tests: Invalid input (INVALID_INPUT)
 # ===========================================================================
 
+@pytest.mark.asyncio
 class TestEngineInvalidInput:
 
-    def test_empty_register_number_invalid_input(self):
+    async def test_empty_register_number_invalid_input(self):
         engine = make_engine()
-        outcome = engine.verify(make_request(register_number=""))
+        outcome = await engine.verify(make_request(register_number=""))
         assert outcome.status == "INVALID_INPUT"
         assert len(outcome.errors) > 0
 
-    def test_invalid_year_invalid_input(self):
+    async def test_invalid_year_invalid_input(self):
         engine = make_engine()
-        outcome = engine.verify(make_request(year_of_passing="not-a-year"))
+        outcome = await engine.verify(make_request(year_of_passing="not-a-year"))
         assert outcome.status == "INVALID_INPUT"
         assert any(e.field == "year_of_passing" for e in outcome.errors)
 
-    def test_unknown_branch_invalid_input(self):
+    async def test_unknown_branch_invalid_input(self):
         engine = make_engine()
-        outcome = engine.verify(make_request(branch="UNKNOWN_BRANCH_XYZ"))
+        outcome = await engine.verify(make_request(branch="UNKNOWN_BRANCH_XYZ"))
         assert outcome.status == "INVALID_INPUT"
         assert any(e.field == "branch" for e in outcome.errors)
 
-    def test_empty_name_invalid_input(self):
+    async def test_empty_name_invalid_input(self):
         engine = make_engine()
-        outcome = engine.verify(make_request(candidate_name=""))
+        outcome = await engine.verify(make_request(candidate_name=""))
         assert outcome.status == "INVALID_INPUT"
 
 
@@ -248,14 +251,15 @@ class TestEngineInvalidInput:
 # Tests: Duplicate data handling
 # ===========================================================================
 
+@pytest.mark.asyncio
 class TestDuplicateHandling:
 
-    def test_exact_same_request_twice_returns_same_result(self):
+    async def test_exact_same_request_twice_returns_same_result(self):
         """Same valid request run twice must return the same outcome."""
         engine = make_engine()
         req = make_request()
-        outcome1 = engine.verify(req)
-        outcome2 = engine.verify(req)
+        outcome1 = await engine.verify(req)
+        outcome2 = await engine.verify(req)
         assert outcome1.status == outcome2.status
         assert outcome1.student_id == outcome2.student_id
 
