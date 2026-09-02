@@ -1,0 +1,65 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.so
+.mypy_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+.tox/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment / secrets — NEVER COMMIT THESE
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+secrets.json
+credentials.json
+
+# Database dumps and exports — NEVER COMMIT PRODUCTION DATA
+*.sql.gz
+*.dump
+*.backup
+real_student_data/
+production_exports/
+college_data_import/
+
+# IDE and OS
+.vscode/settings.json
+.idea/
+*.suo
+*.user
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Node / Frontend (Sanjay's area)
+node_modules/
+dist/
+.next/
+.nuxt/
+
+# Logs
+*.log
+logs/
+
+# Temporary
+*.tmp
+*.temp
+scratch/
