@@ -105,8 +105,8 @@
 **Backend:** Available in shared repo (under `backend/`)
 **Database:** Missing (Parthiban's integration pending)
 
-**Frontend ↔️ Backend:** Not Integrated (Sprint 1-2 code shared; application integration next)
-**API Contract:** Differences Found (Sanjay's local mocks use `/api/v1/auth/*`; shared contract uses `/api/v1/email/*`. Documented mismatch. No changes made to frontend yet to preserve Sprint 2 baseline).
+**Frontend ↔️ Backend:** Integrated (Frontend API client updated to call `/api/v1/email/send-otp` and `/api/v1/email/verify-otp` with correct challenge_id payload)
+**API Contract:** Aligned with backend email OTP flow.
 **Mocks:** Sprint 2 mock endpoints (`src/api/auth.ts`) preserved and isolated under `import.meta.env.DEV`.
 
 **Build:** Passed (Vite exit 0)

@@ -62,7 +62,7 @@ export default function EmailVerificationPage() {
 
     try {
       // Call API (currently mocked)
-      const response = await verifyEmail({ requestId: requestId!, token });
+      const response = await verifyEmail({ challengeId: requestId!, token });
       
       // Update global auth state with the trusted role returned by backend
       setRole(response.role);
