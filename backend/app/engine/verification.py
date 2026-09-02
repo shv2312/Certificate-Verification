@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from typing import Optional
 
 from app.config import get_settings
+from verification_engine.engine import VerificationEngine, VerificationRequest as EngineRequest
+from verification_engine.matcher import StudentRecord
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -23,6 +25,27 @@ class VerificationResult:
     mode_of_education: Optional[str] = None
 
 
+# Dummy data for Sprint 2 Integration matching test_data.sql
+DUMMY_ALIAS_MAP = {
+    "CSE": {"branch_id": 1, "canonical_name": "Computer Science and Engineering"},
+    "ECE": {"branch_id": 2, "canonical_name": "Electronics and Communication Engineering"},
+    "MECH": {"branch_id": 3, "canonical_name": "Mechanical Engineering"},
+    "EEE": {"branch_id": 4, "canonical_name": "Electrical and Electronics Engineering"},
+    "IT": {"branch_id": 5, "canonical_name": "Information Technology"},
+}
+
+DUMMY_STUDENTS = {
+    "911021104001": StudentRecord(student_id=1, register_number="911021104001", full_name_normalized="TEST STUDENT ALPHA", branch_id=1, year_of_passing=2024),
+    "911021104002": StudentRecord(student_id=2, register_number="911021104002", full_name_normalized="TEST STUDENT BETA", branch_id=2, year_of_passing=2024),
+    "911021104003": StudentRecord(student_id=3, register_number="911021104003", full_name_normalized="TEST STUDENT GAMMA", branch_id=3, year_of_passing=2023),
+    "911021104004": StudentRecord(student_id=4, register_number="911021104004", full_name_normalized="TEST STUDENT DELTA", branch_id=4, year_of_passing=2022),
+    "911021104005": StudentRecord(student_id=5, register_number="911021104005", full_name_normalized="TEST STUDENT EPSILON", branch_id=5, year_of_passing=2021),
+}
+
+def dummy_lookup(reg_num: str) -> Optional[StudentRecord]:
+    return DUMMY_STUDENTS.get(reg_num)
+
+
 async def verify_candidate(
     candidate_name: str,
     register_number: str,
@@ -33,18 +56,28 @@ async def verify_candidate(
     """
     Engine interface for verifying a candidate's background against the institution's DB.
     
-    This function currently mocks the behavior if DEV_MOCK_VERIFICATION is enabled.
-    Otherwise, it raises NotImplementedError pending Parthiban's database setup.
+    This function uses Parthiban's VerificationEngine. Since PostgreSQL is not yet 
+    wired in Sprint 2 integration, it uses a dummy lookup function with test data.
     """
-    if settings.DEV_MOCK_VERIFICATION:
-        logger.warning(
-            "[DEV] DEV_MOCK_VERIFICATION is enabled. "
-            "Verification engine will always return a VERIFIED response. "
-            "DISABLE before any production deployment."
-        )
-        # Simulate engine latency
-        await asyncio.sleep(1.0)
-        
+    engine = VerificationEngine(
+        alias_map=DUMMY_ALIAS_MAP,
+        student_lookup_fn=dummy_lookup
+    )
+
+    req = EngineRequest(
+        request_id="dummy-req-id",  # Request ID is not used for matching logic
+        register_number=register_number,
+        candidate_name=candidate_name,
+        branch=branch,
+        year_of_passing=year_of_passing
+    )
+
+    outcome = engine.verify(req)
+
+    # If verification is successful, populate the report data.
+    # In production, this would query the DB for the full student record using outcome.student_id.
+    if outcome.status == "VERIFIED":
+        # Simulate fetching full record from DB using outcome.student_id
         return VerificationResult(
             status="VERIFIED",
             candidate_name=candidate_name.upper(),
@@ -59,8 +92,7 @@ async def verify_candidate(
             mode_of_education="FULL TIME"
         )
     
-    raise NotImplementedError(
-        "Verification engine not yet integrated. "
-        "Awaiting Parthiban's database/verification engine implementation. "
-        "See docs/db_contract.md for the required interface."
+    # Otherwise return NOT_VERIFIED (or INVALID_INPUT treated as NOT_VERIFIED for privacy)
+    return VerificationResult(
+        status="NOT_VERIFIED"
     )
