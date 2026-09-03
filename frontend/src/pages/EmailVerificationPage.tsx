@@ -7,8 +7,7 @@
  * user's role ('hr' or 'admin'). The frontend AuthContext is updated,
  * and the user is routed to the appropriate next step.
  *
- * MOCK NOTE:
- * Awaiting POST /api/v1/auth/verify-email from Shri Hari Vishnu S.
+ * INTEGRATION: Connected to POST /api/v1/email/verify-otp
  */
 
 import { useState } from 'react';
