@@ -111,3 +111,4 @@ class VerifyOTPResponse(BaseModel):
     # Human-readable label for the verified session
     verified_company: str
     verified_email: str
+    role: str
