@@ -179,3 +179,28 @@
 - Production SMTP and Payment configurations pending.
 
 **Next Step:** SMTP and Payment gateway integrations.
+
+---
+
+## 2026-09-07 (Sprint 4 Integration)
+
+### Parthiban V
+
+**Task:** Resolve Database Schema Mismatch and Prepare PostgreSQL Validation
+**Branch:** database/sprint-4-schema-validation
+
+**Integration Status:** Complete.
+**Backend <-> Database Schema:** Aligned. 
+- Modified schema.sql replacing users with dmin_accounts to match Shri Hari's existing AdminAccount ORM model.
+- Restructured erification_requests in schema.sql to include payment_session_id (from backend's payment_sessions) instead of strict payment_id UUID, and added hr_email, candidate_data, erification_result safely.
+- Appended missing backend service tables (payment_sessions, email_challenges) to schema.sql so PostgreSQL behaves uniformly with backend expectations without ORM failures.
+- Updated 	est_data.sql to correctly seed the restructured mock tables and deterministic references.
+
+**Payment Integration:** Verified flexible provider-neutral design. Schema safely maps gateway_order_id in payment_sessions, accommodating PayU/Razorpay indifferently. 
+
+**Validation:**
+- Local psql tools unavailable. Live validation blocked on dev machine.
+- Prepared docs/POSTGRESQL_VALIDATION_SETUP.md providing step-by-step SQL application and environment configurations for when a full PostgreSQL setup is provisioned.
+- Local pytest suite execution blocked by package distribution issues (pydantic-core distribution missing for current Python Windows environment), marking tests as pending.
+
+**Next Step:** Project Lead or DevOps to provision the PostgreSQL DB via the validation setup doc and verify the merged schema.sql live.

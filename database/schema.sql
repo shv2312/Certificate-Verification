@@ -20,24 +20,21 @@ CREATE TYPE user_role AS ENUM ('HR', 'ADMIN');
 CREATE TYPE account_status AS ENUM ('ACTIVE', 'DISABLED');
 
 -- =============================================================================
--- 0. USERS (HR & ADMIN Accounts)
+-- 0. ADMIN ACCOUNTS (Replaces users table for Shri Hari compatibility)
 --    Enforces role-based persistence and ownership for verification requests.
---    Authentication details are handled by FastAPI backend (not stored here).
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS users (
-    id          UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
-    email       VARCHAR(254)   NOT NULL UNIQUE,
-    role        user_role      NOT NULL,
-    status      account_status NOT NULL DEFAULT 'ACTIVE',
+CREATE TABLE IF NOT EXISTS admin_accounts (
+    id          SERIAL         PRIMARY KEY,
+    email       VARCHAR(255)   NOT NULL UNIQUE,
+    is_active   BOOLEAN        NOT NULL DEFAULT TRUE,
     created_at  TIMESTAMPTZ    NOT NULL DEFAULT NOW(),
-    updated_at  TIMESTAMPTZ    NOT NULL DEFAULT NOW()
+    updated_at  TIMESTAMPTZ    NULL
 );
 
-COMMENT ON TABLE  users        IS 'System users (HR or ADMIN). Authentication managed by backend.';
-COMMENT ON COLUMN users.email  IS 'Official email. Verified before payment/access.';
-COMMENT ON COLUMN users.role   IS 'HR or ADMIN. Backend enforces authorization based on this.';
+COMMENT ON TABLE  admin_accounts        IS 'System admin accounts. Authentication managed by backend.';
+COMMENT ON COLUMN admin_accounts.email  IS 'Official email.';
 
-CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_admin_accounts_email ON admin_accounts(email);
 
 -- =============================================================================
 -- 1. PROGRAMMES
@@ -172,44 +169,47 @@ CREATE INDEX IF NOT EXISTS idx_students_programme_branch   ON students (programm
 --    constraint on payment_id).
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS verification_requests (
-    id                              UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
-    -- Ownership link to HR user
-    owner_id                        UUID         NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    id                              VARCHAR(64)  PRIMARY KEY,
+    display_request_id              VARCHAR(32)  UNIQUE NOT NULL,
+    -- Ownership link to Admin user (Nullable for now due to Shri Hari's mock auth)
+    owner_id                        INTEGER      NULL REFERENCES admin_accounts(id) ON DELETE RESTRICT,
     -- CRITICAL: UNIQUE enforces one-payment-one-request at database level.
-    -- payment_id format/lifecycle must be confirmed with Shri Hari's backend.
-    payment_id                      UUID         NOT NULL,
+    payment_session_id              VARCHAR(64)  NULL,
     company_name                    VARCHAR(300) NOT NULL,
+    hr_email                        VARCHAR(255) NOT NULL,
 
     -- HR-submitted candidate details (stored verbatim before normalization)
-    hr_submitted_name               VARCHAR(200) NOT NULL,
-    hr_submitted_register_number    VARCHAR(30)  NOT NULL,
-    hr_submitted_programme          VARCHAR(100) NOT NULL,
-    hr_submitted_branch             VARCHAR(100) NOT NULL,
-    hr_submitted_year_of_passing    SMALLINT     NOT NULL,
+    hr_submitted_name               VARCHAR(200) NULL,
+    hr_submitted_register_number    VARCHAR(30)  NULL,
+    hr_submitted_programme          VARCHAR(100) NULL,
+    hr_submitted_branch             VARCHAR(100) NULL,
+    hr_submitted_year_of_passing    SMALLINT     NULL,
+    
+    -- Backend JSON fields
+    candidate_data                  TEXT         NULL,
+    verification_result             TEXT         NULL,
 
     -- Request lifecycle
-    -- Possible values: PENDING, IN_PROGRESS, VERIFIED, NOT_VERIFIED, ERROR
-    status                          VARCHAR(20)  NOT NULL DEFAULT 'PENDING',
+    -- Possible values: PAID_UNUSED, IN_PROGRESS, VERIFIED, NOT_VERIFIED, ERROR
+    status                          VARCHAR(32)  NOT NULL DEFAULT 'PAID_UNUSED',
 
-    created_at                      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    completed_at                    TIMESTAMPTZ  NULL,
+    created_at                      BIGINT       NOT NULL,
+    completed_at                    BIGINT       NULL,
 
-    CONSTRAINT verification_requests_payment_unique UNIQUE (payment_id),
+    CONSTRAINT verification_requests_payment_unique UNIQUE (payment_session_id),
     CONSTRAINT verification_requests_status_check
-        CHECK (status IN ('PENDING', 'IN_PROGRESS', 'VERIFIED', 'NOT_VERIFIED', 'ERROR')),
-    CONSTRAINT verification_requests_year_range
-        CHECK (hr_submitted_year_of_passing BETWEEN 1990 AND 2100)
+        CHECK (status IN ('PAID_UNUSED', 'IN_PROGRESS', 'VERIFIED', 'NOT_VERIFIED', 'ERROR'))
 );
 
 COMMENT ON TABLE  verification_requests                           IS 'One verification request per payment. Created by Shri Hari backend after payment confirmation.';
 COMMENT ON COLUMN verification_requests.owner_id                 IS 'HR user who created this request. Enforces strict ownership access control.';
-COMMENT ON COLUMN verification_requests.payment_id               IS 'FK to payment system (managed by Shri Hari backend). UNIQUE ensures one-payment-one-request.';
+COMMENT ON COLUMN verification_requests.payment_session_id       IS 'FK to payment system (managed by Shri Hari backend). UNIQUE ensures one-payment-one-request.';
 COMMENT ON COLUMN verification_requests.hr_submitted_name        IS 'Verbatim name as entered by HR. Stored for audit. Normalization happens in the engine.';
 COMMENT ON COLUMN verification_requests.hr_submitted_register_number IS 'Verbatim register number as entered by HR.';
-COMMENT ON COLUMN verification_requests.status                   IS 'PENDING|IN_PROGRESS|VERIFIED|NOT_VERIFIED|ERROR';
+COMMENT ON COLUMN verification_requests.status                   IS 'PAID_UNUSED|IN_PROGRESS|VERIFIED|NOT_VERIFIED|ERROR';
 
 CREATE INDEX IF NOT EXISTS idx_vreq_owner_id    ON verification_requests (owner_id);
-CREATE INDEX IF NOT EXISTS idx_vreq_payment_id  ON verification_requests (payment_id);
+CREATE INDEX IF NOT EXISTS idx_vreq_payment_id  ON verification_requests (payment_session_id);
 CREATE INDEX IF NOT EXISTS idx_vreq_status      ON verification_requests (status);
 
 -- =============================================================================
@@ -219,7 +219,7 @@ CREATE INDEX IF NOT EXISTS idx_vreq_status      ON verification_requests (status
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS verification_results (
     id                  BIGSERIAL    PRIMARY KEY,
-    request_id          UUID         NOT NULL REFERENCES verification_requests(id) ON DELETE CASCADE,
+    request_id          VARCHAR(64)  NOT NULL REFERENCES verification_requests(id) ON DELETE CASCADE,
     verification_status VARCHAR(15)  NOT NULL,
     -- student_id is populated ONLY when verification_status = 'VERIFIED'.
     -- It is NULL on NOT_VERIFIED to avoid leaking any student record reference.
@@ -255,7 +255,7 @@ CREATE INDEX IF NOT EXISTS idx_vres_request_id ON verification_results (request_
 CREATE TABLE IF NOT EXISTS audit_logs (
     id            BIGSERIAL    PRIMARY KEY,
     event_type    VARCHAR(60)  NOT NULL,
-    request_id    UUID         NULL REFERENCES verification_requests(id) ON DELETE SET NULL,
+    request_id    VARCHAR(64)  NULL REFERENCES verification_requests(id) ON DELETE SET NULL,
     actor         VARCHAR(100) NULL,   -- e.g. 'system', 'hr:<email_hash>', 'admin'
     -- JSONB for flexible structured metadata.
     -- IMPORTANT: Do NOT store sensitive personal data or student record
@@ -273,6 +273,34 @@ COMMENT ON COLUMN audit_logs.event_metadata IS 'Safe structured metadata (JSONB)
 CREATE INDEX IF NOT EXISTS idx_audit_logs_event_type  ON audit_logs (event_type);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at  ON audit_logs (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_request_id  ON audit_logs (request_id);
+
+-- =============================================================================
+-- 8. EMAIL CHALLENGES (Added for Backend API support)
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS email_challenges (
+    id            VARCHAR(64)  PRIMARY KEY,
+    email         VARCHAR(255) NOT NULL,
+    company_name  VARCHAR(255) NOT NULL,
+    otp_hmac      VARCHAR(64)  NOT NULL,
+    attempts      INTEGER      NOT NULL DEFAULT 0,
+    verified      BOOLEAN      NOT NULL DEFAULT FALSE,
+    last_sent_at  INTEGER      NOT NULL,
+    created_at    INTEGER      NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_email_challenges_email ON email_challenges(email);
+
+-- =============================================================================
+-- 9. PAYMENT SESSIONS (Added for Backend API support)
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS payment_sessions (
+    id                      VARCHAR(64)  PRIMARY KEY,
+    gateway_order_id        VARCHAR(128) NULL,
+    amount_paise            INTEGER      NOT NULL,
+    status                  VARCHAR(32)  NOT NULL DEFAULT 'PAYMENT_PENDING',
+    verification_request_id VARCHAR(64)  NULL,
+    created_at              INTEGER      NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_payment_sessions_vreq ON payment_sessions(verification_request_id);
 
 -- =============================================================================
 -- END OF SCHEMA
