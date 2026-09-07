@@ -323,3 +323,39 @@ Frontend → FastAPI → `verification_service` → `verify_candidate(db)` → `
 ### Next Dependency
 - Real SMTP / Payment Gateway configuration when approved.
 - Sanjay to complete the Frontend UI cleanup (removing "coming soon" texts and fixing typos).
+
+---
+
+## 2026-09-07 (Frontend Sprint 3 Integration)
+
+### Sprint
+Sprint 3
+
+### Task
+Review frontend integration, merge verified work, and unblock the remaining HR flow
+
+### Work Completed
+- Inspected the current repository state and verified `origin/frontend/sprint-3`.
+- Merged the verified frontend branch into an integration branch `integration/frontend-sprint-3`.
+- Reviewed Sanjay's frontend changes:
+  - "Soon" and "coming soon" placeholders successfully removed.
+  - Institutional footer text corrected.
+  - OTP and authentication endpoints correctly invoked (`POST /api/v1/email/send-otp` and `verify-otp`).
+  - Development mocks properly isolated behind `import.meta.env.DEV`.
+- Fixed a backend schema defect: `VerifyOTPResponse` did not include the `role` field. Modified `backend/app/schemas/email_verification.py` and `backend/app/services/email_service.py` to correctly extract and return `role` for the frontend's AuthContext.
+- Generated `docs/FRONTEND_API_HANDOFF.md` outlining the API contracts and detailing which features are unblocked for Sanjay.
+
+### Tests
+- **Frontend Checks:** `npm run build` executed successfully without compilation errors.
+- **Backend Checks:** Ran `pytest tests/` in the backend to ensure the schema updates did not break the Email Verification flow. 39/39 tests passed.
+
+### Repository Status
+- Safely merged `integration/frontend-sprint-3` to `develop`.
+- Pushed `develop` and `integration/frontend-sprint-3` branches to the remote repository.
+
+### Remaining Blockers
+- **SMTP configuration:** Production SMTP credentials are still pending from DevOps/SIET management. Mock OTPs are returned in development.
+- **Payment Gateway:** Gateway keys are still pending from DevOps/SIET management.
+
+### Next Actionable Item
+- **Sanjay V:** Proceed with implementing the Candidate Details Submission, Confirmation, and Verification Result screens using the `docs/FRONTEND_API_HANDOFF.md` contract.

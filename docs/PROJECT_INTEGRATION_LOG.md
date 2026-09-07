@@ -150,8 +150,18 @@
 - **Backend ↔ VerificationEngine:** `backend/app/engine/verification.py` now consumes `AsyncSession` and utilizes the real Postgres `lookup_student_by_register_number` and `load_alias_map` functions.
 - **Validation:** 39/39 backend tests and 89/89 verification engine tests passed.
 - **Privacy Enforcement:** Confirmed that `NOT_VERIFIED` outcomes do not leak any DB fields.
-- **Tests:** Route tests use mocked `_call_verification_engine` since SQLite in-memory DB cannot natively process the PostgreSQL schemas owned by Parthiban. This correctly isolates route tests from database tests.
 - **Next Step:** Sanjay to fix frontend textual typos and pending layout issues. Real SMTP and Payment configuration pending SIET approval.
+
+---
+
+### Sprint 3 Frontend Integration & API Unblocking (Shri Hari Vishnu S)
+- **Task:** Review and merge frontend integration, resolve any contract mismatches.
+- **Status:** Complete.
+- **Frontend Checks:** `npm run build` executed and passed on `integration/frontend-sprint-3`.
+- **Backend Fixes:** `VerifyOTPResponse` was missing the `role` field required by frontend's AuthContext. Added it to the response schema and correctly extracted it via the session token in `app/services/email_service.py`.
+- **Backend Validation:** Backend tests reran and successfully passed (39/39) verifying the schema fix.
+- **Documentation:** Created `docs/FRONTEND_API_HANDOFF.md` exposing the exact contract and state of the Backend verification routes.
+- **Next Step:** Sanjay to develop Candidate Details Submission, Confirmation, and Results screens using the provided frontend API handoff doc. Production configuration for payment and SMTP remains blocked.
 
 ---
 ### Sanjay V
