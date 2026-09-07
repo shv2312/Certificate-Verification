@@ -239,3 +239,44 @@ Shared Repository Frontend Integration
 ### Next Step
 - Await Parthiban's database/verification module integration.
 - Address API route mismatch in a future coordinated integration task.
+
+### Sprint 3 Frontend Integration
+**Date:** 2026-09-03
+**Status:** Sprint 3 Frontend Integration Partially Complete
+**Branch Used:** `frontend/sprint-3` (created from `develop`)
+**Repository Used:** `/Users/sanjayv/Downloads/scratch_repo/Certificate-Verification`
+
+**Why previous attempt stopped:**
+The standalone workspace folder did not contain a valid `.git` repository, making it impossible to synchronize with the shared repository or verify backend changes safely without risking loss of history.
+
+**Repository Synchronization:**
+- Cloned repository located at `/Users/sanjayv/Downloads/scratch_repo/Certificate-Verification`.
+- Successfully fetched from `origin` and verified `develop` contains Shri Hari's Sprint 3 backend integration.
+- Frontend files in `origin/frontend/sanjay` were verified and used to continue work.
+
+**Integration Performed:**
+- Connected frontend API calls in `CompanyPage.tsx` and `EmailVerificationPage.tsx` to the real backend endpoints (`/api/v1/email/send-otp` and `/api/v1/email/verify-otp`).
+- Removed outdated warnings claiming API endpoints were unconnected.
+
+**UI Corrections Performed:**
+- Removed the hyphen after "Portal" in the institutional footer text.
+- Removed all "(coming soon)" placeholders from `AppHeader.tsx` and `AppFooter.tsx` without fabricating missing pages.
+
+**Mocks Removed:**
+- Removed frontend development mock banners from `CompanyPage.tsx` and `EmailVerificationPage.tsx` that incorrectly warned about API absence.
+
+**Mocks Remaining & Service Boundaries:**
+- The `import.meta.env.DEV` fallback in `src/api/auth.ts` remains active. This is intentional because production SMTP is pending SIET configuration. This fallback ensures frontend development can proceed independently.
+- Payment gateway configuration remains pending and is not simulated as successful in production.
+
+**Tests:**
+- **TypeScript & Build:** Passed. Node environment resolved. `npm run build` and `tsc` ran successfully.
+- **Responsive Check:** Skipped locally due to inability to serve the build.
+
+**Blockers:**
+
+- SMTP real-world configuration pending.
+- Payment Gateway configuration pending.
+
+**Next Task:**
+- Wait for DevOps to provision real SMTP and Payment gateway credentials.

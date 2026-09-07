@@ -265,17 +265,18 @@ async def verify_otp(
     await db.flush()
 
     # Issue a lightweight session token
-    session_token = await _issue_session_token(db, company_name, hr_email)
+    session_token, role = await _issue_session_token(db, company_name, hr_email)
     logger.info("Email verified for %s (%s)", _mask_email(hr_email), company_name)
 
     return VerifyOTPResponse(
         session_token=session_token,
         verified_company=company_name,
         verified_email=hr_email,
+        role=role.lower()
     )
 
 
-async def _issue_session_token(db: AsyncSession, company_name: str, hr_email: str) -> str:
+async def _issue_session_token(db: AsyncSession, company_name: str, hr_email: str) -> tuple[str, str]:
     """
     Issue a short-lived, signed session token after successful OTP verification.
     Includes role resolution.
@@ -295,4 +296,4 @@ async def _issue_session_token(db: AsyncSession, company_name: str, hr_email: st
     ).hexdigest()
     # Encode as: base payload (url-safe b64) + "." + signature
     encoded_payload = base64.urlsafe_b64encode(payload.encode()).decode()
-    return f"{encoded_payload}.{signature}"
+    return f"{encoded_payload}.{signature}", role

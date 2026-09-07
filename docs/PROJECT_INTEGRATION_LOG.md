@@ -152,3 +152,20 @@
 - **Privacy Enforcement:** Confirmed that `NOT_VERIFIED` outcomes do not leak any DB fields.
 - **Tests:** Route tests use mocked `_call_verification_engine` since SQLite in-memory DB cannot natively process the PostgreSQL schemas owned by Parthiban. This correctly isolates route tests from database tests.
 - **Next Step:** Sanjay to fix frontend textual typos and pending layout issues. Real SMTP and Payment configuration pending SIET approval.
+
+---
+### Sanjay V
+
+**Task:** Sprint 3 Frontend Integration
+**Branch:** `frontend/sprint-3`
+
+**Integration Status:** Partially Complete
+**Frontend ↔ Backend:** API connected for `/api/v1/email/send-otp` and `/api/v1/email/verify-otp`.
+**UI:** Removed placeholder texts and updated footer styling per SIET requests.
+**Tests:** Passed (TypeScript and Vite build successful. No automated frontend tests defined).
+
+**Blockers:**
+
+- Production SMTP and Payment configurations pending.
+
+**Next Step:** SMTP and Payment gateway integrations.

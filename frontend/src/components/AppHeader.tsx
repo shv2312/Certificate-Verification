@@ -82,7 +82,7 @@ export default function AppHeader() {
               <NavLink
                 key={item.to}
                 to={item.to}
-                aria-label={item.isPlaceholder ? `${item.label} (coming soon)` : item.label}
+                aria-label={item.label}
                 className={({ isActive }) =>
                   [
                     'px-3 py-2 rounded text-sm font-medium transition-colors duration-150',
@@ -96,9 +96,7 @@ export default function AppHeader() {
                 }
               >
                 {item.label}
-                {item.isPlaceholder && (
-                  <span className="ml-1 text-2xs text-siet-muted">(soon)</span>
-                )}
+                
               </NavLink>
             ))}
           </nav>
@@ -167,12 +165,10 @@ export default function AppHeader() {
                         : 'text-siet-slate hover:text-siet-navy hover:bg-siet-silver',
                     ].join(' ')
                   }
-                  aria-label={item.isPlaceholder ? `${item.label} (coming soon)` : item.label}
+                  aria-label={item.label}
                 >
                   {item.label}
-                  {item.isPlaceholder && (
-                    <span className="ml-1.5 text-xs text-siet-muted">(coming soon)</span>
-                  )}
+                  
                 </NavLink>
               </li>
             ))}
