@@ -62,7 +62,7 @@ export default function App() {
             <Route path="/unauthorized" element={<UnauthorizedPage />} />
             
             <Route path={ROUTES.HELP} element={
-              <PlaceholderPage stepIndex={0} pageTitle="Help & Support" sprintNote="Coming soon: Frequently asked questions and contact information." />
+              <PlaceholderPage stepIndex={0} pageTitle="Help & Support" sprintNote="Frequently asked questions and contact information." />
             } />
 
             {/* Protected HR Routes */}
@@ -83,7 +83,7 @@ export default function App() {
                 <PlaceholderPage stepIndex={5} pageTitle="Verification Result" sprintNote="Sprint 3: Displays verification outcome and confirmation of report delivery." />
               } />
               <Route path={ROUTES.STATUS} element={
-                <PlaceholderPage stepIndex={0} pageTitle="Track Verification Status" sprintNote="Coming soon: Track your verification request using your Request ID." />
+                <PlaceholderPage stepIndex={0} pageTitle="Track Verification Status" sprintNote="Track your verification request using your Request ID." />
               } />
             </Route>
 
