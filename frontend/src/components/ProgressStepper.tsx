@@ -64,18 +64,7 @@ function StepIcon({ status, stepNumber }: { status: WorkflowStep['status']; step
   );
 }
 
-// ── Connector line between steps ─────────────────────────────────────────────
 
-function StepConnector({ filled }: { filled: boolean }) {
-  return (
-    <div
-      aria-hidden="true"
-      className={`flex-1 h-0.5 mx-1 transition-colors duration-300 ${
-        filled ? 'bg-siet-sky' : 'bg-siet-border'
-      }`}
-    />
-  );
-}
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
@@ -87,35 +76,38 @@ export default function ProgressStepper({ steps, className = '' }: ProgressStepp
     >
       {/* ── Desktop: Horizontal stepper ── */}
       <ol
-        className="hidden sm:flex items-center"
+        className="hidden sm:flex justify-between w-full relative"
         aria-label="Verification steps"
       >
         {steps.map((step, index) => (
           <li
             key={step.id}
-            className="flex items-center flex-1 min-w-0"
+            className="relative flex flex-col items-center flex-1 text-center"
             aria-current={step.status === 'current' ? 'step' : undefined}
           >
-            {/* Step node */}
-            <div className="flex flex-col items-center gap-1 flex-shrink-0">
-              <StepIcon status={step.status} stepNumber={index + 1} />
-              <span
-                className={`text-xs font-medium text-center leading-tight max-w-[80px] ${
-                  step.status === 'completed'
-                    ? 'text-siet-sky'
-                    : step.status === 'current'
-                    ? 'text-siet-navy font-semibold'
-                    : 'text-siet-muted'
-                }`}
-              >
-                {step.label}
-              </span>
-            </div>
-
             {/* Connector (not after last step) */}
             {index < steps.length - 1 && (
-              <StepConnector filled={step.status === 'completed'} />
+              <div className="absolute top-4 left-1/2 w-full px-2" aria-hidden="true">
+                <div className={`h-0.5 w-full transition-colors duration-300 ${step.status === 'completed' ? 'bg-siet-sky' : 'bg-siet-border'}`} />
+              </div>
             )}
+            
+            {/* Step node */}
+            <div className="relative z-10 bg-white">
+              <StepIcon status={step.status} stepNumber={index + 1} />
+            </div>
+            
+            <span
+              className={`mt-2 text-xs font-medium text-center leading-tight w-24 ${
+                step.status === 'completed'
+                  ? 'text-siet-sky'
+                  : step.status === 'current'
+                  ? 'text-siet-navy font-semibold'
+                  : 'text-siet-muted'
+              }`}
+            >
+              {step.label}
+            </span>
           </li>
         ))}
       </ol>

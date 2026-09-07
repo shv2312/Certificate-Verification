@@ -280,3 +280,26 @@ The standalone workspace folder did not contain a valid `.git` repository, makin
 
 **Next Task:**
 - Wait for DevOps to provision real SMTP and Payment gateway credentials.
+
+### Sprint 4 Frontend Integration & UI Alignment
+**Date:** 2026-09-07
+**Status:** Completed Frontend Flow
+**Branch Used:** `frontend/sprint-4` (created from `develop` at baseline `f8a5252`)
+
+**Alignment & UI Fixes:**
+- Fixed `ProgressStepper.tsx` layout by replacing sibling layout with absolute positioning for connector lines. Lines now align perfectly center-to-center regardless of label wrapping.
+- Fixed `CompanyPage.tsx` form width by applying `max-w-2xl mx-auto` to constrain the form inside the wider `PageContainer`.
+- Removed the trailing SVG arrow icon from the 'Continue to Email Verification' button in `CompanyPage.tsx`.
+
+**New Screens Implemented:**
+- `CandidatePage.tsx`: Built candidate academic details form. Integrated with `POST /api/v1/verification/bind-candidate`.
+- `ConfirmPage.tsx`: Built confirmation screen highlighting candidate details and binding. Integrated with `POST /api/v1/verification/confirm`.
+- `ResultPage.tsx`: Displays the final VERIFIED or NOT VERIFIED status, using the API contract structure.
+- `api/verification.ts`: Implemented strongly-typed frontend API clients matching `FRONTEND_API_HANDOFF.md`.
+
+**Tests & Verification:**
+- **TypeScript & Build:** `npm run build` and `tsc --noEmit` passed.
+- **Visual Checks:** Tested across 1440px, 1024px, 768px, and 390px using mocked development endpoints.
+
+**Blockers:**
+- Payment gateway integration remains pending. Candidate submission requires a backend-confirmed payment entitlement, which is currently bypassed using the DEV `confirm` endpoint and simulated UI routing.
