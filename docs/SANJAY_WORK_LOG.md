@@ -239,3 +239,33 @@ Shared Repository Frontend Integration
 ### Next Step
 - Await Parthiban's database/verification module integration.
 - Address API route mismatch in a future coordinated integration task.
+
+---
+
+## 2026-09-08: Frontend API Route Alignment
+
+### Branch
+- Created `frontend/api-route-alignment` from `frontend/sanjay`
+
+### API Integration Fixes
+- Updated `src/api/auth.ts` to fully align with Shri Hari's backend contract (`docs/FRONTEND_API_HANDOFF.md`).
+- Changed OTP request from `POST /api/v1/auth/register` to `POST /api/v1/email/send-otp`.
+- Changed OTP verification from `POST /api/v1/auth/verify-email` to `POST /api/v1/email/verify-otp`.
+- Changed OTP resend to `POST /api/v1/email/resend-otp`.
+- Ensured payloads correctly map to `company_name`, `hr_email`, `challenge_id`, and `otp`.
+- Mocks are maintained strictly under `import.meta.env.DEV`.
+
+### UI Corrections
+- Removed all instances of "(soon)" and "(coming soon)" placeholders across `App.tsx`, `AppHeader.tsx`, `AppFooter.tsx`, and `AdminSidebar.tsx`.
+- Removed SVG arrow icon from the "Continue to Email Verification" button in `CompanyPage.tsx`.
+
+### Tests & Verification
+- `npm run build`: Passed (Vite exit 0)
+- `npx tsc --noEmit`: Passed
+- Global regex search confirmed 0 occurrences of "soon" and "/api/v1/auth".
+
+### Blockers
+- Real backend API server (`127.0.0.1:8000`) is offline locally; end-to-end integration testing could not be performed.
+
+### Next Step
+- Test live backend connection once database schemas are validated by Parthiban and the backend environment is active.

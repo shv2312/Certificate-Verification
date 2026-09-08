@@ -8,7 +8,7 @@
  * and the user is routed to the appropriate next step.
  *
  * MOCK NOTE:
- * Awaiting POST /api/v1/auth/verify-email from Shri Hari Vishnu S.
+ * Awaiting POST /api/v1/email/verify-otp from Shri Hari Vishnu S.
  */
 
 import { useState } from 'react';

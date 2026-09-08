@@ -32,7 +32,7 @@ export interface AuthResponse {
 
 /**
  * Step 1: Register company & HR details to start verification.
- * Production endpoint: POST /api/v1/auth/register
+ * Production endpoint: POST /api/v1/email/send-otp
  */
 export async function registerCompany(payload: CompanyRegistrationPayload): Promise<CompanyRegistrationResponse> {
   if (import.meta.env.DEV) {
@@ -49,15 +49,23 @@ export async function registerCompany(payload: CompanyRegistrationPayload): Prom
   }
 
   // --- PRODUCTION API PATH ---
-  return apiClient<CompanyRegistrationResponse>('/api/v1/auth/register', {
+  const response = await apiClient<any>('/api/v1/email/send-otp', {
     method: 'POST',
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      company_name: payload.companyName,
+      hr_email: payload.hrEmail,
+    }),
   });
+
+  return {
+    requestId: response.data?.challenge_id || '',
+    message: response.message,
+  };
 }
 
 /**
  * Step 2: Verify HR email using the token sent.
- * Production endpoint: POST /api/v1/auth/verify-email
+ * Production endpoint: POST /api/v1/email/verify-otp
  *
  * NOTE: The backend determines the role (HR or ADMIN). The frontend must
  * NEVER infer the role from the email address in production.
@@ -87,15 +95,24 @@ export async function verifyEmail(payload: EmailVerificationPayload): Promise<Au
   }
 
   // --- PRODUCTION API PATH ---
-  return apiClient<AuthResponse>('/api/v1/auth/verify-email', {
+  const response = await apiClient<any>('/api/v1/email/verify-otp', {
     method: 'POST',
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      challenge_id: payload.requestId,
+      otp: payload.token,
+    }),
   });
+
+  return {
+    role: response.data?.role || 'hr',
+    message: response.message,
+    token: response.data?.session_token,
+  };
 }
 
 /**
  * Helper to resend the verification email.
- * Production endpoint: POST /api/v1/auth/resend-verification
+ * Production endpoint: POST /api/v1/email/resend-otp
  */
 export async function resendVerification(requestId: string): Promise<{ message: string }> {
   if (import.meta.env.DEV) {
@@ -109,8 +126,11 @@ export async function resendVerification(requestId: string): Promise<{ message: 
   }
 
   // --- PRODUCTION API PATH ---
-  return apiClient<{ message: string }>('/api/v1/auth/resend-verification', {
+  // Using an assumed resend path matching the backend naming convention
+  const response = await apiClient<any>('/api/v1/email/resend-otp', {
     method: 'POST',
-    body: JSON.stringify({ requestId }),
+    body: JSON.stringify({ challenge_id: requestId }),
   });
+
+  return { message: response?.message || 'Verification email resent.' };
 }

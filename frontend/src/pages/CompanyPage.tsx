@@ -199,7 +199,7 @@ export default function CompanyPage() {
           <StatusMessage
             type="warning"
             title="Development Mode"
-            message="Backend API not yet connected. Form submission is mocked via local delay. Connect POST /api/v1/auth/register before deploying."
+            message="Backend API not yet connected. Form submission is mocked via local delay. Connect POST /api/v1/email/send-otp before deploying."
             className="mt-4"
           />
         )}
