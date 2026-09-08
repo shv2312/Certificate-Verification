@@ -410,3 +410,32 @@ Align frontend and backend API route contracts for real integration
 - **Sanjay V:** Needs to merge/rebase `develop` into `frontend/sanjay` to absorb the corrected API paths (`/api/v1/email/send-otp`) and schemas. 
 - **Parthiban V:** Needs to resolve the ORM / `schema.sql` database mismatch for the verification engine.
 - **SIET Management:** SMTP and Payment keys are still pending.
+
+---
+
+## 2026-09-08 (Database Schema Validation Merge)
+
+### Sprint
+Verification Phase
+
+### Task
+Integration review - merge Parthiban schema fix and resolve frontend/backend API route contract
+
+### Work Completed
+- **Recovered State:** Verified `integration/sprint-4-schema` branch and identified the successful merge of Parthiban's database commit `1d7ff54`.
+- **Database Review:** Inspected `backend/app/db/models.py` against `database/schema.sql`. Verified `company_name` is `String(300)`, `created_at` uses `BigInteger`, and the required `hr_submitted_*`, `owner_id`, `payment_session_id`, and `completed_at` fields were successfully ported into the ORM logic.
+- **Frontend/Backend Route Contract Verification:**
+  - Double-checked the frontend API route contract. Re-confirmed that the correct path is `/api/v1/email/send-otp` (and `/api/v1/email/verify-otp`) to avoid business logic duplication, preserving the existing `{success, data}` API envelopes.
+  - Confirmed the fix is that Sanjay merges `develop` which already contains these changes. No backend aliases were created.
+- **Mock Boundaries Verified:**
+  - Email sending and Payment mocks are strictly development-only (`DEV_MOCK_OTP`, `DEV_MOCK_PAYMENT`).
+  - Production logic mandates valid tokens and does not bypass verification.
+
+### Tests
+- **Backend Tests:** Re-ran `pytest tests/ -v`.
+- **Results:** 40 passed / 0 failed. The new `test_verification_request_orm_model_fields` correctly validates the new ORM fields.
+
+### Remaining Blockers
+- **Sanjay V:** Merge `develop` into `frontend/sanjay` to deploy the exact frontend route fixes (`/api/v1/email/*`).
+- **Parthiban V:** Real PostgreSQL live validation is still blocked locally on my machine because PostgreSQL is not available natively.
+- **SIET Management:** Pending SMTP and Payment gateway keys.

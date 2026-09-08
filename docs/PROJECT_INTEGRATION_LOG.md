@@ -196,11 +196,20 @@
 **UI:** Removed placeholder texts and updated footer styling per SIET requests.
 **Tests:** Passed (TypeScript and Vite build successful. No automated frontend tests defined).
 
-**Blockers:**
-
 - Production SMTP and Payment configurations pending.
 
 **Next Step:** SMTP and Payment gateway integrations.
+
+---
+
+### Database Schema Validation Merge (Shri Hari Vishnu S)
+- **Task:** Review and integrate Parthiban's database schema fix (commit `1d7ff54`).
+- **Status:** Complete. Merged into `integration/sprint-4-schema`.
+- **Resolution:** The schema/ORM mismatch was fixed. `VerificationRequest.company_name` is `String(300)`, `created_at` uses `BigInteger`, and new tracking fields (`owner_id`, `payment_session_id`, `hr_submitted_*`, `completed_at`) are fully integrated into both `schema.sql` and `models.py`.
+- **API Alignment Re-confirmed:** Refirmed that `/api/v1/email/send-otp` is the official backend route, rejecting generic `/auth/*` aliases to prevent backend bloat. Sanjay must merge `develop` into his branch to adapt.
+- **Tests:** Backend tests passed (40/40), including the new validation checks for the ORM fields.
+- **Blockers:** Real PostgreSQL validation is blocked until deployed or a remote DB is spun up, as local dev relies on SQLite endpoints.
+- **Next Step:** Sanjay to merge `develop` and Parthiban to unblock PostgreSQL testing.
 
 ---
 
