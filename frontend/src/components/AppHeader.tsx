@@ -96,7 +96,6 @@ export default function AppHeader() {
                 }
               >
                 {item.label}
-                
               </NavLink>
             ))}
           </nav>
@@ -168,7 +167,6 @@ export default function AppHeader() {
                   aria-label={item.label}
                 >
                   {item.label}
-                  
                 </NavLink>
               </li>
             ))}

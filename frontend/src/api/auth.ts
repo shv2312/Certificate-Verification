@@ -20,7 +20,7 @@ export interface CompanyRegistrationResponse {
 }
 
 export interface EmailVerificationPayload {
-  challengeId: string;
+  requestId: string;
   token: string; // The code/token entered by the user
 }
 
@@ -49,17 +49,17 @@ export async function registerCompany(payload: CompanyRegistrationPayload): Prom
   }
 
   // --- PRODUCTION API PATH ---
-  const response = await apiClient<{ data: { challenge_id: string } }>('/api/v1/email/send-otp', {
+  const response = await apiClient<any>('/api/v1/email/send-otp', {
     method: 'POST',
     body: JSON.stringify({
       company_name: payload.companyName,
       hr_email: payload.hrEmail,
     }),
   });
-  
+
   return {
-    requestId: response.data.challenge_id,
-    message: "OTP sent successfully"
+    requestId: response.data?.challenge_id || '',
+    message: response.message,
   };
 }
 
@@ -95,24 +95,24 @@ export async function verifyEmail(payload: EmailVerificationPayload): Promise<Au
   }
 
   // --- PRODUCTION API PATH ---
-  const response = await apiClient<{ data: { session_token: string, role: string } }>('/api/v1/email/verify-otp', {
+  const response = await apiClient<any>('/api/v1/email/verify-otp', {
     method: 'POST',
     body: JSON.stringify({
-      challenge_id: payload.challengeId,
+      challenge_id: payload.requestId,
       otp: payload.token,
     }),
   });
-  
+
   return {
-    role: response.data.role as 'hr' | 'admin',
-    message: "Email verified successfully",
-    token: response.data.session_token
+    role: response.data?.role || 'hr',
+    message: response.message,
+    token: response.data?.session_token,
   };
 }
 
 /**
  * Helper to resend the verification email.
- * Production endpoint: POST /api/v1/auth/resend-verification
+ * Production endpoint: POST /api/v1/email/resend-otp
  */
 export async function resendVerification(requestId: string): Promise<{ message: string }> {
   if (import.meta.env.DEV) {
@@ -126,8 +126,11 @@ export async function resendVerification(requestId: string): Promise<{ message: 
   }
 
   // --- PRODUCTION API PATH ---
-  return apiClient<{ message: string }>('/api/v1/auth/resend-verification', {
+  // Using an assumed resend path matching the backend naming convention
+  const response = await apiClient<any>('/api/v1/email/resend-otp', {
     method: 'POST',
-    body: JSON.stringify({ requestId }),
+    body: JSON.stringify({ challenge_id: requestId }),
   });
+
+  return { message: response?.message || 'Verification email resent.' };
 }

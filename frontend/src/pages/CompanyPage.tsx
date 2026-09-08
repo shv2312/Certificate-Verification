@@ -9,7 +9,13 @@
  * On form submission, the backend (FastAPI — Shri Hari Vishnu S)
  * will initiate an email verification flow.
  *
- * INTEGRATION: Connected to POST /api/v1/email/send-otp
+ * MOCK DEPENDENCY:
+ *   Company registration API endpoint NOT yet available.
+ *   Form submission currently logs data to console only.
+ *   Backend integration required before real submission is possible.
+ *   DO NOT deploy form submission in production until the API is ready.
+ *
+ * Waiting for: POST /api/v1/company/register endpoint from Shri Hari Vishnu S.
  */
 
 import { useState } from 'react';
@@ -185,15 +191,18 @@ export default function CompanyPage() {
             disabled={isSubmitting}
           >
             {isSubmitting ? 'Submitting...' : 'Continue to Email Verification'}
-            {!isSubmitting && (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4-4m4-4H3" />
-              </svg>
-            )}
           </button>
         </div>
 
-
+        {/* Mock data warning for developers (only visible in dev mode) */}
+        {import.meta.env.DEV && (
+          <StatusMessage
+            type="warning"
+            title="Development Mode"
+            message="Backend API not yet connected. Form submission is mocked via local delay. Connect POST /api/v1/email/send-otp before deploying."
+            className="mt-4"
+          />
+        )}
       </form>
     </PageContainer>
   );

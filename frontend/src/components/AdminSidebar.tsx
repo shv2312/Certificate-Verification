@@ -49,7 +49,6 @@ export default function AdminSidebar() {
             }
           >
             {link.label}
-            
           </NavLink>
         ))}
       </nav>

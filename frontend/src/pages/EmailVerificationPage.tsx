@@ -7,7 +7,8 @@
  * user's role ('hr' or 'admin'). The frontend AuthContext is updated,
  * and the user is routed to the appropriate next step.
  *
- * INTEGRATION: Connected to POST /api/v1/email/verify-otp
+ * MOCK NOTE:
+ * Awaiting POST /api/v1/email/verify-otp from Shri Hari Vishnu S.
  */
 
 import { useState } from 'react';
@@ -61,7 +62,7 @@ export default function EmailVerificationPage() {
 
     try {
       // Call API (currently mocked)
-      const response = await verifyEmail({ challengeId: requestId!, token });
+      const response = await verifyEmail({ requestId: requestId!, token });
       
       // Update global auth state with the trusted role returned by backend
       setRole(response.role);
