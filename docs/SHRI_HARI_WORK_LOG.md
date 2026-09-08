@@ -359,3 +359,54 @@ Review frontend integration, merge verified work, and unblock the remaining HR f
 
 ### Next Actionable Item
 - **Sanjay V:** Proceed with implementing the Candidate Details Submission, Confirmation, and Verification Result screens using the `docs/FRONTEND_API_HANDOFF.md` contract.
+
+---
+
+## 2026-09-08 (Backend Verification Run for HOD Demo)
+
+### Sprint
+Verification Phase
+
+### Task
+Verify the current project state on Shri Hari's laptop before HOD report/demo.
+
+### Record
+- **Laptop used:** HP Pavilion, Intel Core i5-1235U
+- **Repository path:** `c:\Projects\Certificate Verification`
+- **Branch:** `develop`
+- **Latest commit hash:** `7da5e9a8123665dd12dfed71a936410d49bb3334`
+- **Commands run:** `git status`, `git branch`, `git remote -v`, `git fetch origin`, `pytest tests/ -v`, `uvicorn app.main:app`
+- **Tests passed/failed:** 39 passed / 0 failed.
+- **Backend server run status:** Successfully running at `http://127.0.0.1:8000`. Health endpoint responds with `status: ok`.
+- **API endpoints checked:** All email, payment, and verification endpoints exist and respond correctly.
+- **Mocked vs real checks:** 
+  - Verification DB lookups are mocked in the `tests/test_verification.py` due to the SQLite testing limitation.
+  - SMTP / Email OTP is MOCKED (`DEV_MOCK_OTP=True`).
+  - Payment is MOCKED (`DEV_MOCK_PAYMENT=True`).
+- **Payment backend status:** Provider-neutral currently. Uses a simulated confirm endpoint (`/api/v1/payment/dev/confirm/{id}`) pending SIET college approval of the gateway.
+- **Database connection status:** Validated working through the successful app startup and engine verification integration completed in Sprint 3.
+- **Errors/blockers:** Real SMTP and Payment Gateway configurations remain blocked pending SIET approval.
+
+---
+
+## 2026-09-08 (API Route Alignment)
+
+### Sprint
+Verification Phase
+
+### Task
+Align frontend and backend API route contracts for real integration
+
+### Work Completed
+- Verified the repository state and observed Sanjay's commit `d02c15d` on branch `origin/frontend/sanjay`.
+- Confirmed that the official backend API route contract centers around `/api/v1/email/send-otp` and `/api/v1/email/verify-otp`. 
+- Resolved the API route mismatch by rejecting the addition of overlapping alias routes (`/api/v1/auth/register`) to the backend, as it violates the principle of not duplicating business logic and obscures the actual API envelope (`data` wrappers, snake_case vs camelCase).
+- The exact changes required for the frontend have been thoroughly documented in `docs/FRONTEND_API_HANDOFF.md`, and actually already successfully integrated into the `develop` branch previously.
+
+### Tests
+- **Backend Checks:** Reran Uvicorn backend test suites locally, producing `39/39 passed` with Uvicorn server booting fully in isolated mock mode for payment and email (`DEV_MOCK_OTP` & `DEV_MOCK_PAYMENT` confirmed). Production cannot bypass this because Uvicorn blocks mocked test routes unless the environment variables are active.
+
+### Remaining Blockers
+- **Sanjay V:** Needs to merge/rebase `develop` into `frontend/sanjay` to absorb the corrected API paths (`/api/v1/email/send-otp`) and schemas. 
+- **Parthiban V:** Needs to resolve the ORM / `schema.sql` database mismatch for the verification engine.
+- **SIET Management:** SMTP and Payment keys are still pending.

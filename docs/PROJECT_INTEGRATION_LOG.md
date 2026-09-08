@@ -109,11 +109,21 @@
 **API Contract:** Aligned with backend email OTP flow.
 **Mocks:** Sprint 2 mock endpoints (`src/api/auth.ts`) preserved and isolated under `import.meta.env.DEV`.
 
-**Build:** Passed (Vite exit 0)
-**Security:** Passed (No `.env` or secrets committed, `.gitignore` respected)
+**Build Results:** Passed (tsc exit 0, Vite exit 0)
+**UI Issues Remaining:** 
+- None. All "soon" text removed. SVG arrow removed from Company button.
+**Backend API Connection:** Mocks isolated to `import.meta.env.DEV`. Full integration blocked pending path updates and live DB testing.
+**Notes:** Playwright driver failed to install on this machine, blocking automated screenshot generation. Source code verified manually. User will handle manual Chrome screenshots.
 
-**Blockers:** None for Git operation. Full integration blocked pending API path adjustments.
-**Next Integration Step:** Parthiban database/verification repository integration.
+---
+
+### Backend API Route Alignment (Shri Hari Vishnu S)
+- **Task:** Resolve frontend-backend route mismatch where Sanjay expected `/api/v1/auth/*` and backend used `/api/v1/email/*`.
+- **Status:** Complete.
+- **Resolution:** The official backend API route contract remains centered strictly on `/api/v1/email/send-otp` and `/api/v1/email/verify-otp`. Overlapping `/api/v1/auth/*` alias routes were rejected as they duplicate business logic and obscure necessary standard API envelopes (e.g. `{success, data}`).
+- **Mocks & Tests:** 39/39 backend tests passed. Development mocks (`DEV_MOCK_OTP`, `DEV_MOCK_PAYMENT`) are fully isolated and correctly gated from production paths.
+- **Actionable for Sanjay:** To complete his frontend integration, Sanjay merely needs to merge or rebase the current `develop` branch into `frontend/sanjay`, which already incorporates the exact necessary `auth.ts` changes.
+- **Next Integration Step:** Parthiban to resolve the Schema / ORM mismatch for live PostgreSQL integration.
 
 ---
 
@@ -162,6 +172,18 @@
 - **Backend Validation:** Backend tests reran and successfully passed (39/39) verifying the schema fix.
 - **Documentation:** Created `docs/FRONTEND_API_HANDOFF.md` exposing the exact contract and state of the Backend verification routes.
 - **Next Step:** Sanjay to develop Candidate Details Submission, Confirmation, and Results screens using the provided frontend API handoff doc. Production configuration for payment and SMTP remains blocked.
+
+---
+
+### Backend Verification Run for HOD Demo (Shri Hari Vishnu S)
+- **Task:** Verify the current project state on Shri Hari's laptop before HOD report/demo.
+- **Status:** Complete.
+- **Repository State:** Branch `develop`, commit `7da5e9a8123665dd12dfed71a936410d49bb3334`. No uncommitted changes.
+- **Backend Run Status:** Uvicorn server started successfully at `127.0.0.1:8000` with database engine connection validated via successful app startup. Health check passed.
+- **Test Results:** Ran `pytest tests/ -v`. 39/39 tests passed.
+- **Mock vs. Real State:** Email OTP and Payment flows are mocked (`DEV_MOCK_OTP` and `DEV_MOCK_PAYMENT`). Route tests mock Verification Engine due to SQLite limits.
+- **Payment Backend Status:** Payment gateway selection is pending SIET approval. Backend payment flow is strictly provider-neutral and uses `/dev/confirm/{id}` for local mock testing.
+- **Blockers:** Awaiting SIET approval for live SMTP credentials and Payment Gateway API Keys.
 
 ---
 ### Sanjay V
