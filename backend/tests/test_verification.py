@@ -132,3 +132,42 @@ async def test_confirm_verification_success(
     # Given we use mock verification, it should be VERIFIED
     assert data["data"]["status"] == RequestStatus.NOT_VERIFIED # Test dummy doesn't have JANE DOE so it will be NOT_VERIFIED
     # We no longer expect name/university to be returned on NOT_VERIFIED
+
+@pytest.mark.asyncio
+async def test_verification_request_orm_model_fields(db_session: AsyncSession):
+    # Test new Sprint 4 fields and BigInteger
+    request_id = "test-orm-fields"
+    display_id = "SIET-ORM-01"
+    
+    vr = VerificationRequest(
+        id=request_id,
+        display_request_id=display_id,
+        status=RequestStatus.PAID_UNUSED,
+        company_name="A very long company name " * 10, # test varchar 300 allowance implicitly via ORM
+        hr_email="hr@test.com",
+        created_at=1700000000000, # BIGINT
+        completed_at=1700000000100, # BIGINT
+        payment_session_id="pay-orm-01",
+        owner_id=1,
+        hr_submitted_name="HR Submitted Name",
+        hr_submitted_register_number="713519104001",
+        hr_submitted_programme="B.E",
+        hr_submitted_branch="CSE",
+        hr_submitted_year_of_passing=2023
+    )
+    db_session.add(vr)
+    await db_session.commit()
+    
+    # Retrieve and check fields
+    retrieved = await db_session.get(VerificationRequest, request_id)
+    assert retrieved is not None
+    assert retrieved.company_name == "A very long company name " * 10
+    assert retrieved.created_at == 1700000000000
+    assert retrieved.completed_at == 1700000000100
+    assert retrieved.payment_session_id == "pay-orm-01"
+    assert retrieved.owner_id == 1
+    assert retrieved.hr_submitted_name == "HR Submitted Name"
+    assert retrieved.hr_submitted_register_number == "713519104001"
+    assert retrieved.hr_submitted_programme == "B.E"
+    assert retrieved.hr_submitted_branch == "CSE"
+    assert retrieved.hr_submitted_year_of_passing == 2023

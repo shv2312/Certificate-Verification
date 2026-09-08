@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text, BigInteger, SmallInteger, ForeignKey
 from sqlalchemy.sql import func
 from app.db.session import Base
 
@@ -38,9 +38,22 @@ class VerificationRequest(Base):
     
     id = Column(String(64), primary_key=True, index=True)  # verification_request_id
     display_request_id = Column(String(32), unique=True, index=True, nullable=False)
+    owner_id = Column(Integer, ForeignKey("admin_accounts.id"), nullable=True)
+    payment_session_id = Column(String(64), unique=True, nullable=True)
     status = Column(String(32), default="PAID_UNUSED", nullable=False)
-    company_name = Column(String(255), nullable=False)
+    company_name = Column(String(300), nullable=False)
     hr_email = Column(String(255), nullable=False)
+    
+    # HR-submitted candidate details
+    hr_submitted_name = Column(String(200), nullable=True)
+    hr_submitted_register_number = Column(String(30), nullable=True)
+    hr_submitted_programme = Column(String(100), nullable=True)
+    hr_submitted_branch = Column(String(100), nullable=True)
+    hr_submitted_year_of_passing = Column(SmallInteger, nullable=True)
+    
     candidate_data = Column(Text)  # Stored as JSON string
     verification_result = Column(Text)  # Stored as JSON string
-    created_at = Column(Integer, nullable=False)
+    
+    created_at = Column(BigInteger, nullable=False)
+    completed_at = Column(BigInteger, nullable=True)
+

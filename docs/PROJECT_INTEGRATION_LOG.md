@@ -204,3 +204,34 @@
 - Local pytest suite execution blocked by package distribution issues (pydantic-core distribution missing for current Python Windows environment), marking tests as pending.
 
 **Next Step:** Project Lead or DevOps to provision the PostgreSQL DB via the validation setup doc and verify the merged schema.sql live.
+
+---
+
+## 2026-09-08 (Validation Report)
+
+### Parthiban V
+
+**Task:** Database and verification engine validation before HOD report
+
+**Laptop:** Parthiban V (Local Windows Machine)
+**Repository Path:** `c:\Users\Parthiban V\OneDrive\Documents\Certificate verification portal`
+**Branch:** `database/sprint-4-schema-validation`
+**Latest Commit:** `6d0006aebfa470242278248368619b89eaf0eb8f`
+
+**Commands Run:**
+- `git status`, `git branch`, `git remote -v`, `git fetch origin`
+- `psql -V; psql -U postgres -c "SELECT 1;"`
+- `pytest verification_engine/tests/`
+
+**Validation Results:**
+1. **PostgreSQL Availability:** **NOT AVAILABLE** locally. The `psql` command is not recognized on this machine, meaning a local PostgreSQL server is not configured or in PATH for testing natively.
+2. **Real PostgreSQL vs SQLite/mocked checks:** Engine tests are likely using a mocked SQLite or in-memory fallback, as real PostgreSQL is not installed/accessible locally.
+3. **Verification Engine Test Results:** **PASSED (89/89)**. Tests covering match, mismatch, not found, duplicate verification, and database failure cases passed successfully in 0.53 seconds.
+4. **Schema Mismatch Status:** **MISMATCH DETECTED**. 
+   - `VerificationRequest` ORM model in `backend/app/db/models.py` defines `company_name` as `String(255)`, but `database/schema.sql` defines it as `VARCHAR(300)`.
+   - `VerificationRequest` ORM uses `Integer` for `created_at`, while SQL schema uses `BIGINT`.
+   - `VerificationRequest` ORM is missing several columns present in SQL schema: `owner_id`, `payment_session_id`, `hr_submitted_name`, `hr_submitted_register_number`, `hr_submitted_programme`, `hr_submitted_branch`, `hr_submitted_year_of_passing`, `completed_at`.
+
+**Fixes Needed Before Full Integration:**
+- Provision a real PostgreSQL 15+ database to run native schema validation.
+- ~~Update `backend/app/db/models.py` to correctly map the new/missing fields in `VerificationRequest`~~ (COMPLETED: Mismatches fixed safely by Parthiban V, 40/40 tests passed).
