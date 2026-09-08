@@ -150,11 +150,10 @@ JOIN branches b ON b.programme_id = p.id AND b.code = 'IT'
 WHERE p.code = 'BE-IT';
 
 -- =============================================================================
--- FICTIONAL TEST USERS (HR & ADMIN)
+-- FICTIONAL TEST USERS (Admin)
 -- =============================================================================
-INSERT INTO users (id, email, role, status) VALUES 
-('cccccccc-0000-0000-0000-000000000001', 'test.hr@testcompany.example', 'HR', 'ACTIVE'),
-('dddddddd-0000-0000-0000-000000000001', 'admin.test@siet.ac.in', 'ADMIN', 'ACTIVE');
+INSERT INTO admin_accounts (email, is_active) VALUES 
+('admin.test@siet.ac.in', TRUE);
 
 -- =============================================================================
 -- FICTIONAL TEST VERIFICATION REQUEST (for integration testing)
@@ -163,26 +162,32 @@ INSERT INTO users (id, email, role, status) VALUES
 -- =============================================================================
 INSERT INTO verification_requests (
     id,
+    display_request_id,
     owner_id,
-    payment_id,
+    payment_session_id,
     company_name,
+    hr_email,
     hr_submitted_name,
     hr_submitted_register_number,
     hr_submitted_programme,
     hr_submitted_branch,
     hr_submitted_year_of_passing,
-    status
+    status,
+    created_at
 ) VALUES (
-    'aaaaaaaa-0000-0000-0000-000000000001',
-    'cccccccc-0000-0000-0000-000000000001',
-    'bbbbbbbb-0000-0000-0000-000000000001',
+    'aaaaaaaa0000000000000001',
+    'SIET-12345',
+    NULL,
+    'bbbbbbbb0000000000000001',
     'Test Company Pvt Ltd',
+    'test.hr@testcompany.example',
     'TEST STUDENT ALPHA',
     '911021104001',
     'BE-CSE',
     'CSE',
     2024,
-    'PENDING'
+    'PAID_UNUSED',
+    CAST(EXTRACT(EPOCH FROM NOW()) AS BIGINT)
 );
 
 -- =============================================================================
@@ -191,7 +196,7 @@ INSERT INTO verification_requests (
 INSERT INTO audit_logs (event_type, request_id, actor, event_metadata)
 VALUES (
     'VERIFICATION_REQUEST_CREATED',
-    'aaaaaaaa-0000-0000-0000-000000000001',
+    'aaaaaaaa0000000000000001',
     'system',
     '{"source": "test_data", "note": "fictional test record"}'
 );
