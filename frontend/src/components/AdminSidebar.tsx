@@ -49,7 +49,6 @@ export default function AdminSidebar() {
             }
           >
             {link.label}
-            {link.disabled && <span className="ml-2 text-2xs">(soon)</span>}
           </NavLink>
         ))}
       </nav>

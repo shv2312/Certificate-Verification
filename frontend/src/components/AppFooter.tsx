@@ -62,17 +62,17 @@ export default function AppFooter() {
               <li>
                 <span
                   className="text-sm text-blue-400 cursor-default select-none"
-                  title="Help centre — coming soon"
+                  title="Help centre"
                 >
-                  Help &amp; Support <span className="text-xs text-blue-500">(coming soon)</span>
+                  Help &amp; Support
                 </span>
               </li>
               <li>
                 <span
                   className="text-sm text-blue-400 cursor-default select-none"
-                  title="Track verification status — coming soon"
+                  title="Track verification status"
                 >
-                  Track Verification <span className="text-xs text-blue-500">(coming soon)</span>
+                  Track Verification
                 </span>
               </li>
             </ul>
