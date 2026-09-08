@@ -213,6 +213,16 @@
 
 ---
 
+### Final Local Integration Check (Shri Hari Vishnu S)
+- **Task:** End-to-end local integration run with backend and Sanjay's frontend API route alignment branch (`origin/frontend/api-route-alignment`).
+- **Status:** Complete. Merged into `integration/sprint-4-final`.
+- **Resolution:** Sanjay's frontend branch successfully purged all occurrences of `/api/v1/auth/*` and successfully consumes the backend's `/api/v1/email/send-otp` and `verify-otp` endpoints. Both backend API requests passed successfully using isolated dev flags (`DEV_MOCK_OTP`), verifying correct extraction of the `{success, data}` API envelope. 
+- **Tests:** 40/40 tests remain passed. The route contract is officially unified.
+- **Blockers:** PostgreSQL, SMTP, Payment Gateway.
+- **Next Step:** Ready for HOD Progress Demo (mock mode).
+
+---
+
 ## 2026-09-07 (Sprint 4 Integration)
 
 ### Parthiban V
