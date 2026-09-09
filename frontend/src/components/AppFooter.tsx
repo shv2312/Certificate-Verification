@@ -23,7 +23,7 @@ export default function AppFooter() {
     >
       {/* Main footer content */}
       <div className="section-container py-10">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 lg:gap-16">
 
           {/* Column 1: Institutional Identity */}
           <div className="space-y-3">
@@ -112,7 +112,7 @@ export default function AppFooter() {
             All rights reserved.
           </p>
           <p className="text-xs text-blue-500 text-center sm:text-right">
-            Academic Background Verification Portal — Official Service
+            Academic Background Verification Portal - Official Service
           </p>
         </div>
       </div>

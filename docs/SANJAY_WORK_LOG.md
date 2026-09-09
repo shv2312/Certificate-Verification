@@ -240,43 +240,51 @@ Shared Repository Frontend Integration
 - Await Parthiban's database/verification module integration.
 - Address API route mismatch in a future coordinated integration task.
 
-### Sprint 3 Frontend Integration
-**Date:** 2026-09-03
-**Status:** Sprint 3 Frontend Integration Partially Complete
-**Branch Used:** `frontend/sprint-3` (created from `develop`)
-**Repository Used:** `/Users/sanjayv/Downloads/scratch_repo/Certificate-Verification`
+---
 
-**Why previous attempt stopped:**
-The standalone workspace folder did not contain a valid `.git` repository, making it impossible to synchronize with the shared repository or verify backend changes safely without risking loss of history.
+## 2026-09-08: Frontend API Route Alignment
 
-**Repository Synchronization:**
-- Cloned repository located at `/Users/sanjayv/Downloads/scratch_repo/Certificate-Verification`.
-- Successfully fetched from `origin` and verified `develop` contains Shri Hari's Sprint 3 backend integration.
-- Frontend files in `origin/frontend/sanjay` were verified and used to continue work.
+### Branch
+- Created `frontend/api-route-alignment` from `frontend/sanjay`
 
-**Integration Performed:**
-- Connected frontend API calls in `CompanyPage.tsx` and `EmailVerificationPage.tsx` to the real backend endpoints (`/api/v1/email/send-otp` and `/api/v1/email/verify-otp`).
-- Removed outdated warnings claiming API endpoints were unconnected.
+### API Integration Fixes
+- Updated `src/api/auth.ts` to fully align with Shri Hari's backend contract (`docs/FRONTEND_API_HANDOFF.md`).
+- Changed OTP request from `POST /api/v1/auth/register` to `POST /api/v1/email/send-otp`.
+- Changed OTP verification from `POST /api/v1/auth/verify-email` to `POST /api/v1/email/verify-otp`.
+- Changed OTP resend to `POST /api/v1/email/resend-otp`.
+- Ensured payloads correctly map to `company_name`, `hr_email`, `challenge_id`, and `otp`.
+- Mocks are maintained strictly under `import.meta.env.DEV`.
 
-**UI Corrections Performed:**
-- Removed the hyphen after "Portal" in the institutional footer text.
-- Removed all "(coming soon)" placeholders from `AppHeader.tsx` and `AppFooter.tsx` without fabricating missing pages.
+### UI Corrections
+- Removed all instances of "(soon)" and "(coming soon)" placeholders across `App.tsx`, `AppHeader.tsx`, `AppFooter.tsx`, and `AdminSidebar.tsx`.
+- Removed SVG arrow icon from the "Continue to Email Verification" button in `CompanyPage.tsx`.
 
-**Mocks Removed:**
-- Removed frontend development mock banners from `CompanyPage.tsx` and `EmailVerificationPage.tsx` that incorrectly warned about API absence.
+### Tests & Verification
+- `npm run build`: Passed (Vite exit 0)
+- `npx tsc --noEmit`: Passed
+- Global regex search confirmed 0 occurrences of "soon" and "/api/v1/auth".
 
-**Mocks Remaining & Service Boundaries:**
-- The `import.meta.env.DEV` fallback in `src/api/auth.ts` remains active. This is intentional because production SMTP is pending SIET configuration. This fallback ensures frontend development can proceed independently.
-- Payment gateway configuration remains pending and is not simulated as successful in production.
+### Blockers
+- Real backend API server (`127.0.0.1:8000`) is offline locally; end-to-end integration testing could not be performed.
 
-**Tests:**
-- **TypeScript & Build:** Passed. Node environment resolved. `npm run build` and `tsc` ran successfully.
-- **Responsive Check:** Skipped locally due to inability to serve the build.
+### Next Step
+- Test live backend connection once database schemas are validated by Parthiban and the backend environment is active.
 
-**Blockers:**
+---
 
-- SMTP real-world configuration pending.
-- Payment Gateway configuration pending.
+## 2026-09-09: Frontend Footer Polish
 
-**Next Task:**
-- Wait for DevOps to provision real SMTP and Payment gateway credentials.
+### Branch
+- Created `frontend/footer-polish`
+
+### UI Corrections
+- Updated the footer's bottom-right text, replacing the double dash (`--` or `—`) with a single hyphen (`-`) so it perfectly matches `Academic Background Verification Portal - Official Service`.
+- Realigned the desktop footer columns by increasing the horizontal gap (`md:gap-12 lg:gap-16`) on the existing `grid-cols-3` layout. This visually balanced the uneven spacing between "Official Institutional Service", "Quick Links", and "Important" columns without disturbing the grid structure or mobile stacking behaviour.
+
+### Tests & Verification
+- `npm run build`: Passed (Vite exit 0)
+- `npx tsc --noEmit`: Passed
+- Verified no regressions on API routes or "soon" cleanup.
+
+### Next Step
+- Await backend environment availability for live testing.
