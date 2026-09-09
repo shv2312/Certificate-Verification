@@ -46,6 +46,8 @@ from app.schemas.payment import PaymentInitiateResponse, PaymentStatusResponse
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
+_request_counter = 0
+
 
 # ------------------------------------------------------------------ #
 # Verification Request Lifecycle States                               #

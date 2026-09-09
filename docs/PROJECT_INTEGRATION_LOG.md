@@ -223,6 +223,28 @@
 
 ---
 
+### Final Full-System Verification Run
+- **Task:** Final, comprehensive end-to-end local integration run for Sprint 4.
+- **Branch:** `integration/full-system-verification` (branched from `integration/sprint-4-final`).
+- **Commits Included:** `97543a1` (Backend integration), `547b63c` (Sanjay frontend route alignment), `1d7ff54` (Parthiban DB schema).
+- **Frontend Status:** Build and typecheck successfully completed via `npm run build` and `npx tsc --noEmit`. No occurrences of `/api/v1/auth/*` found in the codebase.
+- **Backend Status:** Server successfully bootstrapped with SQLite workaround (to bypass missing local PostgreSQL). Test suite `tests/` passed successfully (40/40 passed). Fixed a missing initialization variable in `payment_service.py` to allow simulated payment confirmations to proceed.
+- **Integration Flow Results:**
+  1. `Health Check` -> Success (200 OK)
+  2. `Send OTP` -> Success (200 OK, mock OTP returned)
+  3. `Verify OTP` -> Success (200 OK, session token obtained)
+  4. `Payment Initiate` -> Success (200 OK, payment session created)
+  5. `Dev Payment Confirm` -> Success (200 OK, status -> PAID_UNUSED)
+  6. `Bind Candidate` -> Success (200 OK, status -> CANDIDATE_BOUND)
+  7. `Confirm Verification` -> Expected Failure (500 Error, due to SQLite missing `branch_aliases` and `branches` tables mapping to PostgreSQL verification engine).
+- **Blockers Confirmed:**
+  - PostgreSQL live database configuration is still blocking full verification engine evaluation locally.
+  - Payment Gateway pending college selection.
+  - SMTP configuration is completely mocked using `DEV_MOCK_OTP`.
+- **Conclusion:** The project is functionally aligned and integrated up to the database boundary. HOD Progress Demo can proceed utilizing the development-mock flow.
+
+---
+
 ## 2026-09-07 (Sprint 4 Integration)
 
 ### Parthiban V
