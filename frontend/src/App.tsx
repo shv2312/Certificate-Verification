@@ -24,6 +24,7 @@ import AppFooter from './components/AppFooter';
 import LandingPage from './pages/LandingPage';
 import CompanyPage from './pages/CompanyPage';
 import EmailVerificationPage from './pages/EmailVerificationPage';
+import PaymentPage from './pages/PaymentPage';
 import PlaceholderPage from './pages/PlaceholderPage';
 import UnauthorizedPage from './pages/UnauthorizedPage';
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -67,9 +68,7 @@ export default function App() {
 
             {/* Protected HR Routes */}
             <Route element={<ProtectedRoute allowedRoles={['hr']} />}>
-              <Route path={ROUTES.PAYMENT} element={
-                <PlaceholderPage stepIndex={2} pageTitle="Payment" sprintNote="Sprint 2/3: Payment gateway integration. Backend payment session management required." />
-              } />
+              <Route path={ROUTES.PAYMENT} element={<PaymentPage />} />
               <Route path={ROUTES.CANDIDATE} element={
                 <PlaceholderPage stepIndex={3} pageTitle="Candidate Details" sprintNote="Sprint 2/3: Candidate details form. Requires verified payment session from backend." />
               } />

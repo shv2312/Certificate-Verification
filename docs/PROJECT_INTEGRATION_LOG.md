@@ -117,13 +117,13 @@
 
 ### Sanjay V
 
-**Task:** Frontend API route alignment & Footer polish
+**Task:** Frontend UI polish: Stepper consistency & Demo Payment QR
 **Laptop:** Sanjay V
-**Branch:** frontend/footer-polish
-**Commit Hash:** (Updated with API route and UI fixes)
-**Commands Run:** `git checkout -b frontend/footer-polish`, `npx tsc --noEmit`, `npm run build`
+**Branch:** frontend/stepper-payment-demo-qr-polish
+**Commit Hash:** (Updated with UI fixes)
+**Commands Run:** `git checkout -b frontend/stepper-payment-demo-qr-polish`, `npx tsc --noEmit`, `npm run build`
 **Build Results:** Passed (tsc exit 0, Vite exit 0)
 **UI Issues Remaining:** 
-- None. All "soon" text removed. SVG arrow removed from Company button. Footer aligned and text corrected.
+- None. All "soon" text removed. SVG arrow removed from Company button. Footer aligned and text corrected. Stepper width is now consistent across all workflow pages.
 **Backend API Connection:** Updated frontend production API routes from `/api/v1/auth/*` to `/api/v1/email/*` to align with the backend contract. Mocks are still safely isolated to `import.meta.env.DEV`. Local backend test blocked as backend server is unreachable.
-**Notes:** Playwright driver failed to install on this machine, blocking automated screenshot generation. Source code verified manually. User will handle manual Chrome screenshots.
+**Notes:** Added a placeholder `PaymentPage.tsx` with a demo QR box for HOD presentation. It contains absolutely NO real payment gateway logic. Playwright driver failed to install on this machine, blocking automated screenshot generation. User will handle manual Chrome screenshots.
