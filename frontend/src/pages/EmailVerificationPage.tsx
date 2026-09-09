@@ -14,16 +14,12 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate, useSearchParams, Navigate } from 'react-router-dom';
-import PageContainer from '../components/PageContainer';
+import WorkflowLayout from '../components/WorkflowLayout';
 import FormField from '../components/FormField';
-import ProgressStepper from '../components/ProgressStepper';
 import StatusMessage from '../components/StatusMessage';
-import { buildStepStatuses } from '../utils/workflowSteps';
 import { useAuth } from '../context/AuthContext';
 import { verifyEmail, resendVerification } from '../api/auth';
 import { ROUTES } from '../utils/routes';
-
-const steps = buildStepStatuses(1); // Step index 1 = Email Verification
 
 export default function EmailVerificationPage() {
   const navigate = useNavigate();
@@ -95,16 +91,12 @@ export default function EmailVerificationPage() {
   }
 
   return (
-    <PageContainer narrow>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-siet-navy mb-1">Email Verification</h1>
-        <p className="text-siet-slate text-sm">
-          Verify your official email address to continue the process.
-        </p>
-      </div>
-
-      <ProgressStepper steps={steps} className="mb-8" />
-
+    <WorkflowLayout
+      stepIndex={1}
+      title="Email Verification"
+      description="Verify your official email address to continue the process."
+      narrowContent={true}
+    >
       <div className="surface-card p-6 sm:p-8">
         <div className="text-center mb-6">
           <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -180,6 +172,6 @@ export default function EmailVerificationPage() {
           className="mt-6"
         />
       )}
-    </PageContainer>
+    </WorkflowLayout>
   );
 }

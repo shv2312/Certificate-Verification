@@ -21,16 +21,12 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import PageContainer from '../components/PageContainer';
+import WorkflowLayout from '../components/WorkflowLayout';
 import FormField from '../components/FormField';
-import ProgressStepper from '../components/ProgressStepper';
 import StatusMessage from '../components/StatusMessage';
-import { buildStepStatuses } from '../utils/workflowSteps';
 import { registerCompany } from '../api/auth';
 import { useAuth } from '../context/AuthContext';
 import { ROUTES } from '../utils/routes';
-
-const steps = buildStepStatuses(0); // Step index 0 = Company Details (current)
 
 interface FormValues {
   companyName: string;
@@ -99,18 +95,11 @@ export default function CompanyPage() {
   }
 
   return (
-    <PageContainer narrow>
-      {/* Page heading */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-siet-navy mb-1">Company Details</h1>
-        <p className="text-siet-slate text-sm">
-          Provide your company and HR information to begin the verification process.
-        </p>
-      </div>
-
-      {/* Progress indicator */}
-      <ProgressStepper steps={steps} className="mb-8" />
-
+    <WorkflowLayout 
+      stepIndex={0} 
+      title="Company Details" 
+      description="Provide your company and HR information to begin the verification process."
+    >
       {/* ── Company details form ── */}
       <form
         className="surface-card p-6 space-y-5"
@@ -138,63 +127,50 @@ export default function CompanyPage() {
               placeholder="e.g. Acme Technologies Pvt. Ltd."
               value={values.companyName}
               onChange={handleChange('companyName')}
-              autoComplete="organization"
               aria-required="true"
+              aria-invalid={!!errors.companyName}
             />
           </FormField>
 
-        <FormField
-          id="hr-name"
-          label="HR Representative Name"
-          required
-          error={errors.hrName}
-          hint="(Pending confirmation from HOD on mandatory status)"
-        >
-          <input
-            id="hr-name"
-            type="text"
-            className="form-input"
-            placeholder="e.g. Priya Sharma"
-            value={values.hrName}
-            onChange={handleChange('hrName')}
-            autoComplete="name"
-            aria-required="true"
-            disabled={isSubmitting}
-          />
-        </FormField>
+          <FormField id="hr-name" label="HR Contact Name" required error={errors.hrName}>
+            <input
+              id="hr-name"
+              type="text"
+              className="form-input"
+              placeholder="e.g. Jane Doe"
+              value={values.hrName}
+              onChange={handleChange('hrName')}
+              aria-required="true"
+              aria-invalid={!!errors.hrName}
+            />
+          </FormField>
 
-        <FormField
-          id="hr-email"
-          label="Official HR Email Address"
-          required
-          error={errors.hrEmail}
-          hint="A verification link will be sent to this address. Use your official company email."
-        >
-          <input
-            id="hr-email"
-            type="email"
-            className="form-input"
-            placeholder="e.g. hr@yourcompany.com"
-            value={values.hrEmail}
-            onChange={handleChange('hrEmail')}
-            autoComplete="email"
-            aria-required="true"
-            disabled={isSubmitting}
-          />
-        </FormField>
+          <FormField id="hr-email" label="Official Email Address" required error={errors.hrEmail}>
+            <input
+              id="hr-email"
+              type="email"
+              className="form-input"
+              placeholder="hr@company.com"
+              value={values.hrEmail}
+              onChange={handleChange('hrEmail')}
+              aria-required="true"
+              aria-invalid={!!errors.hrEmail}
+            />
+          </FormField>
 
-        <div className="pt-2 flex flex-col sm:flex-row gap-3">
+        {/* Form actions */}
+        <div className="pt-4 flex flex-col gap-3 border-t border-siet-border">
           <button
             type="submit"
-            id="btn-submit-company"
-            className="btn-primary"
+            className="btn-primary w-full"
             disabled={isSubmitting}
+            aria-busy={isSubmitting}
           >
             {isSubmitting ? 'Submitting...' : 'Continue to Email Verification'}
           </button>
         </div>
 
-        {/* Mock data warning for developers (only visible in dev mode) */}
+        {/* Dev note */}
         {import.meta.env.DEV && (
           <StatusMessage
             type="warning"
@@ -204,6 +180,6 @@ export default function CompanyPage() {
           />
         )}
       </form>
-    </PageContainer>
+    </WorkflowLayout>
   );
 }

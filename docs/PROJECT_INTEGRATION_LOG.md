@@ -117,13 +117,13 @@
 
 ### Sanjay V
 
-**Task:** Frontend UI polish: Stepper consistency & Demo Payment QR
+**Task:** Frontend UI polish: Final Stepper Consistency & Demo Payment Layout
 **Laptop:** Sanjay V
-**Branch:** frontend/stepper-payment-demo-qr-polish
-**Commit Hash:** (Updated with UI fixes)
-**Commands Run:** `git checkout -b frontend/stepper-payment-demo-qr-polish`, `npx tsc --noEmit`, `npm run build`
+**Branch:** frontend/final-stepper-width-fix
+**Commit Hash:** (Updated with WorkflowLayout UI fixes)
+**Commands Run:** `git checkout -b frontend/final-stepper-width-fix`, `npx tsc --noEmit`, `npm run build`
 **Build Results:** Passed (tsc exit 0, Vite exit 0)
 **UI Issues Remaining:** 
-- None. All "soon" text removed. SVG arrow removed from Company button. Footer aligned and text corrected. Stepper width is now consistent across all workflow pages.
+- None. Extracted all workflow layout logic into a shared `<WorkflowLayout>` component. All workflow pages (`CompanyPage`, `EmailVerificationPage`, `PaymentPage`, `PlaceholderPage`) now perfectly align the stepper to a strict `max-w-5xl` boundary. Payment page text layout was converted to CSS Grid to fix spacing issues.
 **Backend API Connection:** Updated frontend production API routes from `/api/v1/auth/*` to `/api/v1/email/*` to align with the backend contract. Mocks are still safely isolated to `import.meta.env.DEV`. Local backend test blocked as backend server is unreachable.
-**Notes:** Added a placeholder `PaymentPage.tsx` with a demo QR box for HOD presentation. It contains absolutely NO real payment gateway logic. Playwright driver failed to install on this machine, blocking automated screenshot generation. User will handle manual Chrome screenshots.
+**Notes:** The placeholder `PaymentPage.tsx` demo QR logic remains fully isolated and safe (NO real payment SDK logic). Playwright driver failed to install on this machine, blocking automated screenshot generation. User will handle manual Chrome screenshots.
