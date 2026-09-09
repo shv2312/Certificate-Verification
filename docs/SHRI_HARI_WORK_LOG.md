@@ -521,3 +521,69 @@ Pull Sanjay footer polish into final integration branch.
 
 ### Status
 - Branch is verified and ready for HOD progress demo.
+TEAMMATE: Shri Hari Vishnu S
+PROJECT: SIET Academic Background Verification Portal
+TASK: Integrate Sanjay stepper and demo payment QR polish into final integration branch
+AI MODEL: Gemini 3.1 Pro
+REASONING LEVEL: Medium
+
+Continue the existing project. This is a small final integration task.
+
+Latest Sanjay update:
+- Branch: frontend/stepper-payment-demo-qr-polish
+- Commit: c8d1cae
+- Push: Successful
+- Changes:
+  - Six-step progress indicator/tab bar stabilized across pages.
+  - Payment page placeholder replaced with professional demo QR payment UI.
+  - QR is not real payment data.
+  - Payment Gateway Pending button remains disabled.
+  - No fake payment success added.
+  - No Razorpay, PayU, Cashfree, or provider-specific logic added.
+  - Footer text remains correct:
+    Academic Background Verification Portal - Official Service
+  - Footer spacing remains balanced.
+  - No soon/coming soon text returned.
+  - Company button remains:
+    Continue to Email Verification
+  - /api/v1/auth/* has 0 occurrences.
+  - Frontend routes remain aligned to /api/v1/email/*.
+  - npx tsc --noEmit passed.
+  - npm run build passed.
+
+Work to do:
+1. Open the correct repository.
+2. Verify current branch and git status.
+3. Fetch origin.
+4. Checkout final integration branch:
+   integration/full-system-verification
+5. Merge or cherry-pick Sanjay’s commit c8d1cae.
+6. Resolve conflicts carefully if any.
+7. Confirm:
+   - ProgressStepper is stable across Company, Email Verification, and Payment pages.
+   - Payment page includes demo QR only, not real payment data.
+   - Payment button does not create fake success.
+   - Footer text and footer spacing remain correct.
+   - /api/v1/email/* route alignment remains intact.
+   - /api/v1/auth/* does not return.
+   - No soon/coming soon text returned.
+8. Run:
+   - frontend npx tsc --noEmit
+   - frontend npm run build
+   - backend tests only if backend files changed
+9. Update:
+   - docs/SHRI_HARI_WORK_LOG.md
+   - docs/PROJECT_INTEGRATION_LOG.md
+10. Commit and push if checks pass.
+
+Final response must include:
+1. Repository path and branch.
+2. Whether c8d1cae was merged/cherry-picked.
+3. Files changed.
+4. Test/build results.
+5. Confirmation stepper is stable.
+6. Confirmation demo QR is not real payment data.
+7. Confirmation no fake payment success was added.
+8. Confirmation route alignment remains correct.
+9. Commit hash and push status.
+10. Whether final integration branch is ready for HOD progress demo.
