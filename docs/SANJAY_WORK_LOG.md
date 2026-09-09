@@ -288,3 +288,22 @@ Shared Repository Frontend Integration
 
 ### Next Step
 - Await backend environment availability for live testing.
+
+---
+
+## 2026-09-09: Stepper Consistency & Demo Payment Page
+
+### Branch
+- Created `frontend/stepper-payment-demo-qr-polish`
+
+### UI Corrections
+- **Stepper Consistency:** Fixed the `ProgressStepper` component size inconsistency across different pages. By applying `w-full max-w-5xl mx-auto` directly to the stepper's root container, it now reliably matches the form width in `CompanyPage` regardless of the outer `PageContainer` boundary (`narrow` vs wide).
+- **Payment Demo Page:** Replaced the generic `PlaceholderPage` for the Payment step (`/payment`) with a dedicated `PaymentPage.tsx`. This presents a clean demo for HOD progress reviews, featuring a mocked SVG QR placeholder and disabled buttons. It does **not** contain real gateway logic, API calls, or local storage bypassing tricks.
+
+### Tests & Verification
+- `npm run build`: Passed (Vite exit 0)
+- `npx tsc --noEmit`: Passed
+- Verified all previous cleanups (footer text, "soon" absence, and API routes) remain entirely intact.
+
+### Next Step
+- Final live backend connection and production payment gateway integration.

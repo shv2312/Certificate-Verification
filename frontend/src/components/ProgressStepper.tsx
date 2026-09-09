@@ -82,7 +82,7 @@ function StepConnector({ filled }: { filled: boolean }) {
 export default function ProgressStepper({ steps, className = '' }: ProgressStepperProps) {
   return (
     <div
-      className={`surface-card p-4 sm:p-6 ${className}`}
+      className={`surface-card p-4 sm:p-6 w-full max-w-5xl mx-auto ${className}`}
       aria-label="Verification workflow progress"
     >
       {/* ── Desktop: Horizontal stepper ── */}
