@@ -325,3 +325,20 @@ Shared Repository Frontend Integration
 - `npm run build`: Passed (Vite exit 0)
 - `npx tsc --noEmit`: Passed
 - Verified all previous cleanups (footer text, "soon" absence, and API routes) remain entirely intact.
+
+---
+
+## 2026-09-09: Internal Stepper Spacing & Equal Distribution Fix
+
+### Branch
+- Created `frontend/progress-stepper-internal-spacing-fix`
+
+### UI Corrections
+- **Root Cause Identified:** Inside `ProgressStepper.tsx`, the `ol` container was using standard `flex` layout where step items had varying intrinsic widths based on their text labels. The connector lines were placed inside the flex items, causing them to shrink or grow inconsistently depending on the label text width.
+- **Internal Layout Overhaul:** Replaced the `flex` container with a strict `grid grid-cols-6` layout. Each step now occupies exactly one equal 1/6th column (`flex-1` replaced with grid slots).
+- **Absolute Connectors:** Detached the connector lines from the step items' flex flow. Connectors are now absolutely positioned (`absolute left-1/2 w-full`) in the background behind the step circles. They start from the exact center of one step and end at the exact center of the next, guaranteeing 5 perfectly equal visual line lengths regardless of label text.
+
+### Tests & Verification
+- `npm run build`: Passed (Vite exit 0)
+- `npx tsc --noEmit`: Passed
+- Verified all previous cleanups remain intact.

@@ -117,13 +117,13 @@
 
 ### Sanjay V
 
-**Task:** Frontend UI polish: Final Stepper Consistency & Demo Payment Layout
+**Task:** Frontend UI polish: Internal Stepper Spacing & Equal Distribution Fix
 **Laptop:** Sanjay V
-**Branch:** frontend/final-stepper-width-fix
-**Commit Hash:** (Updated with WorkflowLayout UI fixes)
-**Commands Run:** `git checkout -b frontend/final-stepper-width-fix`, `npx tsc --noEmit`, `npm run build`
+**Branch:** frontend/progress-stepper-internal-spacing-fix
+**Commit Hash:** (Updated with UI fixes)
+**Commands Run:** `git checkout -b frontend/progress-stepper-internal-spacing-fix`, `npx tsc --noEmit`, `npm run build`
 **Build Results:** Passed (tsc exit 0, Vite exit 0)
 **UI Issues Remaining:** 
-- None. Extracted all workflow layout logic into a shared `<WorkflowLayout>` component. All workflow pages (`CompanyPage`, `EmailVerificationPage`, `PaymentPage`, `PlaceholderPage`) now perfectly align the stepper to a strict `max-w-5xl` boundary. Payment page text layout was converted to CSS Grid to fix spacing issues.
+- None. `ProgressStepper.tsx` layout was completely overhauled to use `grid-cols-6` and absolute background connector lines. This fixes the issue where step connectors appeared as tiny dashes or uneven lengths depending on the text labels. Connectors now span exactly 100% of a uniform grid column from circle to circle.
 **Backend API Connection:** Updated frontend production API routes from `/api/v1/auth/*` to `/api/v1/email/*` to align with the backend contract. Mocks are still safely isolated to `import.meta.env.DEV`. Local backend test blocked as backend server is unreachable.
 **Notes:** The placeholder `PaymentPage.tsx` demo QR logic remains fully isolated and safe (NO real payment SDK logic). Playwright driver failed to install on this machine, blocking automated screenshot generation. User will handle manual Chrome screenshots.

@@ -64,18 +64,6 @@ function StepIcon({ status, stepNumber }: { status: WorkflowStep['status']; step
   );
 }
 
-// ── Connector line between steps ─────────────────────────────────────────────
-
-function StepConnector({ filled }: { filled: boolean }) {
-  return (
-    <div
-      aria-hidden="true"
-      className={`flex-1 h-0.5 mx-1 transition-colors duration-300 ${
-        filled ? 'bg-siet-sky' : 'bg-siet-border'
-      }`}
-    />
-  );
-}
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
@@ -87,20 +75,33 @@ export default function ProgressStepper({ steps, className = '' }: ProgressStepp
     >
       {/* ── Desktop: Horizontal stepper ── */}
       <ol
-        className="hidden sm:flex items-center"
+        className="hidden sm:grid grid-cols-6 gap-0 relative"
         aria-label="Verification steps"
       >
         {steps.map((step, index) => (
           <li
             key={step.id}
-            className="flex items-center flex-1 min-w-0"
+            className="relative flex flex-col items-center"
             aria-current={step.status === 'current' ? 'step' : undefined}
           >
-            {/* Step node */}
-            <div className="flex flex-col items-center gap-1 flex-shrink-0">
+            {/* Connector Line (behind icon) */}
+            {index < steps.length - 1 && (
+              <div
+                className={`absolute top-4 left-1/2 w-full h-0.5 transition-colors duration-300 ${
+                  step.status === 'completed' ? 'bg-siet-sky' : 'bg-siet-border'
+                }`}
+                style={{ zIndex: 0 }}
+                aria-hidden="true"
+              />
+            )}
+
+            {/* Step Icon */}
+            <div className="relative flex flex-col items-center gap-1 flex-shrink-0" style={{ zIndex: 10 }}>
               <StepIcon status={step.status} stepNumber={index + 1} />
+              
+              {/* Step Label */}
               <span
-                className={`text-xs font-medium text-center leading-tight max-w-[80px] ${
+                className={`text-xs font-medium text-center leading-tight max-w-[90%] px-1 ${
                   step.status === 'completed'
                     ? 'text-siet-sky'
                     : step.status === 'current'
@@ -111,11 +112,6 @@ export default function ProgressStepper({ steps, className = '' }: ProgressStepp
                 {step.label}
               </span>
             </div>
-
-            {/* Connector (not after last step) */}
-            {index < steps.length - 1 && (
-              <StepConnector filled={step.status === 'completed'} />
-            )}
           </li>
         ))}
       </ol>
