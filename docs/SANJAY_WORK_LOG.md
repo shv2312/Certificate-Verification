@@ -269,3 +269,22 @@ Shared Repository Frontend Integration
 
 ### Next Step
 - Test live backend connection once database schemas are validated by Parthiban and the backend environment is active.
+
+---
+
+## 2026-09-09: Frontend Footer Polish
+
+### Branch
+- Created `frontend/footer-polish`
+
+### UI Corrections
+- Updated the footer's bottom-right text, replacing the double dash (`--` or `—`) with a single hyphen (`-`) so it perfectly matches `Academic Background Verification Portal - Official Service`.
+- Realigned the desktop footer columns by increasing the horizontal gap (`md:gap-12 lg:gap-16`) on the existing `grid-cols-3` layout. This visually balanced the uneven spacing between "Official Institutional Service", "Quick Links", and "Important" columns without disturbing the grid structure or mobile stacking behaviour.
+
+### Tests & Verification
+- `npm run build`: Passed (Vite exit 0)
+- `npx tsc --noEmit`: Passed
+- Verified no regressions on API routes or "soon" cleanup.
+
+### Next Step
+- Await backend environment availability for live testing.
