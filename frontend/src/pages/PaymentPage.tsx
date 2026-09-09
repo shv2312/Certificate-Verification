@@ -1,37 +1,27 @@
-import PageContainer from '../components/PageContainer';
-import ProgressStepper from '../components/ProgressStepper';
-import { buildStepStatuses } from '../utils/workflowSteps';
-
-const steps = buildStepStatuses(2); // Step index 2 = Payment
+import WorkflowLayout from '../components/WorkflowLayout';
 
 export default function PaymentPage() {
   return (
-    <PageContainer narrow>
-      {/* Page heading */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-siet-navy mb-1">Payment</h1>
-        <p className="text-siet-slate text-sm">
-          One payment authorises one candidate verification.
-        </p>
-      </div>
-
-      {/* Progress indicator */}
-      <ProgressStepper steps={steps} className="mb-8" />
-
+    <WorkflowLayout
+      stepIndex={2}
+      title="Payment"
+      description="One payment authorises one candidate verification."
+      narrowContent={true}
+    >
       {/* Payment details block */}
       <div className="surface-card p-6 space-y-6">
         <div className="space-y-4">
-          <div className="flex justify-between items-center border-b border-siet-border pb-4">
-            <span className="text-sm font-medium text-siet-slate">Payment Status</span>
-            <span className="text-sm font-semibold text-siet-amber">Payment gateway configuration pending SIET approval.</span>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-y-1 gap-x-4 border-b border-siet-border pb-4">
+            <span className="text-sm font-medium text-siet-slate">Payment Status:</span>
+            <span className="text-sm font-semibold text-siet-amber sm:col-span-2">Payment gateway configuration pending SIET approval.</span>
           </div>
-          <div className="flex justify-between items-center border-b border-siet-border pb-4">
-            <span className="text-sm font-medium text-siet-slate">Provider</span>
-            <span className="text-sm font-medium text-siet-navy">Provider to be confirmed by SIET.</span>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-y-1 gap-x-4 border-b border-siet-border pb-4">
+            <span className="text-sm font-medium text-siet-slate">Provider:</span>
+            <span className="text-sm font-medium text-siet-navy sm:col-span-2">Provider to be confirmed by SIET.</span>
           </div>
-          <div className="flex justify-between items-center border-b border-siet-border pb-4">
-            <span className="text-sm font-medium text-siet-slate">Amount</span>
-            <span className="text-sm font-medium text-siet-navy">To be confirmed by SIET.</span>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-y-1 gap-x-4 border-b border-siet-border pb-4">
+            <span className="text-sm font-medium text-siet-slate">Amount:</span>
+            <span className="text-sm font-medium text-siet-navy sm:col-span-2">To be confirmed by SIET.</span>
           </div>
         </div>
 
@@ -59,6 +49,6 @@ export default function PaymentPage() {
           </button>
         </div>
       </div>
-    </PageContainer>
+    </WorkflowLayout>
   );
 }

@@ -307,3 +307,21 @@ Shared Repository Frontend Integration
 
 ### Next Step
 - Final live backend connection and production payment gateway integration.
+
+---
+
+## 2026-09-09: Final Stepper Width Fix & Payment Layout
+
+### Branch
+- Created `frontend/final-stepper-width-fix`
+
+### UI Corrections
+- **Root Cause Identified:** The previous fix incorrectly left individual pages like `EmailVerificationPage` to manage their own layout, resulting in the stepper rendering narrower (max-w-2xl content vs max-w-5xl wrapper) inconsistently.
+- **WorkflowLayout Component Created:** Implemented a new, shared `<WorkflowLayout>` component that centrally standardizes the outer page boundary, title/description header, and the `<ProgressStepper>`.
+- **Stepper Unified:** Extracted stepper code from `CompanyPage`, `EmailVerificationPage`, `PaymentPage`, and `PlaceholderPage` and routed them through `<WorkflowLayout>`. Now, every single page in the sprint perfectly shares the exact same `max-w-5xl` boundary for the progress indicator while allowing form contents to remain narrow where appropriate.
+- **Payment Page Text Spacing:** Upgraded the Payment details block to use a responsive CSS Grid (`grid-cols-1 sm:grid-cols-3` with `gap-x-4`). Labels are cleanly separated into their own columns, preventing text collision on small screens and guaranteeing readability (e.g., `Payment Status:` vs `Payment gateway configuration pending SIET approval.`).
+
+### Tests & Verification
+- `npm run build`: Passed (Vite exit 0)
+- `npx tsc --noEmit`: Passed
+- Verified all previous cleanups (footer text, "soon" absence, and API routes) remain entirely intact.

@@ -7,9 +7,7 @@
  */
 
 import { Link } from 'react-router-dom';
-import PageContainer from '../components/PageContainer';
-import ProgressStepper from '../components/ProgressStepper';
-import { buildStepStatuses } from '../utils/workflowSteps';
+import WorkflowLayout from '../components/WorkflowLayout';
 import { ROUTES } from '../utils/routes';
 
 interface PlaceholderPageProps {
@@ -19,19 +17,13 @@ interface PlaceholderPageProps {
 }
 
 export default function PlaceholderPage({ stepIndex, pageTitle, sprintNote }: PlaceholderPageProps) {
-  const steps = buildStepStatuses(stepIndex);
-
   return (
-    <PageContainer narrow>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-siet-navy mb-1">{pageTitle}</h1>
-        <p className="text-siet-slate text-sm">
-          This page is a placeholder. It will be implemented in a future sprint.
-        </p>
-      </div>
-
-      <ProgressStepper steps={steps} className="mb-8" />
-
+    <WorkflowLayout
+      stepIndex={stepIndex}
+      title={pageTitle}
+      description="This page is a placeholder. It will be implemented in a future sprint."
+      narrowContent={true}
+    >
       <div className="surface-card p-8 text-center space-y-4">
         <div className="w-12 h-12 rounded-full bg-siet-silver flex items-center justify-center mx-auto">
           <svg className="w-6 h-6 text-siet-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -49,6 +41,6 @@ export default function PlaceholderPage({ stepIndex, pageTitle, sprintNote }: Pl
           Return to Home
         </Link>
       </div>
-    </PageContainer>
+    </WorkflowLayout>
   );
 }
