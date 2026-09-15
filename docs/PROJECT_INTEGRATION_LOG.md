@@ -296,15 +296,17 @@
 ---
 
 ### Sprint 4 Backend Status & Security Integration
-- **Task:** Implement history/status lookup APIs, enforce strict HR ownership, and merge frontend sprint-4 pages.
+- **Task:** Implement history/status lookup APIs, enforce strict HR ownership, and merge frontend sprint-4 pages (Candidate, Help, and Status pages).
 - **Branch:** `integration/full-system-verification`
-- **Commits Included:** `e26cf01` (Backend history lookups), `origin/frontend/sprint-4` (Candidate screens).
+- **Commits Included:** `e26cf01` (Backend history lookups), `origin/frontend/sprint-4` (Candidate screens), `origin/frontend/status-help-pages-sanjay` (Status & Help pages).
 - **Status:** Complete. 
   - Defined strict API contracts for `/api/v1/verification/history` and `/report` ensuring explicit server-side role validation.
-  - Successfully merged Sanjay's frontend sprint-4 candidate pages into the finalized UI layout, carefully preserving the absolute grid CSS UI polish from earlier iterations.
+  - Successfully merged Sanjay's frontend sprint-4 and status pages into the finalized UI layout, carefully preserving the absolute grid CSS UI polish from earlier iterations.
   - The verification engine's returned values are now persisted directly into the backend SQLite session to allow consistent report lookups.
+  - Status lookups via the frontend use development mock fixtures (`import.meta.env.DEV`) for 'error' and 'pending' lookup values, with fallback to real API calls on production. Help contacts are correctly generalized.
 - **Verification:** 
   - Backend integration tests updated and executed (`pytest tests/ -v`). All 44/44 backend tests succeed perfectly, proving 401s and 409s are emitted on unauthorized access.
+  - Frontend typecheck and production build (`npm run build`) completed successfully with 0 errors.
 - **Blockers / Notes:** 
   - PostgreSQL test suite validation locally remains suspended; testing relies on the SQLite mock DB. Independent QA with a real PostgreSQL connection will follow.
 
