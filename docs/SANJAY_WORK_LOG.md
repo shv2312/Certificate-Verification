@@ -432,8 +432,9 @@ Shared Repository Frontend Integration
   - Hardened `apiClient.ts` to detect `content-type: application/json`. Non-JSON responses safely abort with a generic service-unavailable message instead of leaking raw parser errors.
   - Added status-code aware messages (e.g. 404 -> not found, 401 -> session expired).
 - **College Logo:**
-  - Created an official logo placeholder (`src/assets/siet-logo.jpg`) to satisfy build constraints and integrated it securely in `AppHeader.tsx` replacing the text-based box.
+  - Integrated the logo component securely in `AppHeader.tsx` replacing the text-based box.
   - Maintained aspect ratio and desktop/mobile responsiveness per requirements.
+  - *Note:* The actual image is unavailable locally in this environment. I have placed a generic placeholder to prevent build errors. The official logo asset must be uploaded to the required destination path: `src/assets/siet-logo.jpg`.
 - **Razorpay Integration (Test Mode):**
   - Completely replaced the demo QR UI with the official Razorpay Standard Checkout flow.
   - Created `src/api/payment.ts` mapping the backend `initiate` and `verify` routes.
