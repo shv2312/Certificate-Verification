@@ -618,9 +618,23 @@ Address PostgreSQL configuration blocking live QA, document report download requ
   
 ### Tests & Status
 - **Backend Tests:** Passing on SQLite mock (44/44). Live PostgreSQL verification remains BLOCKED.
-- **Database Branch:** Parthiban's `database/postgres-implementation` branch remains unavailable on origin. Awaiting his confirmation/push to fetch and review.
+- **Database Branch:** Parthiban's `database/postgres-implementation` branch was successfully fetched and merged.
 - **Frontend Build:** Passed (`npm run build` and `tsc`).
-- Awaiting local credential entry in `.env` and Parthiban's remote branch push to proceed with live DB validation.
+- **Connection Check:** FAILED. The `backend/.env` file still contains the `YOUR_PASSWORD` template value, causing `InvalidPasswordError` during the connection test. The PostgreSQL tests and schema application are blocked until the real password is saved.
+
+---
+
+## 2026-09-15 (Sprint 5 Database Integration)
+
+### Task
+Integrate Parthiban's PostgreSQL branch, apply schema, and run live PostgreSQL backend tests.
+
+### Work Completed
+- **Branch Integration:** Successfully fetched and merged `origin/database/postgres-implementation`.
+- **Test Review:** Reviewed Parthiban's 7 new integration tests. They correctly guarantee one-payment-one-candidate (via DB constraint) and secure cross-user access denial.
+- **Connection Check:** Scripted a connection test against the local PostgreSQL service.
+  - **Blocker:** The connection test failed with `InvalidPasswordError`. The `backend/.env` file still contains the placeholder `YOUR_PASSWORD`. It appears the authorized credentials were not properly saved to the file.
+- **Action Required:** Save the actual password into `backend/.env` and re-run the tests.
 TEAMMATE: Shri Hari Vishnu S
 PROJECT: SIET Academic Background Verification Portal
 TASK: Integrate Sanjay stepper and demo payment QR polish into final integration branch

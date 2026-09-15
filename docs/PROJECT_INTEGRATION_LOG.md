@@ -317,11 +317,11 @@
 - **Branch:** `integration/full-system-verification`
 - **Commits Included:** `origin/frontend/status-help-pages-correction-2`
 - **Status:** Complete / Partially Blocked.
-  - **Database Connection Verification:** The local environment runs `postgresql-x64-18` (PostgreSQL 18) listening on port 5432, which is fully compatible with the sprint-4 PG15 schema. However, integration tests are BLOCKED because local credentials (the installer-generated password) are unknown and must not be reset without authorization. Shri Hari is required to enter these locally into `backend/.env`.
-  - **Database Branch Availability:** Parthiban's reported branch `database/postgres-implementation` is NOT available on the remote origin repository. Awaiting confirmation and push.
+  - **Database Connection Verification:** The local environment runs `postgresql-x64-18` (PostgreSQL 18) listening on port 5432, which is fully compatible with the sprint-4 PG15 schema. However, connection tests are BLOCKED with `InvalidPasswordError` because local credentials (the installer-generated password) were not properly saved into `backend/.env` (it still contains `YOUR_PASSWORD`).
+  - **Database Branch Availability:** Parthiban's reported branch `database/postgres-implementation` was fetched, reviewed, and merged successfully.
   - **Frontend Integration:** Merged Sanjay's correction-2 branch. Frontend now requires `VITE_USE_MOCKS=true` to trigger any fixtures, safely ensuring the real backend is the default. Report Download button cleanly says "Download Report" while remaining strictly disabled.
 - **Verification:** 
-  - Backend integration tests continue to pass via SQLite. Live PostgreSQL verification remains BLOCKED by missing local credentials and the unpushed database branch.
+  - Backend integration tests continue to pass via SQLite. Live PostgreSQL verification and schema application remain BLOCKED by the missing local password in `.env`.
   - Frontend typecheck and build passed.
 
 ---
