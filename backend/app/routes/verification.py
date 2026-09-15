@@ -40,6 +40,7 @@ from app.schemas.verification import (
     ConfirmVerificationRequest,
     VerificationResultResponse,
     VerificationStatusResponse,
+    VerificationHistoryResponse,
 )
 from app.services import verification_service
 
@@ -162,5 +163,55 @@ async def get_verification_status(
     return APIResponse(
         success=True,
         message=f"Request status: {data.status}",
+        data=data,
+    )
+
+
+@router.get(
+    "/history",
+    response_model=APIResponse[VerificationHistoryResponse],
+    summary="Get verification request history",
+    description="Returns a list of all verification requests owned by the authenticated HR session.",
+)
+async def get_verification_history_route(
+    session: dict = Depends(require_role(["HR"])),
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse[VerificationHistoryResponse]:
+    """
+    Requires: Authorization: Bearer <session_token>
+    """
+    requests = await verification_service.get_verification_history(
+        db=db,
+        session_email=session["hr_email"],
+    )
+    return APIResponse(
+        success=True,
+        message="History retrieved successfully",
+        data=VerificationHistoryResponse(requests=requests),
+    )
+
+
+@router.get(
+    "/{request_id}/report",
+    response_model=APIResponse[VerificationResultResponse],
+    summary="Get verification report",
+    description="Fetch the detailed verification result (academic data) for a completed request.",
+)
+async def get_verification_report_route(
+    request_id: str,
+    session: dict = Depends(require_role(["HR"])),
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse[VerificationResultResponse]:
+    """
+    Requires: Authorization: Bearer <session_token>
+    """
+    data = await verification_service.get_verification_report(
+        db=db,
+        verification_request_id=request_id,
+        session_email=session["hr_email"],
+    )
+    return APIResponse(
+        success=True,
+        message=data.message,
         data=data,
     )

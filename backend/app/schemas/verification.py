@@ -212,3 +212,11 @@ class VerificationStatusResponse(BaseModel):
     status: str
     company_name: str
     hr_email: str
+
+
+class VerificationHistoryResponse(BaseModel):
+    """
+    Response schema for the verification history endpoint.
+    Returns a list of all verification requests owned by the authenticated HR user.
+    """
+    requests: list[VerificationStatusResponse]

@@ -66,7 +66,7 @@ import logging
 from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import select, update, func
 
 from app.config import get_settings
 from app.db.models import VerificationRequest, PaymentSession
@@ -276,6 +276,7 @@ async def confirm_and_verify(
     # Update final status
     final_status = engine_result.get("status", RequestStatus.NOT_VERIFIED)
     vr.status = final_status
+    vr.verification_result = json.dumps(engine_result)
     if payment_session:
         payment_session.status = RequestStatus.COMPLETED
 
@@ -339,3 +340,86 @@ async def get_verification_status(
         company_name=vr.company_name,
         hr_email=vr.hr_email,
     )
+
+
+async def get_verification_history(
+    db: AsyncSession,
+    session_email: str,
+) -> list[VerificationStatusResponse]:
+    """
+    Get all verification requests owned by the authenticated HR user.
+    """
+    stmt = select(VerificationRequest).where(
+        func.lower(VerificationRequest.hr_email) == session_email.lower()
+    ).order_by(VerificationRequest.created_at.desc())
+    
+    result = await db.execute(stmt)
+    requests = result.scalars().all()
+    
+    return [
+        VerificationStatusResponse(
+            verification_request_id=vr.id,
+            display_request_id=vr.display_request_id,
+            status=vr.status,
+            company_name=vr.company_name,
+            hr_email=vr.hr_email,
+        ) for vr in requests
+    ]
+
+
+async def get_verification_report(
+    db: AsyncSession,
+    verification_request_id: str,
+    session_email: str,
+) -> VerificationResultResponse:
+    """
+    Get the detailed verification report for a completed request.
+    """
+    vr = await db.get(VerificationRequest, verification_request_id)
+    if not vr:
+        raise ValueError("Verification request not found.")
+
+    if vr.hr_email.lower() != session_email.lower():
+        raise PermissionError("You are not authorized to access this verification request.")
+
+    if vr.status not in (RequestStatus.VERIFIED, RequestStatus.NOT_VERIFIED):
+        raise ValueError("Verification report is not available for this request state.")
+        
+    engine_result = {}
+    if vr.verification_result:
+        try:
+            engine_result = json.loads(vr.verification_result)
+        except json.JSONDecodeError:
+            pass
+
+    if vr.status == RequestStatus.VERIFIED:
+        return VerificationResultResponse(
+            verification_request_id=vr.id,
+            display_request_id=vr.display_request_id,
+            status=RequestStatus.VERIFIED,
+            candidate_name=engine_result.get("candidate_name"),
+            university_name=engine_result.get("university_name"),
+            institute_name=engine_result.get("institute_name"),
+            course=engine_result.get("course"),
+            branch=engine_result.get("branch"),
+            register_number=engine_result.get("register_number"),
+            year_of_passing=engine_result.get("year_of_passing"),
+            backlog_status=engine_result.get("backlog_status"),
+            period_of_study=engine_result.get("period_of_study"),
+            mode_of_education=engine_result.get("mode_of_education"),
+            message="Verification successful. The official report has been sent to your verified email address.",
+            verification_reference_url=(
+                f"{settings.VERIFICATION_BASE_URL}/verify/{vr.id}"
+                if hasattr(settings, 'VERIFICATION_BASE_URL') else None
+            ),
+        )
+    else:
+        return VerificationResultResponse(
+            verification_request_id=vr.id,
+            display_request_id=vr.display_request_id,
+            status=RequestStatus.NOT_VERIFIED,
+            message=(
+                "The submitted candidate details could not be verified "
+                "against the official institutional records."
+            ),
+        )
