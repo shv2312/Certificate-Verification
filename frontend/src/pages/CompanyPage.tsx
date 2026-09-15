@@ -102,7 +102,7 @@ export default function CompanyPage() {
     >
       {/* ── Company details form ── */}
       <form
-        className="surface-card p-6 space-y-5"
+        className="max-w-2xl mx-auto surface-card p-6 space-y-5"
         onSubmit={handleSubmit}
         noValidate
         aria-label="Company registration form"
