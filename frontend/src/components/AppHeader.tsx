@@ -27,8 +27,8 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: 'Home',   to: ROUTES.HOME },
   { label: 'Verify', to: ROUTES.COMPANY },
-  { label: 'Status', to: ROUTES.STATUS,  isPlaceholder: true },
-  { label: 'Help',   to: ROUTES.HELP,    isPlaceholder: true },
+  { label: 'Status', to: ROUTES.STATUS },
+  { label: 'Help',   to: ROUTES.HELP },
 ];
 
 export default function AppHeader() {

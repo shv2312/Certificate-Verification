@@ -36,6 +36,9 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
 import { ROUTES } from './utils/routes';
 
+import StatusPage from './pages/StatusPage';
+import HelpPage from './pages/HelpPage';
+
 // ── 404 Not Found Page ───────────────────────────────────────────────────────
 function NotFoundPage() {
   return (
@@ -65,10 +68,7 @@ export default function App() {
             <Route path={ROUTES.COMPANY} element={<CompanyPage />} />
             <Route path={ROUTES.VERIFY_EMAIL} element={<EmailVerificationPage />} />
             <Route path="/unauthorized" element={<UnauthorizedPage />} />
-            
-            <Route path={ROUTES.HELP} element={
-              <PlaceholderPage stepIndex={0} pageTitle="Help & Support" sprintNote="Frequently asked questions and contact information." />
-            } />
+            <Route path={ROUTES.HELP} element={<HelpPage />} />
 
             {/* Protected HR Routes */}
             <Route element={<ProtectedRoute allowedRoles={['hr']} />}>
@@ -76,9 +76,7 @@ export default function App() {
               <Route path={ROUTES.CANDIDATE} element={<CandidatePage />} />
               <Route path={ROUTES.CONFIRM} element={<ConfirmPage />} />
               <Route path={ROUTES.RESULT} element={<ResultPage />} />
-              <Route path={ROUTES.STATUS} element={
-                <PlaceholderPage stepIndex={0} pageTitle="Track Verification Status" sprintNote="Track your verification request using your Request ID." />
-              } />
+              <Route path={ROUTES.STATUS} element={<StatusPage />} />
             </Route>
 
             {/* Protected Admin Routes */}
