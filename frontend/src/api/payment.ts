@@ -30,12 +30,12 @@ export async function initiatePayment(): Promise<PaymentInitiateResponse> {
 }
 
 export async function verifyPayment(
-  paymentSessionId: string,
+  _paymentSessionId: string, // Kept for interface compatibility, but unused in URL
   razorpayPaymentId: string,
   razorpayOrderId: string,
   razorpaySignature: string
 ): Promise<PaymentVerifyResponse> {
-  return apiClient<PaymentVerifyResponse>(`/api/v1/payment/verify/${encodeURIComponent(paymentSessionId)}`, {
+  return apiClient<PaymentVerifyResponse>(`/api/v1/payment/verify-checkout`, {
     method: 'POST',
     body: JSON.stringify({
       razorpay_payment_id: razorpayPaymentId,

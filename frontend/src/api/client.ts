@@ -35,23 +35,37 @@ export async function apiClient<T>(
 
   if (!response.ok) {
     let errorMessage = `Server error: ${response.status} ${response.statusText}`;
-    
-    if (response.status === 404) {
-      errorMessage = 'The requested resource was not found.';
-    } else if (response.status === 401 || response.status === 403) {
-      errorMessage = 'Your session may have expired. Please verify your email again.';
-    }
 
     if (isJson) {
+      let errorData: any = null;
       try {
-        const errorData = await response.json();
+        errorData = await response.json();
         errorMessage = errorData.detail || errorData.message || errorMessage;
       } catch {
         // Ignore parsing errors
       }
+      
+      // Provide generic fallbacks only if JSON didn't provide a specific message
+      if (!errorData?.detail && !errorData?.message) {
+        if (response.status === 404) {
+          errorMessage = 'The requested resource was not found.';
+        } else if (response.status === 401) {
+          errorMessage = 'Your session has expired or is invalid. Please verify your email again.';
+        } else if (response.status === 403) {
+          errorMessage = 'Access denied. You do not have permission to view this resource.';
+        }
+      }
     } else {
-      // If it's HTML or plain text, do not expose raw parser errors.
-      errorMessage = 'Service temporarily unavailable. Please try again later.';
+      // For non-JSON (HTML/Text) errors, be specific about routing failures
+      if (response.status === 404) {
+        errorMessage = 'API Route Not Found (Routing failure). Check your endpoint path.';
+      } else if (response.status === 401) {
+        errorMessage = 'Your session has expired or is invalid. Please verify your email again.';
+      } else if (response.status === 403) {
+        errorMessage = 'Access denied. You do not have permission to view this resource.';
+      } else {
+        errorMessage = 'Service temporarily unavailable. Please try again later.';
+      }
     }
     throw new Error(errorMessage);
   }

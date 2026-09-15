@@ -662,6 +662,22 @@ Implement Razorpay Test Mode, resolve the `CANDIDATE_BOUND` schema blocker, and 
   - Wrote robust Razorpay integration tests in `backend/tests/test_payment_razorpay.py` covering signature verification and idempotency without relying on the mock backend.
   - All 46 backend unit and integration tests passed.
 - **Action Required:** Handing off to QA. The backend now runs the full payment-to-verification workflow against PostgreSQL without simulated mock gateways.
+
+---
+
+## 2026-09-15 (Sprint 5 Frontend Integration)
+
+### Task
+Integrate Sanjay's `frontend/razorpay-logo-status-fix` branch and verify end-to-end configuration.
+
+### Work Completed
+- **Merge & Reconcile:** Merged commit `96213ff`. Reconciled `frontend/src/api/payment.ts` to correctly target `/api/v1/payment/verify-checkout`.
+- **Proxy Configuration:** Documented the same-machine dev proxy assumption in `vite.config.ts`.
+- **Error Handling:** Enhanced `frontend/src/api/client.ts` to safely parse JSON errors for unknown tracking IDs, distinguishing 401 (expired session) from 403 (access denied), preventing Vite proxy 404s from masking API routing failures. Tested tracking endpoints natively via script to confirm JSON error compatibility.
+- **Environment config:** Disabled `DEV_MOCK_PAYMENT` in `.env` and injected test Razorpay credentials to enforce a real payment checkout.
+
+### Blockers
+- **Browser Playwright Engine:** Execution of an *actual* UI-based Razorpay Test Mode checkout in the browser is currently **BLOCKED**. The browser subagent cannot launch due to a 404 error fetching the Playwright windows driver (`playwright-1.57.0-win32_x64.zip`). Edge case checks on the checkout UI (cancellation, failure) are blocked pending driver availability or manual QA.
 TEAMMATE: Shri Hari Vishnu S
 PROJECT: SIET Academic Background Verification Portal
 TASK: Integrate Sanjay stepper and demo payment QR polish into final integration branch
