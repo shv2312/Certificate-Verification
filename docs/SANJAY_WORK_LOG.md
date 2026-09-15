@@ -394,3 +394,26 @@ Shared Repository Frontend Integration
 - `npm run build`: Passed (Vite exit 0)
 - `npx tsc --noEmit`: Passed
 - **Live Integration:** BLOCKED. Cannot declare live integration passed without the live backend connection test. Proceed with manual verification.
+
+---
+
+## 2026-09-15: Status Page and Report Text (Correction Round 2)
+
+### Branch
+- Created `frontend/status-help-pages-correction-2`
+
+### Implementation Details
+- **Explicit Mock Configuration:**
+  - Status page development fixtures (`demo-success`, `demo-pending`, `demo-error`) now require BOTH `import.meta.env.DEV` and `import.meta.env.VITE_USE_MOCKS === 'true'` to execute.
+  - If `VITE_USE_MOCKS` is missing or false, the frontend strictly defaults to the real backend API, completely avoiding false-positive success assumptions for unknown IDs.
+  - Documented `VITE_USE_MOCKS=false` in `.env.example` as a non-secret configuration flag.
+- **Report Download Wording:**
+  - Removed "Pending Backend" and "Sprint 3+" language from the download button's visible text, tooltip, and accessible labels.
+  - Button text strictly reads "Download Report".
+  - The tooltip/aria-label honestly reflects the unavailable state: "Report download is currently unavailable."
+  - The button securely remains disabled.
+
+### Tests & Verification
+- `npm run build`: Passed (Vite exit 0)
+- `npx tsc --noEmit`: Passed
+- Mock Toggle Verification: BLOCKED. Playwright driver is unavailable. QA must manually inject `VITE_USE_MOCKS=true` in `.env.local` to trigger fixtures, and verify that omitting the flag successfully hits the actual `/status` API without falling back to mock successes.

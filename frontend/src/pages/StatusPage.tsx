@@ -45,7 +45,7 @@ export default function StatusPage() {
     setStatusData(null);
 
     try {
-      if (import.meta.env.DEV && requestId.startsWith('demo-')) {
+      if (import.meta.env.DEV && import.meta.env.VITE_USE_MOCKS === 'true' && requestId.startsWith('demo-')) {
         // --- EXPLICIT DEVELOPMENT FIXTURES ONLY ---
         await new Promise((resolve) => setTimeout(resolve, 800));
         
@@ -170,9 +170,10 @@ export default function StatusPage() {
                   type="button"
                   className="btn-secondary opacity-50 cursor-not-allowed"
                   disabled
-                  title="PDF report generation is pending backend implementation (Sprint 3+)."
+                  title="Report download is currently unavailable."
+                  aria-label="Report download is currently unavailable."
                 >
-                  Download Report (Pending Backend)
+                  Download Report
                   <svg className="w-4 h-4 ml-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                   </svg>
@@ -183,7 +184,7 @@ export default function StatusPage() {
         )}
       </div>
       
-      {import.meta.env.DEV && (
+      {import.meta.env.DEV && import.meta.env.VITE_USE_MOCKS === 'true' && (
         <StatusMessage
           type="warning"
           title="Development Mode"
