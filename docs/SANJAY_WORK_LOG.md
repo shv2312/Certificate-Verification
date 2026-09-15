@@ -342,3 +342,29 @@ Shared Repository Frontend Integration
 - `npm run build`: Passed (Vite exit 0)
 - `npx tsc --noEmit`: Passed
 - Verified all previous cleanups remain intact.
+
+---
+
+## 2026-09-15: Status and Help Pages Implementation
+
+### Branch
+- Created `frontend/status-help-pages-sanjay`
+
+### Implementation Details
+- **Shared Status Destination:** Created `StatusPage.tsx` and mapped it to `/status` (accessible via Header and Footer links). 
+  - Allows HR users to enter a `verification_request_id`.
+  - Connects securely to `GET /api/v1/verification/{request_id}/status`.
+  - Accurately renders backend states (`PENDING`, `VERIFIED`, `ERROR`) without inferring progress or completion times locally.
+  - Safely handles invalid inputs and displays unauthorized/error messages natively from the API response payload.
+- **Shared Help Destination:** Created `HelpPage.tsx` and mapped it to `/help` (accessible via Header and Footer links).
+  - Defined FAQs describing the actual OTP code workflow, payment rules (one-payment-one-candidate), and exact NOT_VERIFIED/ERROR outcomes if details don't match.
+  - Used existing approved generic contact information ("contact SIET administration").
+  - Removed "soon" placeholder badges from the Header navigation and Footer links, enabling direct React Router navigation.
+
+### Visual and Stepper Verification
+- Confirmed the 6-step progress indicator remains absolutely stable across all workflow pages (`/company`, `/verify-email`, `/payment`). The previous `grid-cols-6` and absolute connector structure successfully isolates the stepper from content width constraints, maintaining exact slot allocation and visual line length.
+
+### Tests & Verification
+- `npm run build`: Passed (Vite exit 0)
+- `npx tsc --noEmit`: Passed
+- Browser/Screenshot Verification: BLOCKED. Playwright driver is unavailable on this machine. The manual tester must verify desktop/mobile layouts, stepper absolute positioning, and status API visual failure states manually in Chrome.

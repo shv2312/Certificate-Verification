@@ -13,6 +13,9 @@
  *  Add verified contact details here when confirmed by project leads.
  */
 
+import { Link } from 'react-router-dom';
+import { ROUTES } from '../utils/routes';
+
 const CURRENT_YEAR = new Date().getFullYear();
 
 export default function AppFooter() {
@@ -60,20 +63,24 @@ export default function AppFooter() {
                 </a>
               </li>
               <li>
-                <span
-                  className="text-sm text-blue-400 cursor-default select-none"
-                  title="Help centre"
+                <Link
+                  to={ROUTES.HELP}
+                  className="text-sm text-blue-200 hover:text-white transition-colors duration-150
+                             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300
+                             focus-visible:ring-offset-2 focus-visible:ring-offset-siet-navy rounded"
                 >
                   Help &amp; Support
-                </span>
+                </Link>
               </li>
               <li>
-                <span
-                  className="text-sm text-blue-400 cursor-default select-none"
-                  title="Track verification status"
+                <Link
+                  to={ROUTES.STATUS}
+                  className="text-sm text-blue-200 hover:text-white transition-colors duration-150
+                             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300
+                             focus-visible:ring-offset-2 focus-visible:ring-offset-siet-navy rounded"
                 >
                   Track Verification
-                </span>
+                </Link>
               </li>
             </ul>
           </div>
