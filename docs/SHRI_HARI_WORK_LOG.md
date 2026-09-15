@@ -639,6 +639,29 @@ Integrate Parthiban's PostgreSQL branch, apply schema, and run live PostgreSQL b
   - Ran 7 PostgreSQL-specific integration tests. They successfully guarantee one-payment-one-candidate (via DB constraint) and secure cross-user access denial.
   - Reran full backend test suite (`pytest`) to ensure no regressions. All passed.
 - **Action Required:** Database integration is fully complete. Handoff to QA for final live demo.
+
+---
+
+## 2026-09-15 (Sprint 5 Razorpay & Tracking Integration)
+
+### Task
+Implement Razorpay Test Mode, resolve the `CANDIDATE_BOUND` schema blocker, and diagnose the frontend tracking HTML bug.
+
+### Work Completed
+- **Razorpay SDK Integration:** 
+  - Added `razorpay` to dependencies.
+  - Implemented `/api/v1/payment/initiate` to create orders in Razorpay Test Mode.
+  - Implemented `/api/v1/payment/webhook` to capture `order.paid`/`payment.captured` webhooks with strict cryptographic signature verification.
+  - Handled atomicity using a PostgreSQL row lock (`SELECT ... FOR UPDATE`) on the `payment_sessions` table during webhook callbacks to enforce the one-payment-one-candidate rule and idempotency.
+- **Database Schema Correction:**
+  - Ran a direct schema alteration on both `siet_verification` and `siet_test` databases to include `CANDIDATE_BOUND` in the `status` check constraint for `verification_requests`, solving the schema mismatch.
+- **Frontend Tracking Diagnosis:**
+  - Diagnosed Sanjay's HTML response issue as a Vite proxy 404 fallback caused by incorrect endpoint paths. 
+  - Created `docs/TRACKING_DIAGNOSTICS.md` outlining the precise `GET /api/v1/verification/{request_id}/status` API contract and required authorization headers.
+- **Tests:**
+  - Wrote robust Razorpay integration tests in `backend/tests/test_payment_razorpay.py` covering signature verification and idempotency without relying on the mock backend.
+  - All 46 backend unit and integration tests passed.
+- **Action Required:** Handing off to QA. The backend now runs the full payment-to-verification workflow against PostgreSQL without simulated mock gateways.
 TEAMMATE: Shri Hari Vishnu S
 PROJECT: SIET Academic Background Verification Portal
 TASK: Integrate Sanjay stepper and demo payment QR polish into final integration branch

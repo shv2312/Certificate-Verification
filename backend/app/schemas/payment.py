@@ -79,6 +79,18 @@ class PaymentWebhookResponse(BaseModel):
 
 
 # ------------------------------------------------------------------ #
+# POST /api/v1/payment/verify-checkout                                 #
+# ------------------------------------------------------------------ #
+class PaymentCheckoutVerifyRequest(BaseModel):
+    """
+    Request sent by frontend after successful Razorpay checkout.
+    """
+    razorpay_payment_id: str
+    razorpay_order_id: str
+    razorpay_signature: str
+
+
+# ------------------------------------------------------------------ #
 # GET /api/v1/payment/{payment_session_id}/status                     #
 # ------------------------------------------------------------------ #
 class PaymentStatusResponse(BaseModel):

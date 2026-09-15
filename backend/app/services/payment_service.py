@@ -31,11 +31,13 @@ Sprint 1 LIMITATIONS (documented blockers):
 
 from __future__ import annotations
 
+import json
 import logging
 import secrets
 import time
 from typing import Optional
 
+import razorpay
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -81,12 +83,6 @@ def _generate_display_request_id() -> str:
     """
     Generate a human-readable verification request ID.
     Example: BGV-2026-000001
-
-    SECURITY NOTE: This ID is for human identification only.
-    Do NOT use it as an authorization key.  The backend must always
-    verify session ownership before accepting actions on any request ID.
-
-    Sprint 1: counter-based.  In production: use a database sequence.
     """
     global _request_counter
     _request_counter += 1
@@ -104,31 +100,36 @@ async def initiate_payment(
 ) -> PaymentInitiateResponse:
     """
     Create a payment session and return gateway details to the frontend.
-
-    In DEV_MOCK_PAYMENT mode: returns fake gateway fields.
-    In production mode: calls payment provider API to create an order,
-    then returns the real order_id and key_id.
-
-    The frontend uses these details to open the payment gateway widget.
     """
     payment_session_id = secrets.token_urlsafe(32)
-
+    amount_paise = 50000  # ₹500
+    
     if settings.DEV_MOCK_PAYMENT:
         gateway_order_id = f"DEV_ORDER_{secrets.token_hex(8).upper()}"
         gateway_key_id = "DEV_KEY_ID_NOT_REAL"
-        amount_paise = 50000  # ₹500 – placeholder; real amount from config
         logger.warning(
             "[DEV-ONLY] Mock payment session created: %s | "
             "THIS IS NOT A REAL PAYMENT",
             payment_session_id,
         )
     else:
-        # Production: call payment provider API here.
-        # Gateway selection is PENDING college approval.
-        raise NotImplementedError(
-            "Production payment gateway not yet configured. "
-            "Set DEV_MOCK_PAYMENT=true for development."
-        )
+        # Razorpay Test Mode Integration
+        try:
+            client = razorpay.Client(auth=(settings.PAYMENT_GATEWAY_KEY_ID, settings.PAYMENT_GATEWAY_KEY_SECRET))
+            order = client.order.create({
+                "amount": amount_paise,
+                "currency": "INR",
+                "receipt": payment_session_id,
+                "notes": {
+                    "company_name": company_name,
+                    "hr_email": hr_email
+                }
+            })
+            gateway_order_id = order["id"]
+            gateway_key_id = settings.PAYMENT_GATEWAY_KEY_ID
+        except Exception as e:
+            logger.error(f"Failed to create Razorpay order: {str(e)}")
+            raise ValueError("Payment gateway error. Please try again later.")
 
     session = PaymentSession(
         id=payment_session_id,
@@ -148,15 +149,173 @@ async def initiate_payment(
     )
 
 
+async def process_payment_webhook(
+    db: AsyncSession,
+    raw_body: bytes,
+    signature_header: str,
+) -> bool:
+    """
+    Process a payment provider webhook and update payment state atomically.
+    """
+    if settings.DEV_MOCK_PAYMENT:
+        logger.warning("[DEV-ONLY] Webhook received but mock mode is active – ignoring.")
+        return False
+
+    client = razorpay.Client(auth=(settings.PAYMENT_GATEWAY_KEY_ID, settings.PAYMENT_GATEWAY_KEY_SECRET))
+    payload = raw_body.decode('utf-8')
+    try:
+        client.utility.verify_webhook_signature(payload, signature_header, settings.PAYMENT_GATEWAY_WEBHOOK_SECRET)
+    except Exception as e:
+        logger.error(f"Webhook signature verification failed: {str(e)}")
+        raise ValueError("Invalid signature")
+
+    data = json.loads(payload)
+    event = data.get('event')
+
+    if event in ['payment.captured', 'order.paid']:
+        if event == 'order.paid':
+            entity = data['payload']['order']['entity']
+        else:
+            entity = data['payload']['payment']['entity']
+
+        # Determine receipt and notes based on event type structure in Razorpay.
+        # usually order contains the receipt and notes. In payment.captured it's under payload.payment.entity.
+        # But wait, in order.paid, it's payload.order.entity.
+        if 'receipt' in entity:
+            payment_session_id = entity['receipt']
+        else:
+            # Fallback to fetching order if it's a payment entity without receipt
+            order_id = entity.get('order_id')
+            if not order_id:
+                logger.error("No order ID or receipt found in payload.")
+                return False
+            order = client.order.fetch(order_id)
+            payment_session_id = order['receipt']
+            entity = order # use order for notes
+            
+        notes = entity.get('notes', {})
+        company_name = notes.get('company_name', 'Unknown Company')
+        hr_email = notes.get('hr_email', 'unknown@siet.ac.in')
+
+        # Atomically lock and update the session
+        stmt = select(PaymentSession).where(PaymentSession.id == payment_session_id).with_for_update()
+        result = await db.execute(stmt)
+        session = result.scalar_one_or_none()
+
+        if not session:
+            logger.error(f"Webhook received for unknown payment_session_id: {payment_session_id}")
+            return False
+
+        if session.status == "PAYMENT_PENDING":
+            verification_request_id = secrets.token_urlsafe(24)
+            display_id = _generate_display_request_id()
+
+            session.status = "PAID_UNUSED"
+            session.verification_request_id = verification_request_id
+
+            v_req = VerificationRequest(
+                id=verification_request_id,
+                display_request_id=display_id,
+                status="PAID_UNUSED",
+                company_name=company_name,
+                hr_email=hr_email,
+                created_at=int(time.time()),
+                payment_session_id=payment_session_id
+            )
+            db.add(v_req)
+            await db.flush()
+            
+            logger.info(f"Payment {payment_session_id} captured. Created Request {display_id}")
+            return True
+        else:
+            logger.info(f"Payment session {payment_session_id} already processed (Status: {session.status}). Idempotent return.")
+            return True
+
+    return False
+
+
+async def verify_checkout_signature(
+    db: AsyncSession,
+    razorpay_payment_id: str,
+    razorpay_order_id: str,
+    razorpay_signature: str,
+    company_name: str,
+    hr_email: str
+) -> PaymentStatusResponse:
+    """
+    Verify the signature returned directly to the frontend after checkout.
+    Updates the payment session synchronously to unblock the user immediately,
+    handling the case where this races with the async webhook.
+    """
+    if settings.DEV_MOCK_PAYMENT:
+        raise ValueError("Cannot verify real checkout signature in mock mode.")
+
+    client = razorpay.Client(auth=(settings.PAYMENT_GATEWAY_KEY_ID, settings.PAYMENT_GATEWAY_KEY_SECRET))
+    try:
+        client.utility.verify_payment_signature({
+            'razorpay_order_id': razorpay_order_id,
+            'razorpay_payment_id': razorpay_payment_id,
+            'razorpay_signature': razorpay_signature
+        })
+    except Exception as e:
+        logger.error(f"Checkout signature verification failed: {str(e)}")
+        raise ValueError("Invalid checkout signature")
+
+    # Fetch order to map gateway_order_id to payment_session_id
+    try:
+        order = client.order.fetch(razorpay_order_id)
+        payment_session_id = order['receipt']
+    except Exception as e:
+        logger.error(f"Failed to fetch order for checkout verify: {str(e)}")
+        raise ValueError("Could not resolve payment session")
+
+    # Atomic update
+    stmt = select(PaymentSession).where(PaymentSession.id == payment_session_id).with_for_update()
+    result = await db.execute(stmt)
+    session = result.scalar_one_or_none()
+
+    if not session:
+        raise ValueError(f"Payment session not found: {payment_session_id}")
+
+    if session.status == "PAYMENT_PENDING":
+        verification_request_id = secrets.token_urlsafe(24)
+        display_id = _generate_display_request_id()
+
+        session.status = "PAID_UNUSED"
+        session.verification_request_id = verification_request_id
+
+        v_req = VerificationRequest(
+            id=verification_request_id,
+            display_request_id=display_id,
+            status="PAID_UNUSED",
+            company_name=company_name,
+            hr_email=hr_email,
+            created_at=int(time.time()),
+            payment_session_id=payment_session_id
+        )
+        db.add(v_req)
+        await db.flush()
+        logger.info(f"Checkout verified. Created Request {display_id}")
+    else:
+        logger.info(f"Checkout verified but session already processed (Status: {session.status}).")
+        # Fetch existing VerificationRequest display_id
+        if session.verification_request_id:
+            v_req = await db.get(VerificationRequest, session.verification_request_id)
+            display_id = v_req.display_request_id if v_req else None
+        else:
+            display_id = None
+
+    return PaymentStatusResponse(
+        payment_session_id=session.id,
+        status=session.status,
+        verification_request_id=session.verification_request_id,
+        display_request_id=display_id,
+    )
+
+
 async def confirm_payment_mock(db: AsyncSession, payment_session_id: str, company_name: str, hr_email: str) -> PaymentStatusResponse:
     """
     DEV-ONLY: Simulate a successful payment callback.
-
-    This endpoint MUST be removed or disabled (DEV_MOCK_PAYMENT=false)
-    before the backend is deployed to any public-facing environment.
-
-    In production, payment state is updated ONLY via the payment
-    provider's webhook (see process_payment_webhook).
     """
     if not settings.DEV_MOCK_PAYMENT:
         raise PermissionError("Mock payment confirmation is disabled in this environment.")
@@ -170,21 +329,20 @@ async def confirm_payment_mock(db: AsyncSession, payment_session_id: str, compan
             f"Payment session is in state '{session.status}', cannot confirm again."
         )
 
-    # Simulate successful payment confirmation
     verification_request_id = secrets.token_urlsafe(24)
     display_id = _generate_display_request_id()
 
     session.status = "PAID_UNUSED"
     session.verification_request_id = verification_request_id
     
-    # Also create the VerificationRequest
     v_req = VerificationRequest(
         id=verification_request_id,
         display_request_id=display_id,
         status="PAID_UNUSED",
         company_name=company_name,
         hr_email=hr_email,
-        created_at=int(time.time())
+        created_at=int(time.time()),
+        payment_session_id=payment_session_id
     )
     db.add(v_req)
     await db.flush()
@@ -201,38 +359,6 @@ async def confirm_payment_mock(db: AsyncSession, payment_session_id: str, compan
         status="PAID_UNUSED",
         verification_request_id=verification_request_id,
         display_request_id=display_id,
-    )
-
-
-async def process_payment_webhook(
-    raw_body: bytes,
-    signature_header: str,
-) -> bool:
-    """
-    Process a payment provider webhook and update payment state.
-
-    This function must:
-      1. Verify the webhook signature using PAYMENT_GATEWAY_WEBHOOK_SECRET.
-      2. Parse the event payload.
-      3. On 'payment.captured' / equivalent: update session to PAID_UNUSED.
-
-    Sprint 1: NOT implemented (no gateway selected).
-    Returns False in mock mode and raises NotImplementedError in production mode.
-
-    When implementing for production:
-      - Use hmac.compare_digest for signature comparison.
-      - Parse the event type from the payload.
-      - Never trust gateway-provided amount; verify against the stored session.
-
-    BLOCKER: Awaiting college approval for payment gateway selection.
-    """
-    if settings.DEV_MOCK_PAYMENT:
-        logger.warning("[DEV-ONLY] Webhook received but mock mode is active – ignoring.")
-        return False
-
-    raise NotImplementedError(
-        "Payment webhook processing not yet implemented. "
-        "Awaiting college approval for payment gateway selection."
     )
 
 

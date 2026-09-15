@@ -35,6 +35,7 @@ from app.schemas.payment import (
     PaymentInitiateResponse,
     PaymentStatusResponse,
     PaymentWebhookResponse,
+    PaymentCheckoutVerifyRequest,
 )
 from app.services import payment_service
 
@@ -88,6 +89,7 @@ async def initiate_payment(
 async def payment_webhook(
     request: Request,
     settings: Settings = Depends(get_settings),
+    db: AsyncSession = Depends(get_db),
 ) -> PaymentWebhookResponse:
     """
     Called by the payment provider (not the frontend).
@@ -97,18 +99,45 @@ async def payment_webhook(
       2. Extract signature header
       3. Verify signature with PAYMENT_GATEWAY_WEBHOOK_SECRET
       4. Update payment session to PAID_UNUSED on success
-
-    Sprint 1: Stubbed – raises 503 in non-mock mode.
     """
     raw_body = await request.body()
-    # Header name varies by provider; placeholder used here
-    sig_header = request.headers.get("X-Payment-Signature", "")
+    sig_header = request.headers.get("X-Razorpay-Signature", "")
 
     await payment_service.process_payment_webhook(
+        db=db,
         raw_body=raw_body,
         signature_header=sig_header,
     )
     return PaymentWebhookResponse(acknowledged=True)
+
+
+@router.post(
+    "/verify-checkout",
+    response_model=APIResponse[PaymentStatusResponse],
+    summary="Verify checkout signature",
+    description="Called by the frontend immediately after a successful checkout to unblock verification.",
+)
+async def verify_checkout(
+    body: PaymentCheckoutVerifyRequest,
+    session: dict = Depends(require_role(["HR"])),
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse[PaymentStatusResponse]:
+    """
+    Requires: Authorization: Bearer <session_token>
+    """
+    data = await payment_service.verify_checkout_signature(
+        db=db,
+        razorpay_payment_id=body.razorpay_payment_id,
+        razorpay_order_id=body.razorpay_order_id,
+        razorpay_signature=body.razorpay_signature,
+        company_name=session["company_name"],
+        hr_email=session["hr_email"],
+    )
+    return APIResponse(
+        success=True,
+        message="Checkout verified successfully.",
+        data=data,
+    )
 
 
 @router.get(

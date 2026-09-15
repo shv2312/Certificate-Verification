@@ -198,7 +198,7 @@ CREATE TABLE IF NOT EXISTS verification_requests (
 
     CONSTRAINT verification_requests_payment_unique UNIQUE (payment_session_id),
     CONSTRAINT verification_requests_status_check
-        CHECK (status IN ('PAID_UNUSED', 'IN_PROGRESS', 'VERIFIED', 'NOT_VERIFIED', 'ERROR'))
+        CHECK (status IN ('PAID_UNUSED', 'CANDIDATE_BOUND', 'IN_PROGRESS', 'VERIFIED', 'NOT_VERIFIED', 'ERROR'))
 );
 
 COMMENT ON TABLE  verification_requests                           IS 'One verification request per payment. Created by Shri Hari backend after payment confirmation.';

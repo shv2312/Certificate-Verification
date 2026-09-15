@@ -24,6 +24,10 @@ alembic==1.16.1
 
 # ----- HTTP Client (for payment provider server-side verification) -----
 httpx==0.28.1
+# Razorpay SDK requires pkg_resources, which was removed in setuptools v70.
+# Pinned setuptools<70 as a workaround until razorpay updates its SDK.
+setuptools<70
+razorpay==1.4.1
 
 # ----- Email (SMTP – stub in Sprint 1, real SMTP in Sprint 2+) -----
 aiosmtplib==3.0.2
