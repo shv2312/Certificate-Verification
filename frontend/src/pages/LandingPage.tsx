@@ -32,7 +32,7 @@ const HOW_IT_WORKS = [
     step: '02',
     title: 'Email Verification',
     description:
-      'A verification link is sent to your HR email. Confirm your identity before proceeding.',
+      'A verification code is sent to your HR email. Confirm your identity before proceeding.',
   },
   {
     step: '03',

@@ -25,7 +25,7 @@ import LandingPage from './pages/LandingPage';
 import CompanyPage from './pages/CompanyPage';
 import EmailVerificationPage from './pages/EmailVerificationPage';
 import PaymentPage from './pages/PaymentPage';
-import PlaceholderPage from './pages/PlaceholderPage';
+
 import UnauthorizedPage from './pages/UnauthorizedPage';
 import CandidatePage from './pages/CandidatePage';
 import ConfirmPage from './pages/ConfirmPage';

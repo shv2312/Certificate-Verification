@@ -368,3 +368,29 @@ Shared Repository Frontend Integration
 - `npm run build`: Passed (Vite exit 0)
 - `npx tsc --noEmit`: Passed
 - Browser/Screenshot Verification: BLOCKED. Playwright driver is unavailable on this machine. The manual tester must verify desktop/mobile layouts, stepper absolute positioning, and status API visual failure states manually in Chrome.
+
+---
+
+## 2026-09-15: Status and Help Pages (Correction Round 1)
+
+### Branch
+- Created `frontend/status-help-pages-correction-1`
+
+### Implementation Details
+- **Status Page Corrections:**
+  - Removed the generic `import.meta.env.DEV` fallback that arbitrarily returned VERIFIED for any ID.
+  - The status page now defaults to the authenticated backend API (`/api/v1/verification/{id}/status`), even in local development, ensuring no false successes are reported.
+  - Explicit development fixtures are now strictly opt-in using the `demo-` prefix (`demo-success`, `demo-pending`, `demo-error`). Unknown fixtures immediately fail and throw an explicit error.
+  - Ensured stale results are completely cleared (`setStatusData(null)`) whenever a new search fails or begins.
+  - Replaced the "Download Report" alert with a transparent, disabled state: "Report PDF generation is pending backend implementation (Sprint 3+)".
+- **Help Page Corrections:**
+  - Corrected the OTP FAQ text to accurately state that the OTP code *confirms access to the supplied email address*, removing any incorrect implication that it establishes HR authority on its own.
+- **Landing Page Corrections:**
+  - Updated step 2 description to correctly refer to a "verification code" instead of a "verification link", perfectly aligning with the actual OTP flow.
+- **Code Cleanup:**
+  - Removed the unused `PlaceholderPage` import from `App.tsx` left over from prior route mapping changes, fixing a TS warning.
+
+### Tests & Verification
+- `npm run build`: Passed (Vite exit 0)
+- `npx tsc --noEmit`: Passed
+- **Live Integration:** BLOCKED. Cannot declare live integration passed without the live backend connection test. Proceed with manual verification.

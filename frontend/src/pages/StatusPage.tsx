@@ -45,25 +45,39 @@ export default function StatusPage() {
     setStatusData(null);
 
     try {
-      if (import.meta.env.DEV) {
-        // --- DEVELOPMENT MOCK ONLY ---
+      if (import.meta.env.DEV && requestId.startsWith('demo-')) {
+        // --- EXPLICIT DEVELOPMENT FIXTURES ONLY ---
         await new Promise((resolve) => setTimeout(resolve, 800));
         
-        if (requestId.toLowerCase() === 'error') {
-          throw new Error('Verification request not found or access denied.');
+        if (requestId === 'demo-error') {
+          throw new Error('[MOCK] Verification request not found or access denied.');
         }
 
-        setStatusData({
-          success: true,
-          message: 'Status retrieved successfully.',
-          data: {
-            status: requestId.toLowerCase() === 'pending' ? 'PENDING' : 'VERIFIED',
-            verification_status: requestId.toLowerCase() === 'pending' ? 'PENDING' : 'VERIFIED',
-            backlog_status: 'No Backlog',
-          },
-        });
+        if (requestId === 'demo-success') {
+          setStatusData({
+            success: true,
+            message: '[MOCK] Status retrieved successfully.',
+            data: {
+              status: 'VERIFIED',
+              verification_status: 'VERIFIED',
+              backlog_status: 'No Backlog',
+            },
+          });
+        } else if (requestId === 'demo-pending') {
+          setStatusData({
+            success: true,
+            message: '[MOCK] Status retrieved successfully.',
+            data: {
+              status: 'PENDING',
+              verification_status: 'PENDING',
+              backlog_status: null,
+            },
+          });
+        } else {
+          throw new Error(`[MOCK] Unknown demo fixture ID: ${requestId}`);
+        }
       } else {
-        // --- PRODUCTION API PATH ---
+        // --- PRODUCTION API PATH (Default even in DEV) ---
         const response = await apiClient<StatusResponse>(`/api/v1/verification/${encodeURIComponent(requestId.trim())}/status`, {
           method: 'GET',
         });
@@ -71,6 +85,7 @@ export default function StatusPage() {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected network error occurred.');
+      setStatusData(null); // Ensure stale data is cleared on failure
     } finally {
       setIsLoading(false);
     }
@@ -153,10 +168,11 @@ export default function StatusPage() {
               <div className="mt-6 flex justify-end">
                 <button
                   type="button"
-                  className="btn-secondary"
-                  onClick={() => alert('Report download will be available when authorized by the backend.')}
+                  className="btn-secondary opacity-50 cursor-not-allowed"
+                  disabled
+                  title="PDF report generation is pending backend implementation (Sprint 3+)."
                 >
-                  Download Report
+                  Download Report (Pending Backend)
                   <svg className="w-4 h-4 ml-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                   </svg>
@@ -171,7 +187,7 @@ export default function StatusPage() {
         <StatusMessage
           type="warning"
           title="Development Mode"
-          message="API mocked. Enter 'error' to test failure, 'pending' to test in-progress state, or any other ID to test success."
+          message="Using real backend API. Explicit demo fixtures available: 'demo-success', 'demo-pending', 'demo-error'."
           className="mt-6"
         />
       )}

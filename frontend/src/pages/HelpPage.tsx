@@ -13,7 +13,7 @@ const FAQS = [
   },
   {
     question: 'How does the email OTP work?',
-    answer: 'To ensure only authorized HR personnel can request verifications, an OTP (One-Time Password) is sent to your official email. Enter this 6-digit code on the verification screen to authenticate your session.',
+    answer: 'An OTP (One-Time Password) is sent to the email address you provide. Entering this 6-digit code confirms your access to that email address and authenticates your session for the verification request.',
   },
   {
     question: 'How does payment work?',
