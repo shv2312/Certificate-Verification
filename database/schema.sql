@@ -94,7 +94,7 @@ CREATE TABLE IF NOT EXISTS branch_aliases (
     CONSTRAINT branch_aliases_alias_unique UNIQUE (alias)
 );
 
-COMMENT ON TABLE  branch_aliases.alias     IS 'Exact string that HR might type (case-insensitive lookup in application layer).';
+COMMENT ON COLUMN branch_aliases.alias     IS 'Exact string that HR might type (case-insensitive lookup in application layer).';
 COMMENT ON TABLE  branch_aliases           IS 'Approved alias → canonical branch mapping. Fuzzy matching is NOT used.';
 
 -- =============================================================================
