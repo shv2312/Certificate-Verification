@@ -295,6 +295,21 @@
 
 ---
 
+### Sprint 4 Backend Status & Security Integration
+- **Task:** Implement history/status lookup APIs, enforce strict HR ownership, and merge frontend sprint-4 pages.
+- **Branch:** `integration/full-system-verification`
+- **Commits Included:** `e26cf01` (Backend history lookups), `origin/frontend/sprint-4` (Candidate screens).
+- **Status:** Complete. 
+  - Defined strict API contracts for `/api/v1/verification/history` and `/report` ensuring explicit server-side role validation.
+  - Successfully merged Sanjay's frontend sprint-4 candidate pages into the finalized UI layout, carefully preserving the absolute grid CSS UI polish from earlier iterations.
+  - The verification engine's returned values are now persisted directly into the backend SQLite session to allow consistent report lookups.
+- **Verification:** 
+  - Backend integration tests updated and executed (`pytest tests/ -v`). All 44/44 backend tests succeed perfectly, proving 401s and 409s are emitted on unauthorized access.
+- **Blockers / Notes:** 
+  - PostgreSQL test suite validation locally remains suspended; testing relies on the SQLite mock DB. Independent QA with a real PostgreSQL connection will follow.
+
+---
+
 ## 2026-09-07 (Sprint 4 Integration)
 
 ### Parthiban V
