@@ -312,6 +312,19 @@
 
 ---
 
+### QA Correction Round 1
+- **Task:** Address PostgreSQL config errors, document report download API, and merge frontend corrections.
+- **Branch:** `integration/full-system-verification`
+- **Commits Included:** `origin/frontend/status-help-pages-correction-1`
+- **Status:** Complete.
+  - Deployed `backend/.env` with `DATABASE_URL=postgresql+asyncpg://postgres:YOUR_PASSWORD@localhost:5432/siet_verification`. The actual development password was unsupplied, blocking local live PostgreSQL connection verification.
+  - Merged Sanjay's correction branch containing strict mock opt-in guards (`demo-success`, `demo-error`), correct Help/Landing texts, and a disabled Report Download button (pending Sprint 3 PDF generation scope).
+- **Verification:** 
+  - Backend integration tests continue to pass via SQLite. Live PostgreSQL verification remains BLOCKED by missing DB installation/credentials.
+  - Frontend typecheck and build passed.
+
+---
+
 ## 2026-09-07 (Sprint 4 Integration)
 
 ### Parthiban V
