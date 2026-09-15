@@ -30,19 +30,39 @@ export async function apiClient<T>(
     headers,
   });
 
+  const contentType = response.headers.get('content-type');
+  const isJson = contentType && contentType.includes('application/json');
+
   if (!response.ok) {
-    // Attempt to parse backend error message
-    let errorMessage = 'An unexpected error occurred';
-    try {
-      const errorData = await response.json();
-      errorMessage = errorData.detail || errorData.message || errorMessage;
-    } catch {
-      // Ignore JSON parse errors for non-JSON responses
+    let errorMessage = `Server error: ${response.status} ${response.statusText}`;
+    
+    if (response.status === 404) {
+      errorMessage = 'The requested resource was not found.';
+    } else if (response.status === 401 || response.status === 403) {
+      errorMessage = 'Your session may have expired. Please verify your email again.';
+    }
+
+    if (isJson) {
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.detail || errorData.message || errorMessage;
+      } catch {
+        // Ignore parsing errors
+      }
+    } else {
+      // If it's HTML or plain text, do not expose raw parser errors.
+      errorMessage = 'Service temporarily unavailable. Please try again later.';
     }
     throw new Error(errorMessage);
   }
 
   // Handle empty responses (e.g., 204 No Content)
   const text = await response.text();
-  return text ? JSON.parse(text) : ({} as T);
+  if (!text) return {} as T;
+
+  if (isJson) {
+    return JSON.parse(text);
+  } else {
+    throw new Error('Received unexpected non-JSON response from the server.');
+  }
 }

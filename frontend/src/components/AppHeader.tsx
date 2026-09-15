@@ -17,6 +17,7 @@
 import { useState, useEffect } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { ROUTES } from '../utils/routes';
+import sietLogo from '../assets/siet-logo.jpg';
 
 interface NavItem {
   label: string;
@@ -103,16 +104,11 @@ export default function AppHeader() {
           {/* ── Right: SIET Logo + Mobile Menu Button ── */}
           <div className="flex items-center gap-3">
             {/* SIET Logo — top-right institutional identity */}
-            <div
-              aria-label="SIET Logo placeholder – replace with official asset at src/assets/siet-logo.png"
-              title="Official SIET logo asset required. Place at: src/assets/siet-logo.png"
-              className="hidden sm:flex flex-col items-center justify-center
-                         w-11 h-11 rounded border-2 border-dashed border-siet-border
-                         text-center cursor-default select-none"
-            >
-              <span className="text-2xs font-bold text-siet-navy leading-none">SIET</span>
-              <span className="text-2xs text-siet-muted leading-none">LOGO</span>
-            </div>
+            <img 
+              src={sietLogo} 
+              alt="Official SIET Logo" 
+              className="hidden sm:block h-11 w-auto object-contain"
+            />
 
             {/* Mobile hamburger */}
             <button

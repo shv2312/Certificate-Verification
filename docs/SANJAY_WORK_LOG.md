@@ -417,3 +417,30 @@ Shared Repository Frontend Integration
 - `npm run build`: Passed (Vite exit 0)
 - `npx tsc --noEmit`: Passed
 - Mock Toggle Verification: BLOCKED. Playwright driver is unavailable. QA must manually inject `VITE_USE_MOCKS=true` in `.env.local` to trigger fixtures, and verify that omitting the flag successfully hits the actual `/status` API without falling back to mock successes.
+
+---
+
+## 2026-09-15: Razorpay Checkout, Logo, and Tracking API Fixes
+
+### Branch
+- Created `frontend/razorpay-logo-status-fix`
+
+### Implementation Details
+- **Tracking API HTML Crash Fix:**
+  - Diagnosed `Unexpected token '<'` error as a Vite SPA fallback issue (Vite returning `index.html` on 200 OK because no backend proxy was configured).
+  - Added proxy configuration in `vite.config.ts` targeting `http://localhost:8000` for all `/api` requests.
+  - Hardened `apiClient.ts` to detect `content-type: application/json`. Non-JSON responses safely abort with a generic service-unavailable message instead of leaking raw parser errors.
+  - Added status-code aware messages (e.g. 404 -> not found, 401 -> session expired).
+- **College Logo:**
+  - Created an official logo placeholder (`src/assets/siet-logo.jpg`) to satisfy build constraints and integrated it securely in `AppHeader.tsx` replacing the text-based box.
+  - Maintained aspect ratio and desktop/mobile responsiveness per requirements.
+- **Razorpay Integration (Test Mode):**
+  - Completely replaced the demo QR UI with the official Razorpay Standard Checkout flow.
+  - Created `src/api/payment.ts` mapping the backend `initiate` and `verify` routes.
+  - Handles external script loading (`checkout.js`), user cancellation, payment failure, backend verification delay, and success routing (to `/candidate`).
+  - Added a distinct `TEST MODE` UI indicator.
+
+### Tests & Verification
+- `npm run build`: Passed (Vite exit 0)
+- `npx tsc --noEmit`: Passed
+- **Razorpay Manual Test:** BLOCKED. Requires running backend to provide gateway keys and order IDs. Test mode UI renders correctly in isolation.
