@@ -606,17 +606,21 @@ Implement secure request tracking, history lookups, enforce server-side ownershi
 Address PostgreSQL configuration blocking live QA, document report download requirements, and integrate Sanjay's frontend corrections.
 
 ### Work Completed
-- **Database Configuration:** Created `backend/.env` template pointing to `postgresql+asyncpg://postgres:YOUR_PASSWORD@localhost:5432/siet_verification`. Local PostgreSQL service and development credentials are unavailable on this machine, blocking local PG validation.
-- **Frontend Integration:** Merged Sanjay's correction branch (`origin/frontend/status-help-pages-correction-1`).
-  - Strict mock fixtures (`demo-success`, `demo-error`, etc.) are now required for the Status page.
-  - Report download button explicitly marked as disabled/pending backend PDF implementation (Sprint 3+ scope).
-  - Help text updated to clarify OTP validates email access, not HR identity inherently.
-  - Landing page accurately reflects OTP as a code, not a link.
+- **Database Configuration & Verification:** 
+  - Verified local Windows Service: `postgresql-x64-18` (PostgreSQL Server 18) is running and listening on port `5432`.
+  - The expected application database is `siet_verification`.
+  - Confirmed PostgreSQL 18 backwards compatibility with PostgreSQL 15 schema setups. No reinstall is required.
+  - **Blocker:** Local PostgreSQL credentials (installer-generated) remain unknown. Did not reset passwords or change `pg_hba.conf` rules as this requires explicit authorization. 
+  - **Action Required by Shri Hari:** Please enter the authorized local credentials manually into `backend/.env` under `DATABASE_URL`. Do not share or commit these credentials.
+- **Frontend Integration:** Merged Sanjay's correction branch (`origin/frontend/status-help-pages-correction-2`).
+  - Added `VITE_USE_MOCKS` environment variable requirement to activate frontend fixtures, ensuring real API calls are the absolute default.
+  - Removed "Pending Backend" from Report Download button text, changing it to a clean "Download Report" while keeping it disabled with a precise tooltip.
   
 ### Tests & Status
-- **Backend Tests:** Passing on SQLite mock (44/44). PostgreSQL connection verification BLOCKED (missing DB/credentials).
-- **Frontend Build:** Passed.
-- Ready for QA retry on an authorized PostgreSQL-provisioned environment.
+- **Backend Tests:** Passing on SQLite mock (44/44). Live PostgreSQL verification remains BLOCKED.
+- **Database Branch:** Parthiban's `database/postgres-implementation` branch remains unavailable on origin. Awaiting his confirmation/push to fetch and review.
+- **Frontend Build:** Passed (`npm run build` and `tsc`).
+- Awaiting local credential entry in `.env` and Parthiban's remote branch push to proceed with live DB validation.
 TEAMMATE: Shri Hari Vishnu S
 PROJECT: SIET Academic Background Verification Portal
 TASK: Integrate Sanjay stepper and demo payment QR polish into final integration branch
