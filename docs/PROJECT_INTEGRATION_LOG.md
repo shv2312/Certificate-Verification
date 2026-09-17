@@ -424,3 +424,24 @@
 - The database schema and verification engine are fully ready for endpoint integration.
 - Refer to \docs/LOCAL_POSTGRESQL_SETUP.md\ for exact installation and setup instructions on your machine. 
 - Ensure your \.env\ points to your local \siet_verification\ database using the provided \postgresql+asyncpg://\ connection string format.
+
+---
+
+## 2026-09-17 (Sprint 1 Frontend Authentication Integration)
+
+### Sanjay V
+
+**Task:** Sprint 1 Mandatory HR phone and real email verification
+**Branch:** `frontend/sprint-1-auth-integration`
+**Integration Status:** PENDING BACKEND END-TO-END TEST.
+
+**Frontend Integration Results:**
+- Replaced frontend mocked auth with production API calls to `/api/v1/email/send-otp` and `verify-otp`.
+- Added `hr_phone` tracking constraint.
+- Implemented full 60-second cooldown UI mapped to backend API contract.
+- Added session token propagation (`Authorization: Bearer <token>`) natively into all protected backend routes (Payment and Tracking).
+- All `npm run build` and `tsc` typechecks pass.
+
+**Handoff to Shri Hari (Backend Lead):**
+- Please pull `frontend/sprint-1-auth-integration` and perform live tests connecting frontend -> backend API (OTP, Payment, Tracking).
+- E2E testing (QA) is BLOCKED because the local environment lacks actual backend connectivity and email delivery secrets.

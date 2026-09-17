@@ -40,7 +40,7 @@ export default function AppFooter() {
             </div>
             <p className="text-sm text-blue-200 leading-relaxed">
               Academic Background Verification Portal an official service
-              for verifying candidate credentials issued by SIET.
+              for verifying candidate credentials Issued by SIET.
             </p>
           </div>
 

@@ -10,13 +10,18 @@
  */
 
 import { apiClient } from './client';
-import type { CompanyDetails } from '../types';
 
-export interface CompanyRegistrationPayload extends CompanyDetails {}
+export interface CompanyRegistrationPayload {
+  companyName: string;
+  hrName: string;
+  hrEmail: string;
+  hrPhone: string;
+}
 
 export interface CompanyRegistrationResponse {
   requestId: string;
   message: string;
+  resendAllowedAfterSeconds?: number;
 }
 
 export interface EmailVerificationPayload {
@@ -35,7 +40,7 @@ export interface AuthResponse {
  * Production endpoint: POST /api/v1/email/send-otp
  */
 export async function registerCompany(payload: CompanyRegistrationPayload): Promise<CompanyRegistrationResponse> {
-  if (import.meta.env.DEV) {
+  if (import.meta.env.DEV && import.meta.env.VITE_USE_MOCKS === 'true') {
     // --- DEVELOPMENT MOCK ONLY ---
     return new Promise((resolve) => {
       setTimeout(() => {
@@ -43,6 +48,7 @@ export async function registerCompany(payload: CompanyRegistrationPayload): Prom
         resolve({
           requestId: `req_${Math.random().toString(36).substring(2, 9)}`,
           message: 'Registration successful. Email sent.',
+          resendAllowedAfterSeconds: 60,
         });
       }, 800);
     });
@@ -54,12 +60,15 @@ export async function registerCompany(payload: CompanyRegistrationPayload): Prom
     body: JSON.stringify({
       company_name: payload.companyName,
       hr_email: payload.hrEmail,
+      hr_phone: payload.hrPhone,
     }),
   });
 
   return {
-    requestId: response.data?.challenge_id || '',
+    // Note: If challenge_id is missing, default to empty string as per Sprint 1 patch note.
+    requestId: response.data?.challenge_id || 'pending-patch-id',
     message: response.message,
+    resendAllowedAfterSeconds: response.data?.resend_allowed_after_seconds || 60,
   };
 }
 
@@ -71,7 +80,7 @@ export async function registerCompany(payload: CompanyRegistrationPayload): Prom
  * NEVER infer the role from the email address in production.
  */
 export async function verifyEmail(payload: EmailVerificationPayload): Promise<AuthResponse> {
-  if (import.meta.env.DEV) {
+  if (import.meta.env.DEV && import.meta.env.VITE_USE_MOCKS === 'true') {
     // --- DEVELOPMENT MOCK ONLY ---
     return new Promise((resolve, reject) => {
       setTimeout(() => {
@@ -89,6 +98,7 @@ export async function verifyEmail(payload: EmailVerificationPayload): Promise<Au
         resolve({
           role,
           message: 'Email verified successfully',
+          token: 'mock-session-token',
         });
       }, 1000);
     });
@@ -114,23 +124,25 @@ export async function verifyEmail(payload: EmailVerificationPayload): Promise<Au
  * Helper to resend the verification email.
  * Production endpoint: POST /api/v1/email/resend-otp
  */
-export async function resendVerification(requestId: string): Promise<{ message: string }> {
-  if (import.meta.env.DEV) {
+export async function resendVerification(requestId: string): Promise<{ message: string, resendAllowedAfterSeconds?: number }> {
+  if (import.meta.env.DEV && import.meta.env.VITE_USE_MOCKS === 'true') {
     // --- DEVELOPMENT MOCK ONLY ---
     return new Promise((resolve) => {
       setTimeout(() => {
         console.info('[DEV MOCK API] resendVerification called for requestId:', requestId);
-        resolve({ message: 'Verification email resent.' });
+        resolve({ message: 'Verification email resent.', resendAllowedAfterSeconds: 60 });
       }, 600);
     });
   }
 
   // --- PRODUCTION API PATH ---
-  // Using an assumed resend path matching the backend naming convention
   const response = await apiClient<any>('/api/v1/email/resend-otp', {
     method: 'POST',
     body: JSON.stringify({ challenge_id: requestId }),
   });
 
-  return { message: response?.message || 'Verification email resent.' };
+  return { 
+    message: response?.message || 'Verification email resent.',
+    resendAllowedAfterSeconds: response?.data?.resend_allowed_after_seconds || 60,
+  };
 }

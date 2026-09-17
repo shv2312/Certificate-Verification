@@ -21,11 +21,12 @@ interface AuthState {
   requestId: string | null;
   hrEmail: string | null;
   isAuthenticated: boolean;
+  sessionToken: string | null;
 }
 
 interface AuthContextType extends AuthState {
   setPartialAuth: (requestId: string, hrEmail: string) => void;
-  setRole: (role: 'hr' | 'admin') => void;
+  setRole: (role: 'hr' | 'admin', sessionToken?: string) => void;
   clearAuth: () => void;
 }
 
@@ -38,6 +39,7 @@ const initialState: AuthState = {
   requestId: null,
   hrEmail: null,
   isAuthenticated: false,
+  sessionToken: null,
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -68,6 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       requestId,
       hrEmail,
       isAuthenticated: false,
+      sessionToken: null,
     });
     // For mock testing purposes only - see auth.ts
     sessionStorage.setItem('mock_hrEmail', hrEmail);
@@ -76,11 +79,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   /**
    * Used after Step 2 (Email Verification) when the backend confirms the role.
    */
-  const setRole = (role: 'hr' | 'admin') => {
+  const setRole = (role: 'hr' | 'admin', sessionToken?: string) => {
     setState((prev) => ({
       ...prev,
       role,
       isAuthenticated: true,
+      sessionToken: sessionToken || null,
     }));
   };
 

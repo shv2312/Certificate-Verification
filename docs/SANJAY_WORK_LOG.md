@@ -444,3 +444,31 @@ Shared Repository Frontend Integration
 - `npm run build`: Passed (Vite exit 0)
 - `npx tsc --noEmit`: Passed
 - **Razorpay Manual Test:** BLOCKED. Requires running backend to provide gateway keys and order IDs. Test mode UI renders correctly in isolation.
+
+---
+
+## 2026-09-17: Sprint 1 Mandatory HR phone and real email verification
+
+### Branch
+- Created `frontend/sprint-1-auth-integration`
+
+### Implementation Details
+- **Company Details / HR Phone:**
+  - Added mandatory `HR Phone Number` field with `+91 ` initial default.
+  - Used `type="tel"` and `autoComplete="tel"` for accessibility.
+  - Aligned API payload to send exact `hr_phone` backend field to `POST /api/v1/email/send-otp`.
+  - Removed "coming soon" text and verified logo usage constraint.
+  - Updated AppFooter to exact spelling constraint ("Issued by SIET.").
+- **Email OTP & Session Integration:**
+  - Hooked `POST /api/v1/email/verify-otp` and `POST /api/v1/email/resend-otp` into production API paths (guarded by `VITE_USE_MOCKS`).
+  - Extracted 60-second cooldown from backend `resend_allowed_after_seconds` or defaulted to 60s. Implemented UI countdown timer.
+  - Removed the `000000` simulation from production flow. 
+  - Extracted `challenge_id` from the initial payload.
+  - `sessionToken` successfully captured upon verification and stored in `AuthContext` (session storage).
+- **Payment & Tracking Session Propagation:**
+  - `apiClient` now dynamically injects `Authorization: Bearer <token>` from the session state into all protected API requests, ensuring Razorpay checkout API requests are authorized.
+  
+### Tests & Verification
+- `npm run build`: Passed (Vite exit 0)
+- `npx tsc --noEmit`: Passed
+- **Live Integration:** BLOCKED. Testing actual backend integration, email delivery, and OTP success is blocked due to the lack of a running backend environment on this machine.
