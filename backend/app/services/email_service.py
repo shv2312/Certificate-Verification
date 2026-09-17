@@ -87,25 +87,24 @@ def _mask_email(email: str) -> str:
     return f"{masked_local}@{domain}"
 
 
+outbox: list[tuple[str, str, str]] = []  # For testing: (hr_email, company_name, otp)
+
 async def _send_otp_email(hr_email: str, company_name: str, otp: str) -> None:
     """
     Send the OTP via SMTP.
 
-    In DEV_MOCK_OTP mode: logs to console only.
+    In DEV_MOCK_OTP mode: captures the OTP in an outbox for testing.
     In production mode: sends via aiosmtplib.
 
     Sprint 1: Production path raises NotImplementedError until real
     SMTP credentials are configured and tested.
     """
     if settings.DEV_MOCK_OTP:
-        # NOTE: This log line is intentionally in plain text for development.
-        # In production (DEV_MOCK_OTP=False) this path is NOT reached.
+        outbox.append((hr_email, company_name, otp))
         logger.warning(
-            "[DEV-ONLY] OTP for %s (%s): %s  |  "
-            "THIS LOG LINE MUST NOT APPEAR IN PRODUCTION",
+            "[DEV-ONLY] Simulated OTP email dispatched for %s (%s).",
             hr_email,
             company_name,
-            otp,
         )
         return
 
@@ -211,7 +210,6 @@ async def create_and_send_otp(
         challenge_id=challenge_id,
         masked_email=_mask_email(email_lower),
         resend_allowed_after_seconds=settings.OTP_RESEND_COOLDOWN_SECONDS,
-        dev_otp=otp if settings.DEV_MOCK_OTP else None,
     )
 
 

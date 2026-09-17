@@ -95,9 +95,6 @@ class SendOTPResponse(BaseModel):
     # "OTP sent to hr***@acme.com"
     masked_email: str
     resend_allowed_after_seconds: int
-    # In DEV_MOCK_OTP mode, the OTP is returned here so developers
-    # can test without a real inbox.  NEVER populate this in production.
-    dev_otp: Optional[str] = None
 
 
 # ------------------------------------------------------------------ #

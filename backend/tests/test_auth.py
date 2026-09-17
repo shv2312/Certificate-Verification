@@ -1,5 +1,6 @@
 import pytest
 from httpx import AsyncClient
+from app.services.email_service import outbox
 
 pytestmark = pytest.mark.asyncio
 
@@ -15,7 +16,7 @@ async def test_auth_me_returns_user_info(client):
     })
     assert response.status_code == 200
     challenge_id = response.json()["data"]["challenge_id"]
-    otp = response.json()["data"]["dev_otp"]
+    otp = outbox[-1][2]
     
     # Verify OTP
     response = client.post("/api/v1/email/verify-otp", json={

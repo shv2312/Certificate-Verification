@@ -1,15 +1,17 @@
 import pytest
+from app.services.email_service import outbox
 
 pytestmark = pytest.mark.asyncio
 
-async def test_admin_requests_forbidden_for_hr(client):
+@pytest.mark.asyncio
+async def test_admin_requests_forbidden_for_hr(client, db_session):
     # Send OTP for HR
     response = client.post("/api/v1/email/send-otp", json={
         "company_name": "Test Company",
         "hr_email": "hr@test.com", "hr_name": "Test HR", "hr_phone": "+919876543210"
     })
     challenge_id = response.json()["data"]["challenge_id"]
-    otp = response.json()["data"]["dev_otp"]
+    otp = outbox[-1][2]
     
     # Verify OTP
     response = client.post("/api/v1/email/verify-otp", json={
@@ -39,7 +41,7 @@ async def test_admin_requests_allowed_for_admin(client, db_session):
         "hr_email": "admin@test.com", "hr_name": "Admin", "hr_phone": "+919876543210"
     })
     challenge_id = response.json()["data"]["challenge_id"]
-    otp = response.json()["data"]["dev_otp"]
+    otp = outbox[-1][2]
     
     # Verify OTP
     response = client.post("/api/v1/email/verify-otp", json={

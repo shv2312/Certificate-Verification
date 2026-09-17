@@ -134,6 +134,8 @@ async def verify_checkout(
         razorpay_signature=body.razorpay_signature,
         company_name=session["company_name"],
         hr_email=session["hr_email"],
+        hr_name=session.get("hr_name", ""),
+        hr_phone=session.get("hr_phone", ""),
     )
     return APIResponse(
         success=True,

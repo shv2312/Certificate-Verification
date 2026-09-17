@@ -60,6 +60,7 @@ export async function registerCompany(payload: CompanyRegistrationPayload): Prom
     body: JSON.stringify({
       company_name: payload.companyName,
       hr_email: payload.hrEmail,
+      hr_name: payload.hrName,
       hr_phone: payload.hrPhone,
     }),
   });

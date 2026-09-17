@@ -1,5 +1,7 @@
 import pytest
 
+from app.services.email_service import outbox
+
 @pytest.fixture
 def auth_headers_hr(client):
     response = client.post("/api/v1/email/send-otp", json={
@@ -7,7 +9,7 @@ def auth_headers_hr(client):
         "hr_email": "hr@test.com", "hr_name": "Test HR", "hr_phone": "+919876543210"
     })
     challenge_id = response.json()["data"]["challenge_id"]
-    otp = response.json()["data"]["dev_otp"]
+    otp = outbox[-1][2]
     
     response = client.post("/api/v1/email/verify-otp", json={
         "challenge_id": challenge_id,

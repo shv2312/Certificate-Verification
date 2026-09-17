@@ -445,3 +445,9 @@
 **Handoff to Shri Hari (Backend Lead):**
 - Please pull `frontend/sprint-1-auth-integration` and perform live tests connecting frontend -> backend API (OTP, Payment, Tracking).
 - E2E testing (QA) is BLOCKED because the local environment lacks actual backend connectivity and email delivery secrets.
+# #   I n t e g r a t i o n :   S p r i n t   1   E m a i l   a n d   H R   D e t a i l s  
+ -   C o m b i n e d   B a c k e n d   ( 3 8 c 5 5 e 8 )   a n d   F r o n t e n d   ( 2 9 1 c f 9 c )   i n t o   i n t e g r a t i o n / s p r i n t - 1 - c a n d i d a t e  
+ -   I d e n t i f i e d   a n d   f i x e d   m i s s i n g   h r _ n a m e   p a y l o a d   i n   f r o n t e n d .  
+ -   R e s o l v e d   v e r i f y - c h e c k o u t   c o n t r a c t   m a p p i n g .  
+ -   D B   S c h e m a   u p d a t e d   s e c u r e l y .  
+ 

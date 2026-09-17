@@ -119,4 +119,9 @@
  -   P a s s e d   D B   s c h e m a   m i g r a t i o n   f o r   h r _ n a m e   a n d   h r _ p h o n e .  
  -   P a s s e d   O T P   t r a c k i n g   a n d   t i m e o u t   m e c h a n i c s .  
  -   A u t o m a t e d   t e s t   s u i t e   i s   f u l l y   p a s s i n g   ( 4 6 / 4 6 ) .  
+ # #   I n t e g r a t i o n   A c c e p t a n c e   R e s u l t s  
+ -   P h o n e   V a l i d a t i o n   &   O T P   l i m i t s :   P A S S   ( A u t o m a t e d   T e s t s )  
+ -   L e g a c y   D a t a   D B   c o n s t r a i n t s :   P A S S   ( A u t o m a t e d   T e s t s )  
+ -   E m a i l   D e l i v e r y   V e r i f i c a t i o n :   B L O C K E D   ( P e n d i n g   r e a l   S M T P   c o n f i g )  
+ -   R a z o r p a y   T e s t   C h e c k o u t :   B L O C K E D   ( B r o w s e r   U I   t e s t   p e n d i n g   d u e   t o   O T P   m e m o r y   r e s t r i c t i o n )  
  
