@@ -1,11 +1,11 @@
-import { useState, type FormEvent } from 'react';
+import React, { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageContainer from '../components/PageContainer';
 import FormField from '../components/FormField';
 import ProgressStepper from '../components/ProgressStepper';
 import StatusMessage from '../components/StatusMessage';
 import { buildStepStatuses } from '../utils/workflowSteps';
-import { bindCandidate } from '../api/verification';
+import { bindCandidate, getVerificationHistory } from '../api/verification';
 import { ROUTES } from '../utils/routes';
 
 const steps = buildStepStatuses(3);
@@ -49,6 +49,28 @@ export default function CandidatePage() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string>();
+  const [activeRequestId, setActiveRequestId] = useState<string | null>(null);
+  const [isInitializing, setIsInitializing] = useState(true);
+
+  React.useEffect(() => {
+    async function checkPaymentStatus() {
+      try {
+        const history = await getVerificationHistory();
+        const activeReq = history.find(req => req.status === 'PAID_UNUSED');
+        if (activeReq) {
+          setActiveRequestId(activeReq.id);
+        } else {
+          // No paid unused session, kick back to payment
+          navigate(ROUTES.PAYMENT, { replace: true });
+        }
+      } catch (err) {
+        navigate(ROUTES.PAYMENT, { replace: true });
+      } finally {
+        setIsInitializing(false);
+      }
+    }
+    checkPaymentStatus();
+  }, [navigate]);
 
   function handleChange(field: keyof FormValues) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -69,22 +91,33 @@ export default function CandidatePage() {
     setSubmitError(undefined);
 
     try {
-      // Mock payment verification request id for development flow
-      const mockVerificationRequestId = 'req_abc123';
+      if (!activeRequestId) {
+        throw new Error('No active verification session found.');
+      }
       
       await bindCandidate({
-        verification_request_id: mockVerificationRequestId,
+        verification_request_id: activeRequestId,
         candidate: {
           ...values,
           year_of_passing: Number(values.year_of_passing),
         },
       });
       // Navigate to Confirm page and pass the verification_request_id in state
-      navigate(ROUTES.CONFIRM, { state: { verification_request_id: mockVerificationRequestId } });
+      navigate(ROUTES.CONFIRM, { state: { verification_request_id: activeRequestId } });
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Failed to bind candidate.');
       setIsSubmitting(false);
     }
+  }
+
+  if (isInitializing) {
+    return (
+      <PageContainer narrow>
+        <div className="flex items-center justify-center p-12">
+          <p className="text-siet-slate">Checking authorization...</p>
+        </div>
+      </PageContainer>
+    );
   }
 
   return (

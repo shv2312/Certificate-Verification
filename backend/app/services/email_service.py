@@ -160,7 +160,7 @@ async def _send_otp_email(hr_email: str, company_name: str, otp: str) -> None:
         logger.info("OTP email dispatched to %s", _mask_email(hr_email))
     except Exception as exc:
         logger.error("Failed to send OTP email to %s: %s", _mask_email(hr_email), exc)
-        raise
+        raise ValueError("Failed to deliver OTP email. Please verify the address and try again.")
 
 
 # ------------------------------------------------------------------ #

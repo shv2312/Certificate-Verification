@@ -874,3 +874,18 @@ pm run build and
 px tsc --noEmit. No regressions.
 - Executed 47 backend tests. No API contract or payload format regressions.
 - **Blocker:** Automated Playwright browser QA remains definitively BLOCKED due to environmental/CDN network errors blocking the Chromium driver installation.
+
+## 2026-09-17 (Sprint 1 - Strict Authorization & Real SMTP Integration)
+
+### Shri Hari Vishnu S
+
+**Task:** Integrate frontend fixes, repair Gmail OTP delivery, and validate access control
+**Branch:** integration/sprint-1-candidate
+
+- Merged commit 5978b2d.
+- Disabled DEV_MOCK_OTP in .env for real SMTP dispatch. Corrected FastAPI error handling for iosmtplib failure.
+- Configured Pytest environment to forcefully mock DEV_MOCK_OTP via conftest.py.
+- Wrote a frontend route guard in CandidatePage.tsx to explicitly fetch getVerificationHistory and enforce a backend-confirmed PAID_UNUSED session, rather than trusting isAuthenticated state alone.
+- Removed arbitrary import.meta.env.DEV mocks from the frontend verification API client.
+- Passes all 47 backend tests and builds.
+- **Blocker:** Cannot complete the live manual workflow myself because I do not have access to the physical Gmail inbox receiving the OTP.

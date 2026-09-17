@@ -10,6 +10,14 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from app.main import create_app
 from app.db.session import Base, get_db
+from app.config import get_settings
+
+# Force mock settings for tests so they don't hit real SMTP/Payment APIs
+# regardless of what is in .env
+settings = get_settings()
+settings.DEV_MOCK_OTP = True
+settings.DEV_MOCK_PAYMENT = True
+settings.DEV_MOCK_VERIFICATION = True
 
 # Use in-memory SQLite for tests
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"

@@ -674,3 +674,33 @@ px tsc --noEmit) pass flawlessly.
 **QA & Testing Status:**
 - Logic validated manually via local dev environment checks matching all navigation acceptance criteria.
 - Automated browser testing is BLOCKED in this environment. E2E system testing against the live FastAPI environment is ready for backend handoff.
+
+## 2026-09-17 (Sprint 1 - Strict Authorization & Real SMTP Integration)
+
+### Shri Hari Vishnu S (Coordinator)
+
+**Task:** Integrate frontend fixes, repair Gmail OTP delivery, and validate access control
+**Branch:** integration/sprint-1-candidate
+
+**1. Merge & Route Verification**
+- Securely merged Sanjay's commit 5978b2d (rontend/sprint-1-auth-integration).
+- Confirmed /status and /payment are accessible outside <ProtectedRoute>, while Razorpay actions are explicitly locked via isAuthenticated.
+
+**2. Real SMTP Activation & Error Handling**
+- Securely inspected the FastAPI environment. Confirmed all SMTP_* variables are fully configured.
+- Turned off development mocking (DEV_MOCK_OTP=False) in .env to enforce real email delivery via iosmtplib and STARTTLS.
+- Corrected exception handling in email_service.py to raise a ValueError upon delivery failure, cleanly mapping to a 409 Conflict so the frontend gracefully surfaces the error without breaking the UI flow.
+- Forced DEV_MOCK_OTP = True in ackend/tests/conftest.py so automated regression testing does not continuously trigger real outbound SMTP emails.
+
+**3. Payment Authorization Guard for Candidate Page**
+- **Issue:** Previously, CandidatePage only enforced authentication via <ProtectedRoute>, allowing any verified HR to manually type the /candidate URL without a confirmed payment.
+- **Resolution:** Purged the import.meta.env.DEV mock configurations from pi/verification.ts. Hooked CandidatePage.tsx to automatically fetch getVerificationHistory upon mount. It strictly isolates the first PAID_UNUSED backend-confirmed payment session and binds to it. If none exist, it unconditionally bounces the user to the /payment page, resolving the authorization bypass.
+
+**4. Test Results & Checks**
+- **Frontend:** Type checks (
+px tsc --noEmit) and production build (
+pm run build) pass.
+- **Backend:** 47 regression and concurrency tests pass perfectly.
+- **Manual UI / Live Workflow:** **BLOCKED**. I am unable to perform a full E2E workflow since I lack access to the real Gmail inbox configured to read the live OTPs, and automated Playwright execution remains network-blocked.
+
+**Status:** The system is syntactically ready and fully integrated for a manual, E2E human test.
