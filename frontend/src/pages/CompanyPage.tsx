@@ -24,6 +24,8 @@ import { useNavigate } from 'react-router-dom';
 import WorkflowLayout from '../components/WorkflowLayout';
 import FormField from '../components/FormField';
 import StatusMessage from '../components/StatusMessage';
+import 'react-phone-number-input/style.css';
+import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import { registerCompany } from '../api/auth';
 import { useAuth } from '../context/AuthContext';
 import { ROUTES } from '../utils/routes';
@@ -32,7 +34,7 @@ interface FormValues {
   companyName: string;
   hrName: string;
   hrEmail: string;
-  hrPhone: string;
+  hrPhone: string | undefined;
 }
 
 interface FormErrors {
@@ -51,9 +53,9 @@ function validateForm(values: FormValues): FormErrors {
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.hrEmail)) {
     errors.hrEmail = 'Please enter a valid email address.';
   }
-  if (!values.hrPhone.trim() || values.hrPhone.trim() === '+91') {
+  if (!values.hrPhone) {
     errors.hrPhone = 'HR phone number is required.';
-  } else if (!/^\+?[0-9\s\-()]{7,15}$/.test(values.hrPhone)) {
+  } else if (!isValidPhoneNumber(values.hrPhone)) {
     errors.hrPhone = 'Please enter a valid phone number.';
   }
   return errors;
@@ -67,7 +69,7 @@ export default function CompanyPage() {
     companyName: '',
     hrName:      '',
     hrEmail:     '',
-    hrPhone:     '+91 ',
+    hrPhone:     undefined,
   });
   const [errors,   setErrors]   = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -93,7 +95,12 @@ export default function CompanyPage() {
     setSubmitError(undefined);
 
     try {
-      const response = await registerCompany(values);
+      const response = await registerCompany({
+        companyName: values.companyName,
+        hrName: values.hrName,
+        hrEmail: values.hrEmail,
+        hrPhone: values.hrPhone || '',
+      });
       setPartialAuth(response.requestId, values.hrEmail);
       navigate(ROUTES.VERIFY_EMAIL);
     } catch (err) {
@@ -168,13 +175,17 @@ export default function CompanyPage() {
           </FormField>
 
           <FormField id="hr-phone" label="HR Phone Number" required error={errors.hrPhone}>
-            <input
+            <PhoneInput
               id="hr-phone"
-              type="tel"
-              className="form-input"
-              placeholder="+91 XXXXXXXXXX"
+              defaultCountry="IN"
+              international
+              withCountryCallingCode
+              placeholder="e.g. 82701 69894"
               value={values.hrPhone}
-              onChange={handleChange('hrPhone')}
+              onChange={(value) => {
+                setValues((prev) => ({ ...prev, hrPhone: value }));
+                setErrors((prev) => ({ ...prev, hrPhone: undefined }));
+              }}
               aria-required="true"
               aria-invalid={!!errors.hrPhone}
               autoComplete="tel"

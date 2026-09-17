@@ -609,3 +609,23 @@ Execute the following manual checklist using an installed browser (e.g., Chrome/
 - Invalid Signatures & Duplicate Processing: **PASS**
 - Real Email Verification (SMTP): **BLOCKED**
 - Razorpay Browser Test Mode Checkout: **BLOCKED**
+
+---
+
+## 2026-09-17 (Sprint 1 Frontend - International Phone Input)
+
+### Sanjay V
+
+**Task:** International HR phone-number input
+**Branch:** `frontend/sprint-1-auth-integration`
+**Integration Status:** COMPLETED.
+
+**Frontend Integration Results:**
+- Implemented `react-phone-number-input` to replace the native text input for the HR Phone field.
+- Added comprehensive E.164 form validation backed by `libphonenumber-js`.
+- Configured default country to `IN` with `+91` pre-populated, preserving exact layout semantics through custom CSS injection in `index.css`.
+- Ensured form submission correctly sends the normalized E.164 phone string in `hr_phone` to the backend.
+- Confirmed `npm run build` and `npx tsc --noEmit` pass flawlessly.
+
+**QA & Testing Status:**
+- Automated browser testing and literal screenshot captures are BLOCKED due to Playwright driver unvailability in this environment. Manual UI checks required.
