@@ -87,7 +87,23 @@ def _mask_email(email: str) -> str:
     return f"{masked_local}@{domain}"
 
 
+import json
+import os
+
 outbox: list[tuple[str, str, str]] = []  # For testing: (hr_email, company_name, otp)
+
+def _write_local_capture_mailbox(hr_email: str, company_name: str, otp: str):
+    mailbox_file = ".test_mailbox.json"
+    mailbox = []
+    if os.path.exists(mailbox_file):
+        try:
+            with open(mailbox_file, "r") as f:
+                mailbox = json.load(f)
+        except Exception:
+            pass
+    mailbox.append({"email": hr_email, "company": company_name, "otp": otp})
+    with open(mailbox_file, "w") as f:
+        json.dump(mailbox, f)
 
 async def _send_otp_email(hr_email: str, company_name: str, otp: str) -> None:
     """
@@ -101,6 +117,7 @@ async def _send_otp_email(hr_email: str, company_name: str, otp: str) -> None:
     """
     if settings.DEV_MOCK_OTP:
         outbox.append((hr_email, company_name, otp))
+        _write_local_capture_mailbox(hr_email, company_name, otp)
         logger.warning(
             "[DEV-ONLY] Simulated OTP email dispatched for %s (%s).",
             hr_email,

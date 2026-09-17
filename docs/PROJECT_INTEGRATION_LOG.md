@@ -450,4 +450,7 @@
  -   I d e n t i f i e d   a n d   f i x e d   m i s s i n g   h r _ n a m e   p a y l o a d   i n   f r o n t e n d .  
  -   R e s o l v e d   v e r i f y - c h e c k o u t   c o n t r a c t   m a p p i n g .  
  -   D B   S c h e m a   u p d a t e d   s e c u r e l y .  
+ # #   I n t e g r a t i o n   E v i d e n c e   U p d a t e s  
+ -   W r o t e   m i g r a t i o n   0 0 1 _ a d d _ h r _ d e t a i l s . s q l .  
+ -   S w i t c h e d   O T P   t o   t e s t _ m a i l b o x   f i l e   t o   s u p p o r t   b r o w s e r   t e s t s   s e c u r e l y .  
  

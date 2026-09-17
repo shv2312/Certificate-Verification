@@ -114,14 +114,16 @@
 ### 5. Logo and Layout
 - **Finding:** `siet-logo.jpg` was committed and integrated by Sanjay.
 - **Verdict:** PASS (for asset inclusion). Playwright browser testing remains BLOCKED (Driver 404), preventing automated rendering validation. Manual QA required.
-# #   S p r i n t   1   E m a i l   a n d   H R   D e t a i l s   V e r i f i c a t i o n  
- -   P a s s e d   p h o n e   n u m b e r   v a l i d a t i o n   u s i n g   ' p h o n e n u m b e r s '   l i b .  
- -   P a s s e d   D B   s c h e m a   m i g r a t i o n   f o r   h r _ n a m e   a n d   h r _ p h o n e .  
- -   P a s s e d   O T P   t r a c k i n g   a n d   t i m e o u t   m e c h a n i c s .  
- -   A u t o m a t e d   t e s t   s u i t e   i s   f u l l y   p a s s i n g   ( 4 6 / 4 6 ) .  
- # #   I n t e g r a t i o n   A c c e p t a n c e   R e s u l t s  
- -   P h o n e   V a l i d a t i o n   &   O T P   l i m i t s :   P A S S   ( A u t o m a t e d   T e s t s )  
- -   L e g a c y   D a t a   D B   c o n s t r a i n t s :   P A S S   ( A u t o m a t e d   T e s t s )  
- -   E m a i l   D e l i v e r y   V e r i f i c a t i o n :   B L O C K E D   ( P e n d i n g   r e a l   S M T P   c o n f i g )  
- -   R a z o r p a y   T e s t   C h e c k o u t :   B L O C K E D   ( B r o w s e r   U I   t e s t   p e n d i n g   d u e   t o   O T P   m e m o r y   r e s t r i c t i o n )  
- 
+
+## Sprint 1 Email and HR Details Verification
+- Passed phone number validation using 'phonenumbers' lib.
+- Passed DB schema migration for hr_name and hr_phone.
+- Passed OTP tracking and timeout mechanics.
+- Automated test suite is fully passing (46/46).
+
+## Integration Acceptance Results
+- **Phone Validation & OTP limits**: PASS (Automated Tests)
+- **Legacy Data DB constraints**: PASS (Automated Tests)
+- **Email Delivery Verification**: BLOCKED (Missing real SMTP `SMTP_USERNAME`, `SMTP_PASSWORD` configuration)
+- **Razorpay Test Checkout**: BLOCKED (Razorpay blocked by dummy `PAYMENT_GATEWAY_KEY_ID=rzp_test_dummy` credentials)
+- **Browser Automation**: BLOCKED (Playwright Chromium download failed with `ECONNRESET`. Manual Checklist provided for UI flow tests utilizing `.test_mailbox.json` outbox testing file).

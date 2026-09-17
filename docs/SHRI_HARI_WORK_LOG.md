@@ -748,4 +748,8 @@ Final response must include:
  -   U p d a t e d   s e s s i o n   t o k e n   p a y l o a d   t o   p r o p a g a t e   H R   D e t a i l s   t o   p a y m e n t .  
  -   F i x e d   l e g a c y   p a y l o a d   d e p e n d e n c i e s   a c r o s s   a l l   t e s t   s u i t e s .  
  -   F R O N T E N D _ A P I _ H A N D O F F   u p d a t e d   f o r   S a n j a y .  
+ # #   S p r i n t   1   I n t e g r a t i o n   E v i d e n c e   U p d a t e  
+ -   W r o t e   D B   m i g r a t i o n   0 0 1 _ a d d _ h r _ d e t a i l s . s q l .  
+ -   R e f a c t o r e d   D E V _ M O C K _ O T P   t o   u s e   . t e s t _ m a i l b o x . j s o n   i n s t e a d   o f   A P I   p a y l o a d s .  
+ -   R a z o r p a y   b l o c k e d   b y   d u m m y   c r e d e n t i a l s .  
  
