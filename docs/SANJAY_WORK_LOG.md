@@ -472,3 +472,23 @@ Shared Repository Frontend Integration
 - `npm run build`: Passed (Vite exit 0)
 - `npx tsc --noEmit`: Passed
 - **Live Integration:** BLOCKED. Testing actual backend integration, email delivery, and OTP success is blocked due to the lack of a running backend environment on this machine.
+
+---
+
+## 2026-09-17: Sprint 1 Frontend - International Phone Input
+
+### Branch
+- Branch: `frontend/sprint-1-auth-integration` (continued)
+
+### Implementation Details
+- **International HR Phone Number Input:**
+  - Integrated `react-phone-number-input` to provide a searchable country selector with automatic E.164 parsing.
+  - Replaced native `pattern` regex validation with robust `isValidPhoneNumber` check provided by `libphonenumber-js`.
+  - Used custom CSS in `src/index.css` to faithfully replicate the `.form-input` styling across the composite PhoneInput wrapper and inner elements (ensuring consistency with existing Tailwind `siet-sky` focus rings and border colors).
+  - Ensured initial default country is `IN` (+91) but allows changing to any supported country (e.g., US `+1`, UK `+44`).
+  - E.164 string format seamlessly integrated into the `registerCompany` Auth API payload (`hr_phone`), avoiding breaking any existing OTP/backend logic.
+  
+### Tests & Verification
+- `npm run build`: Passed (Vite exit 0)
+- `npx tsc --noEmit`: Passed
+- **Automated QA & UI Screenshots:** BLOCKED. Testing via automated browser driver (Playwright) is unavailable in this environment. Manual verification required for country selector dropdown UI and error validation boundaries.
