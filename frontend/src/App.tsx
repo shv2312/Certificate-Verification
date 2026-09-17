@@ -69,14 +69,14 @@ export default function App() {
             <Route path={ROUTES.VERIFY_EMAIL} element={<EmailVerificationPage />} />
             <Route path="/unauthorized" element={<UnauthorizedPage />} />
             <Route path={ROUTES.HELP} element={<HelpPage />} />
+            <Route path={ROUTES.STATUS} element={<StatusPage />} />
+            <Route path={ROUTES.PAYMENT} element={<PaymentPage />} />
 
             {/* Protected HR Routes */}
             <Route element={<ProtectedRoute allowedRoles={['hr']} />}>
-              <Route path={ROUTES.PAYMENT} element={<PaymentPage />} />
               <Route path={ROUTES.CANDIDATE} element={<CandidatePage />} />
               <Route path={ROUTES.CONFIRM} element={<ConfirmPage />} />
               <Route path={ROUTES.RESULT} element={<ResultPage />} />
-              <Route path={ROUTES.STATUS} element={<StatusPage />} />
             </Route>
 
             {/* Protected Admin Routes */}
