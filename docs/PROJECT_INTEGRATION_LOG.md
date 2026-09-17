@@ -562,3 +562,50 @@ A local API test (	est_razorpay_initiate.py) was executed against the running ba
 - **End-to-End Browser Checkout:** BLOCKED. While the backend API correctly initiates and secures the test payment, the full browser checkout UI flow (involving the Razorpay pop-up and test card entry) has not been executed yet.
 
 Sprint 1 remains open until real SMTP is verified and the E2E browser checkout is fully run.
+
+## 2026-09-17 (Sprint 1 Payment Finalization & QA Prep)
+
+### Shri Hari Vishnu S (Coordinator)
+
+**Task:** Correct payment amount and prepare genuine end-to-end validation
+**Branch:** integration/sprint-1-candidate
+
+**1. Payment Amount & Integrity**
+- **Issue:** Previously, test payments were generating orders at 50,000 paise (₹500). 
+- **Correction:** The authoritative server-side amount (mount_paise in payment_service.py) was corrected to strictly enforce **10,000 paise (₹100)** per candidate.
+- **Verification:** 
+  - Validated that the client UI correctly reflects this dynamic server-generated amount.
+  - Confirmed the client API (/api/v1/payment/initiate) accepts no input parameters to override the amount.
+  - Test suites (	est_payment_razorpay.py, 	est_verification.py) were updated and executed successfully, validating order structure, ownership, and invalid signature rejections. 
+
+**2. Test Mailbox Isolation**
+- Cleaned up manual PYTEST_CURRENT_TEST overrides. The backend operates normally without leaking OTPs. True E2E tests are strictly contingent on live SMTP delivery.
+
+**3. External Setup Requirements**
+- **SMTP Configuration Variables:**
+  - SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, SMTP_FROM_NAME, SMTP_FROM_EMAIL.
+  - Email verification is currently **BLOCKED** and mocked. A complete E2E pass requires actual inbox delivery verification.
+- **Webhook Implementation:**
+  - **Route:** POST /api/v1/payment/webhook
+  - **Required Events:** payment.captured and order.paid
+  - **Signing Secret Variable:** PAYMENT_GATEWAY_WEBHOOK_SECRET (Must be distinctly configured from API Key Secret).
+  - **Verification:** Properly validates signatures via erify_webhook_signature. Duplicate events correctly yield idempotent responses (ignoring repeats) leveraging PostgreSQL locks (with_for_update()) during PAYMENT_PENDING to PAID_UNUSED transitions.
+
+**4. Browser QA Manual Checklist**
+Execute the following manual checklist using an installed browser (e.g., Chrome/Edge) against http://localhost:5173. Do not mark as PASS unless successfully witnessed on-screen.
+
+- [ ] Submit company name, HR name, HR email, and HR phone. Verify invalid phone rejection.
+- [ ] Receive an actual email OTP to the provided inbox (once SMTP is configured).
+- [ ] Verify wrong OTP code rejection and 60s resend cooldown.
+- [ ] Verify correct OTP accepts session and redirects to Payment page.
+- [ ] Complete the Razorpay Test Mode Checkout (amount ₹100) using a valid test card.
+- [ ] Verify server-confirmed payment completes and redirects to Candidate Binding.
+- [ ] Submit one candidate and retrieve tracking status.
+- [ ] Verify returning to the Payment page cannot reuse the same payment (One-payment-to-one-candidate rule).
+- [ ] Test cross-ownership: confirm another HR email session cannot access the original candidate's request ID.
+
+**Current Test Status:**
+- Amount & Currency: **PASS**
+- Invalid Signatures & Duplicate Processing: **PASS**
+- Real Email Verification (SMTP): **BLOCKED**
+- Razorpay Browser Test Mode Checkout: **BLOCKED**

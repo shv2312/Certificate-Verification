@@ -104,7 +104,8 @@ async def initiate_payment(
     Create a payment session and return gateway details to the frontend.
     """
     payment_session_id = secrets.token_urlsafe(32)
-    amount_paise = 50000  # ₹500
+    # The client cannot override this amount. It is hardcoded on the server.
+    amount_paise = 10000  # ₹100
     
     if settings.DEV_MOCK_PAYMENT:
         gateway_order_id = f"DEV_ORDER_{secrets.token_hex(8).upper()}"

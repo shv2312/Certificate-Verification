@@ -846,3 +846,16 @@ Because local automated Chromium downloads fail due to networking issues (`ECONN
 - **Order Creation:** Verified the backend successfully interacts with Razorpay Test API to create orders with correct amounts (50000 Paise) and currency (INR).
 - **Security Check:** Validated that the backend correctly rejects spoofed or invalid Razorpay checkout signatures (409 Conflict), maintaining strict gatekeeping prior to candidate binding.
 - **Browser Execution:** End-to-end checkout flow remains BLOCKED pending a manual browser test drive of the Razorpay checkout UI.
+
+## 2026-09-17 (Sprint 1 Payment Correction & Finalization)
+
+### Shri Hari Vishnu S
+
+**Task:** Correct payment amount and prepare genuine end-to-end validation
+**Branch:** integration/sprint-1-candidate
+
+- Corrected the authoritative backend mount_paise to strictly enforce ₹100 per candidate. Verified the UI displays this correctly without allowing client overrides.
+- Explicitly documented the missing SMTP variables required for actual email delivery. Real OTP testing is blocked pending configuration.
+- Detailed the Webhook route (/api/v1/payment/webhook), target events, and signing secret (PAYMENT_GATEWAY_WEBHOOK_SECRET). Re-verified atomic duplication protections and strict signature logic locally via pytest.
+- Re-ran the newly corrected 	est_payment_razorpay.py and 	est_concurrency.py which successfully PASSED.
+- Authored the comprehensive E2E Browser QA Checklist. Full Sprint sign-off remains BLOCKED pending SMTP credentials and manual browser tests.
