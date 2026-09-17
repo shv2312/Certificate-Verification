@@ -4,7 +4,7 @@ import pytest
 def auth_headers_hr(client):
     response = client.post("/api/v1/email/send-otp", json={
         "company_name": "Test Company",
-        "hr_email": "hr@test.com"
+        "hr_email": "hr@test.com", "hr_name": "Test HR", "hr_phone": "+919876543210"
     })
     challenge_id = response.json()["data"]["challenge_id"]
     otp = response.json()["data"]["dev_otp"]

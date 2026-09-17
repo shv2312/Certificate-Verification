@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import re
 from typing import Optional
+import phonenumbers
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
@@ -54,11 +55,35 @@ class SendOTPRequest(BaseModel):
         description="Official HR email address that will receive the OTP.",
         examples=["hr@acmetechnologies.com"],
     )
+    hr_name: str = Field(
+        ...,
+        min_length=2,
+        max_length=255,
+        description="Full name of the HR representative.",
+        examples=["John Doe"],
+    )
+    hr_phone: str = Field(
+        ...,
+        description="Contact phone number of the HR representative.",
+        examples=["+919876543210"],
+    )
 
-    @field_validator("company_name", mode="before")
+    @field_validator("company_name", "hr_name", mode="before")
     @classmethod
-    def clean_company_name(cls, v: str) -> str:
+    def clean_text_fields(cls, v: str) -> str:
         return _clean_text(v)
+
+    @field_validator("hr_phone")
+    @classmethod
+    def validate_phone(cls, v: str) -> str:
+        try:
+            # Default to IN (+91) if no country code provided
+            parsed = phonenumbers.parse(v, "IN")
+            if not phonenumbers.is_valid_number(parsed):
+                raise ValueError("Invalid phone number format.")
+            return phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
+        except phonenumbers.NumberParseException:
+            raise ValueError("Invalid phone number format.")
 
 
 class SendOTPResponse(BaseModel):

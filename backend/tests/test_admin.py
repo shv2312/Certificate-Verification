@@ -6,7 +6,7 @@ async def test_admin_requests_forbidden_for_hr(client):
     # Send OTP for HR
     response = client.post("/api/v1/email/send-otp", json={
         "company_name": "Test Company",
-        "hr_email": "hr@test.com"
+        "hr_email": "hr@test.com", "hr_name": "Test HR", "hr_phone": "+919876543210"
     })
     challenge_id = response.json()["data"]["challenge_id"]
     otp = response.json()["data"]["dev_otp"]
@@ -36,7 +36,7 @@ async def test_admin_requests_allowed_for_admin(client, db_session):
     # Send OTP for Admin
     response = client.post("/api/v1/email/send-otp", json={
         "company_name": "SIET Admin",
-        "hr_email": "admin@test.com"
+        "hr_email": "admin@test.com", "hr_name": "Admin", "hr_phone": "+919876543210"
     })
     challenge_id = response.json()["data"]["challenge_id"]
     otp = response.json()["data"]["dev_otp"]

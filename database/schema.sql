@@ -177,6 +177,8 @@ CREATE TABLE IF NOT EXISTS verification_requests (
     payment_session_id              VARCHAR(64)  NULL,
     company_name                    VARCHAR(300) NOT NULL,
     hr_email                        VARCHAR(255) NOT NULL,
+    hr_name                         VARCHAR(255) NULL,
+    hr_phone                        VARCHAR(50)  NULL,
 
     -- HR-submitted candidate details (stored verbatim before normalization)
     hr_submitted_name               VARCHAR(200) NULL,
@@ -281,6 +283,8 @@ CREATE TABLE IF NOT EXISTS email_challenges (
     id            VARCHAR(64)  PRIMARY KEY,
     email         VARCHAR(255) NOT NULL,
     company_name  VARCHAR(255) NOT NULL,
+    hr_name       VARCHAR(255) NULL,
+    hr_phone      VARCHAR(50)  NULL,
     otp_hmac      VARCHAR(64)  NOT NULL,
     attempts      INTEGER      NOT NULL DEFAULT 0,
     verified      BOOLEAN      NOT NULL DEFAULT FALSE,

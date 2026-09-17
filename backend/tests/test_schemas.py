@@ -32,6 +32,8 @@ class TestSendOTPRequestSchema:
         req = SendOTPRequest(
             company_name="Acme Technologies Pvt. Ltd.",
             hr_email="hr@acmetechnologies.com",
+            hr_name="Test HR",
+            hr_phone="+919876543210"
         )
         assert req.company_name == "Acme Technologies Pvt. Ltd."
         assert str(req.hr_email) == "hr@acmetechnologies.com"
@@ -40,20 +42,22 @@ class TestSendOTPRequestSchema:
         req = SendOTPRequest(
             company_name="  Acme Corp  ",
             hr_email="hr@acme.com",
+            hr_name="Test HR",
+            hr_phone="+919876543210"
         )
         assert req.company_name == "Acme Corp"
 
     def test_company_name_too_short_rejected(self) -> None:
         with pytest.raises(ValidationError):
-            SendOTPRequest(company_name="A", hr_email="hr@acme.com")
+            SendOTPRequest(company_name="A", hr_email="hr@acme.com", hr_name="Test HR", hr_phone="+919876543210")
 
     def test_invalid_email_rejected(self) -> None:
         with pytest.raises(ValidationError):
-            SendOTPRequest(company_name="Acme Corp", hr_email="not-an-email")
+            SendOTPRequest(company_name="Acme Corp", hr_email="not-an-email", hr_name="Test HR", hr_phone="+919876543210")
 
     def test_empty_company_name_rejected(self) -> None:
         with pytest.raises(ValidationError):
-            SendOTPRequest(company_name="", hr_email="hr@acme.com")
+            SendOTPRequest(company_name="", hr_email="hr@acme.com", hr_name="Test HR", hr_phone="+919876543210")
 
 
 # ------------------------------------------------------------------ #

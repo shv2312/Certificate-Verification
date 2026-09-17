@@ -11,6 +11,7 @@ uvicorn[standard]==0.34.3
 pydantic-settings==2.9.1
 pydantic[email]==2.11.5
 python-dotenv==1.1.0
+phonenumbers==8.13.52
 
 # ----- Security -----
 passlib[bcrypt]==1.7.4

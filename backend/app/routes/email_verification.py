@@ -60,6 +60,8 @@ async def send_otp(body: SendOTPRequest, db: AsyncSession = Depends(get_db)) -> 
         db=db,
         company_name=body.company_name,
         hr_email=str(body.hr_email),
+        hr_name=body.hr_name,
+        hr_phone=body.hr_phone,
     )
     return APIResponse(
         success=True,

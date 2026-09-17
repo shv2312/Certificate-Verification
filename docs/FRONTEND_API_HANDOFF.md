@@ -10,7 +10,7 @@ This document defines the exact API contracts and readiness state for Sanjay V (
 
 - **POST `/api/v1/email/send-otp`**
   - **Auth:** None
-  - **Payload:** `{ "company_name": "Test Company", "hr_email": "hr@test.com" }`
+  - **Payload:** `{ "company_name": "Test Company", "hr_email": "hr@test.com", "hr_name": "John Doe", "hr_phone": "+919876543210" }`
   - **Response:** `{ "success": true, "data": { "challenge_id": "...", "masked_email": "...", "resend_allowed_after_seconds": 60, "dev_otp": "123456" } }`
   - **Note:** In development, `DEV_MOCK_OTP=True`, meaning real emails aren't sent and the OTP is returned in `dev_otp`.
 
@@ -95,5 +95,6 @@ This document defines the exact API contracts and readiness state for Sanjay V (
 
 ## Missing Services & Next Steps
 - Real SMTP configuration is pending SIET approval. Continue to use `dev_otp` in development.
+- The `hr_name` and `hr_phone` fields are now **MANDATORY** in the `/api/v1/email/send-otp` payload. Ensure the frontend form collects these correctly before sending the request. The phone number must be a valid E.164 string.
 - Real Payment Gateway configuration is pending. Continue to use `POST /api/v1/payment/dev/confirm/{id}` for development.
-- **Sanjay's Actionable Items:** You can now fully connect the Candidate Details Submission, the Confirmation Screen, and the Verification Result screens utilizing the mock payment flow to get to the Verification endpoints.
+- **Sanjay's Actionable Items:** Update the frontend email-verification form to collect HR Name and Phone Number. Then you can fully connect the Candidate Details Submission, the Confirmation Screen, and the Verification Result screens utilizing the mock payment flow to get to the Verification endpoints.

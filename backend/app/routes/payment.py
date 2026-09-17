@@ -67,6 +67,8 @@ async def initiate_payment(
         db=db,
         company_name=session["company_name"],
         hr_email=session["hr_email"],
+        hr_name=session.get("hr_name", ""),
+        hr_phone=session.get("hr_phone", ""),
     )
     return APIResponse(
         success=True,
@@ -197,7 +199,14 @@ async def dev_confirm_payment(
             detail="Not found.",  # Don't reveal the endpoint in production
         )
 
-    data = await payment_service.confirm_payment_mock(db, payment_session_id, session["company_name"], session["hr_email"])
+    data = await payment_service.confirm_payment_mock(
+        db,
+        payment_session_id,
+        session["company_name"],
+        session["hr_email"],
+        session.get("hr_name", ""),
+        session.get("hr_phone", "")
+    )
     return APIResponse(
         success=True,
         message=(

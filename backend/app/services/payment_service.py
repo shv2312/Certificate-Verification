@@ -97,6 +97,8 @@ async def initiate_payment(
     db: AsyncSession,
     company_name: str,
     hr_email: str,
+    hr_name: str = "",
+    hr_phone: str = "",
 ) -> PaymentInitiateResponse:
     """
     Create a payment session and return gateway details to the frontend.
@@ -122,7 +124,9 @@ async def initiate_payment(
                 "receipt": payment_session_id,
                 "notes": {
                     "company_name": company_name,
-                    "hr_email": hr_email
+                    "hr_email": hr_email,
+                    "hr_name": hr_name,
+                    "hr_phone": hr_phone
                 }
             })
             gateway_order_id = order["id"]
@@ -196,6 +200,8 @@ async def process_payment_webhook(
         notes = entity.get('notes', {})
         company_name = notes.get('company_name', 'Unknown Company')
         hr_email = notes.get('hr_email', 'unknown@siet.ac.in')
+        hr_name = notes.get('hr_name', '')
+        hr_phone = notes.get('hr_phone', '')
 
         # Atomically lock and update the session
         stmt = select(PaymentSession).where(PaymentSession.id == payment_session_id).with_for_update()
@@ -219,6 +225,8 @@ async def process_payment_webhook(
                 status="PAID_UNUSED",
                 company_name=company_name,
                 hr_email=hr_email,
+                hr_name=hr_name,
+                hr_phone=hr_phone,
                 created_at=int(time.time()),
                 payment_session_id=payment_session_id
             )
@@ -240,7 +248,9 @@ async def verify_checkout_signature(
     razorpay_order_id: str,
     razorpay_signature: str,
     company_name: str,
-    hr_email: str
+    hr_email: str,
+    hr_name: str = "",
+    hr_phone: str = ""
 ) -> PaymentStatusResponse:
     """
     Verify the signature returned directly to the frontend after checkout.
@@ -290,6 +300,8 @@ async def verify_checkout_signature(
             status="PAID_UNUSED",
             company_name=company_name,
             hr_email=hr_email,
+            hr_name=hr_name,
+            hr_phone=hr_phone,
             created_at=int(time.time()),
             payment_session_id=payment_session_id
         )
@@ -313,7 +325,7 @@ async def verify_checkout_signature(
     )
 
 
-async def confirm_payment_mock(db: AsyncSession, payment_session_id: str, company_name: str, hr_email: str) -> PaymentStatusResponse:
+async def confirm_payment_mock(db: AsyncSession, payment_session_id: str, company_name: str, hr_email: str, hr_name: str = "", hr_phone: str = "") -> PaymentStatusResponse:
     """
     DEV-ONLY: Simulate a successful payment callback.
     """
@@ -341,6 +353,8 @@ async def confirm_payment_mock(db: AsyncSession, payment_session_id: str, compan
         status="PAID_UNUSED",
         company_name=company_name,
         hr_email=hr_email,
+        hr_name=hr_name,
+        hr_phone=hr_phone,
         created_at=int(time.time()),
         payment_session_id=payment_session_id
     )

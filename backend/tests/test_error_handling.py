@@ -38,7 +38,7 @@ class TestValidationErrors:
         """Invalid email must be rejected with 422."""
         response = client.post(
             "/api/v1/email/send-otp",
-            json={"company_name": "Acme Corp", "hr_email": "not-an-email"},
+            json={"company_name": "Acme Corp", "hr_email": "not-an-email", "hr_name": "Test HR", "hr_phone": "+919876543210"},
         )
         assert response.status_code == 422
         body = response.json()

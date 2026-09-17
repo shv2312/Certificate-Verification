@@ -151,6 +151,8 @@ async def create_and_send_otp(
     db: AsyncSession,
     company_name: str,
     hr_email: str,
+    hr_name: str,
+    hr_phone: str,
 ) -> SendOTPResponse:
     """
     Create an OTP challenge and dispatch the OTP to the HR email.
@@ -179,6 +181,11 @@ async def create_and_send_otp(
             raise ValueError(
                 f"Please wait {wait} seconds before requesting a new OTP."
             )
+        else:
+            # Delete expired or superseded challenge
+            await db.delete(challenge)
+    
+    await db.flush()
 
     # Generate new challenge
     otp = _generate_otp()
@@ -188,6 +195,8 @@ async def create_and_send_otp(
         id=challenge_id,
         company_name=company_name.strip(),
         email=email_lower,
+        hr_name=hr_name.strip(),
+        hr_phone=hr_phone.strip(),
         otp_hmac=_hmac_otp(otp),
         created_at=current_time,
         last_sent_at=current_time
@@ -265,7 +274,7 @@ async def verify_otp(
     await db.flush()
 
     # Issue a lightweight session token
-    session_token, role = await _issue_session_token(db, company_name, hr_email)
+    session_token, role = await _issue_session_token(db, company_name, hr_email, challenge.hr_name, challenge.hr_phone)
     logger.info("Email verified for %s (%s)", _mask_email(hr_email), company_name)
 
     return VerifyOTPResponse(
@@ -276,7 +285,7 @@ async def verify_otp(
     )
 
 
-async def _issue_session_token(db: AsyncSession, company_name: str, hr_email: str) -> tuple[str, str]:
+async def _issue_session_token(db: AsyncSession, company_name: str, hr_email: str, hr_name: str, hr_phone: str) -> tuple[str, str]:
     """
     Issue a short-lived, signed session token after successful OTP verification.
     Includes role resolution.
@@ -288,7 +297,11 @@ async def _issue_session_token(db: AsyncSession, company_name: str, hr_email: st
     role = "ADMIN" if admin_account else "HR"
     
     timestamp = int(time.time())
-    payload = f"{company_name}|{hr_email}|{role}|{timestamp}"
+    
+    # Safely handle None values from legacy DB records
+    safe_hr_name = hr_name or ""
+    safe_hr_phone = hr_phone or ""
+    payload = f"{company_name}|{hr_email}|{role}|{timestamp}|{safe_hr_name}|{safe_hr_phone}"
     signature = hmac.new(
         settings.APP_SECRET_KEY.encode(),
         payload.encode(),

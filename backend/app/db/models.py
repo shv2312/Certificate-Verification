@@ -17,6 +17,8 @@ class EmailChallenge(Base):
     id = Column(String(64), primary_key=True, index=True)  # challenge_id
     email = Column(String(255), index=True, nullable=False)
     company_name = Column(String(255), nullable=False)
+    hr_name = Column(String(255), nullable=True)
+    hr_phone = Column(String(50), nullable=True)
     otp_hmac = Column(String(64), nullable=False)
     attempts = Column(Integer, default=0, nullable=False)
     verified = Column(Boolean, default=False, nullable=False)
@@ -43,6 +45,8 @@ class VerificationRequest(Base):
     status = Column(String(32), default="PAID_UNUSED", nullable=False)
     company_name = Column(String(300), nullable=False)
     hr_email = Column(String(255), nullable=False)
+    hr_name = Column(String(255), nullable=True)
+    hr_phone = Column(String(50), nullable=True)
     
     # HR-submitted candidate details
     hr_submitted_name = Column(String(200), nullable=True)

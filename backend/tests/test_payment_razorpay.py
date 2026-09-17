@@ -33,7 +33,7 @@ async def test_razorpay_webhook_signature_verification_success(client, db_sessio
                     "receipt": payment_session_id,
                     "notes": {
                         "company_name": "Test Company",
-                        "hr_email": "hr@test.com"
+                        "hr_email": "hr@test.com", "hr_name": "Test HR", "hr_phone": "+919876543210"
                     }
                 }
             }
