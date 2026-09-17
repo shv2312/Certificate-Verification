@@ -32,12 +32,14 @@ interface FormValues {
   companyName: string;
   hrName: string;
   hrEmail: string;
+  hrPhone: string;
 }
 
 interface FormErrors {
   companyName?: string;
   hrName?: string;
   hrEmail?: string;
+  hrPhone?: string;
 }
 
 function validateForm(values: FormValues): FormErrors {
@@ -48,6 +50,11 @@ function validateForm(values: FormValues): FormErrors {
     errors.hrEmail = 'HR email address is required.';
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.hrEmail)) {
     errors.hrEmail = 'Please enter a valid email address.';
+  }
+  if (!values.hrPhone.trim() || values.hrPhone.trim() === '+91') {
+    errors.hrPhone = 'HR phone number is required.';
+  } else if (!/^\+?[0-9\s\-()]{7,15}$/.test(values.hrPhone)) {
+    errors.hrPhone = 'Please enter a valid phone number.';
   }
   return errors;
 }
@@ -60,6 +67,7 @@ export default function CompanyPage() {
     companyName: '',
     hrName:      '',
     hrEmail:     '',
+    hrPhone:     '+91 ',
   });
   const [errors,   setErrors]   = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -155,6 +163,21 @@ export default function CompanyPage() {
               onChange={handleChange('hrEmail')}
               aria-required="true"
               aria-invalid={!!errors.hrEmail}
+              autoComplete="email"
+            />
+          </FormField>
+
+          <FormField id="hr-phone" label="HR Phone Number" required error={errors.hrPhone}>
+            <input
+              id="hr-phone"
+              type="tel"
+              className="form-input"
+              placeholder="+91 XXXXXXXXXX"
+              value={values.hrPhone}
+              onChange={handleChange('hrPhone')}
+              aria-required="true"
+              aria-invalid={!!errors.hrPhone}
+              autoComplete="tel"
             />
           </FormField>
 

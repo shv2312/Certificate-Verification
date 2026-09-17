@@ -19,11 +19,18 @@ export async function apiClient<T>(
   const headers = new Headers(options.headers || {});
   headers.set('Content-Type', 'application/json');
   
-  // Future: Add auth token injection here once implemented
-  // const token = sessionStorage.getItem('authToken');
-  // if (token) {
-  //   headers.set('Authorization', `Bearer ${token}`);
-  // }
+  // Add auth token injection
+  const authStateStr = sessionStorage.getItem('siet_auth_state');
+  if (authStateStr) {
+    try {
+      const authState = JSON.parse(authStateStr);
+      if (authState.sessionToken) {
+        headers.set('Authorization', `Bearer ${authState.sessionToken}`);
+      }
+    } catch {
+      // Ignore parse errors
+    }
+  }
 
   const response = await fetch(url, {
     ...options,

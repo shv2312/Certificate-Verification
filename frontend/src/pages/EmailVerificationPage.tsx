@@ -20,6 +20,7 @@ import StatusMessage from '../components/StatusMessage';
 import { useAuth } from '../context/AuthContext';
 import { verifyEmail, resendVerification } from '../api/auth';
 import { ROUTES } from '../utils/routes';
+import { useEffect } from 'react';
 
 export default function EmailVerificationPage() {
   const navigate = useNavigate();
@@ -30,6 +31,15 @@ export default function EmailVerificationPage() {
   const [error, setError] = useState<string>();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [resendStatus, setResendStatus] = useState<'idle' | 'loading' | 'success'>('idle');
+  const [cooldown, setCooldown] = useState(60); // assume 60s initial cooldown from the first send
+
+  useEffect(() => {
+    let timer: number;
+    if (cooldown > 0) {
+      timer = window.setInterval(() => setCooldown((c) => c - 1), 1000);
+    }
+    return () => clearInterval(timer);
+  }, [cooldown]);
 
   // If already fully authenticated, redirect them out of the verification flow
   if (isAuthenticated && role) {
@@ -61,7 +71,7 @@ export default function EmailVerificationPage() {
       const response = await verifyEmail({ requestId: requestId!, token });
       
       // Update global auth state with the trusted role returned by backend
-      setRole(response.role);
+      setRole(response.role, response.token);
 
       // Route based on role
       if (response.role === 'admin') {
@@ -80,8 +90,9 @@ export default function EmailVerificationPage() {
     setResendStatus('loading');
     setError(undefined);
     try {
-      await resendVerification(requestId!);
+      const response = await resendVerification(requestId!);
       setResendStatus('success');
+      setCooldown(response.resendAllowedAfterSeconds || 60);
       // Reset success message after 5 seconds
       setTimeout(() => setResendStatus('idle'), 5000);
     } catch (err) {
@@ -154,17 +165,21 @@ export default function EmailVerificationPage() {
             <button
               type="button"
               onClick={handleResend}
-              disabled={resendStatus === 'loading'}
+              disabled={resendStatus === 'loading' || cooldown > 0}
               className="text-sm font-medium text-siet-sky hover:text-siet-sky600 transition-colors
                          disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {resendStatus === 'loading' ? 'Sending...' : 'Resend Code'}
+              {resendStatus === 'loading'
+                ? 'Sending...'
+                : cooldown > 0
+                ? `Resend Code in ${cooldown}s`
+                : 'Resend Code'}
             </button>
           )}
         </div>
       </div>
 
-      {import.meta.env.DEV && (
+      {import.meta.env.DEV && import.meta.env.VITE_USE_MOCKS === 'true' && (
         <StatusMessage
           type="warning"
           title="Development Mode"
