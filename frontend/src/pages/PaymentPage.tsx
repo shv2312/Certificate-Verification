@@ -5,6 +5,7 @@ import StatusMessage from '../components/StatusMessage';
 import { ROUTES } from '../utils/routes';
 import { initiatePayment, verifyPayment } from '../api/payment';
 import type { PaymentInitiateResponse } from '../api/payment';
+import { useAuth } from '../context/AuthContext';
 
 // Extend window for Razorpay
 declare global {
@@ -29,10 +30,13 @@ function loadRazorpayScript(): Promise<boolean> {
 
 export default function PaymentPage() {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<'IDLE' | 'INITIATING' | 'PAYING' | 'VERIFYING' | 'SUCCESS'>('IDLE');
   const [orderDetails, setOrderDetails] = useState<PaymentInitiateResponse['data'] | null>(null);
+
+  const isLocked = !isAuthenticated;
 
   const handleCheckout = async () => {
     setStatus('INITIATING');
@@ -163,17 +167,28 @@ export default function PaymentPage() {
             <span className="text-sm font-medium text-siet-slate">Mode:</span>
             <span className="text-sm font-medium text-siet-amber sm:col-span-2">TEST MODE</span>
           </div>
-          {orderDetails && (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-y-1 gap-x-4 border-b border-siet-border pb-4">
-              <span className="text-sm font-medium text-siet-slate">Amount:</span>
-              <span className="text-sm font-medium text-siet-navy sm:col-span-2">
-                {orderDetails.currency} {(orderDetails.amount_paise / 100).toFixed(2)}
-              </span>
-            </div>
-          )}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-y-1 gap-x-4 border-b border-siet-border pb-4">
+            <span className="text-sm font-medium text-siet-slate">Amount:</span>
+            <span className="text-sm font-medium text-siet-navy sm:col-span-2">
+              {orderDetails ? `${orderDetails.currency} ${(orderDetails.amount_paise / 100).toFixed(2)}` : 'INR 100.00'}
+            </span>
+          </div>
         </div>
 
-        {error && (
+        {isLocked && (
+          <div className="bg-blue-50 border border-blue-200 p-4 rounded flex flex-col items-center justify-center text-center gap-3">
+            <p className="text-siet-navy font-medium">Verify your email to continue with payment.</p>
+            <button
+              type="button"
+              className="btn-primary py-1.5 px-4 text-sm"
+              onClick={() => navigate(ROUTES.VERIFY_EMAIL)}
+            >
+              Go to Email Verification
+            </button>
+          </div>
+        )}
+
+        {error && !isLocked && (
           <StatusMessage
             type="error"
             title="Payment Error"
@@ -184,9 +199,9 @@ export default function PaymentPage() {
         <div className="flex flex-col items-center justify-center pt-4">
           <button
             type="button"
-            className="btn-primary w-full sm:w-auto px-8"
+            className="btn-primary w-full sm:w-auto px-8 disabled:bg-siet-silver disabled:text-siet-muted disabled:cursor-not-allowed"
             onClick={handleCheckout}
-            disabled={loading || status === 'SUCCESS'}
+            disabled={loading || status === 'SUCCESS' || isLocked}
           >
             {loading ? 'Processing...' : 'Pay with Razorpay'}
           </button>

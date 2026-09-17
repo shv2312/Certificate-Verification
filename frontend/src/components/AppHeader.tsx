@@ -83,6 +83,7 @@ export default function AppHeader() {
               <NavLink
                 key={item.to}
                 to={item.to}
+                end
                 aria-label={item.label}
                 className={({ isActive }) =>
                   [
@@ -150,6 +151,7 @@ export default function AppHeader() {
               <li key={item.to}>
                 <NavLink
                   to={item.to}
+                  end
                   className={({ isActive }) =>
                     [
                       'block px-3 py-2.5 rounded text-sm font-medium transition-colors duration-150',

@@ -465,3 +465,24 @@
 
 **QA & Testing Status:**
 - Automated browser testing and literal screenshot captures are BLOCKED due to Playwright driver unvailability in this environment. Manual UI checks required.
+
+---
+
+## 2026-09-17 (Sprint 1 Frontend - Status Navigation and Payment UI Unlocking)
+
+### Sanjay V
+
+**Task:** Repair Status navigation, OTP flow, and payment-page accessibility
+**Branch:** `frontend/sprint-1-auth-integration`
+**Integration Status:** COMPLETED (Pending Backend Validation).
+
+**Frontend Integration Results:**
+- Reconfigured routing architecture in `App.tsx` to lift `/status` and `/payment` into the public router space, thereby fixing reload-redirect issues.
+- Perfected active tab detection in `AppHeader.tsx` using `end` modifiers on `NavLink`.
+- Implemented robust `isLocked` guard states in `PaymentPage.tsx` tied directly to `AuthContext`, presenting users with clear, actionable UI states prior to verification while preserving strict lockout semantics on the checkout functionality.
+- Confirmed strict OTP regex sanitization and input mechanics logic safely block unauthorized traversal natively in `EmailVerificationPage.tsx`.
+- Confirmed `npm run build` and `npx tsc --noEmit` pass flawlessly.
+
+**QA & Testing Status:**
+- Logic validated manually via local dev environment checks matching all navigation acceptance criteria.
+- Automated browser testing is BLOCKED in this environment. E2E system testing against the live FastAPI environment is ready for backend handoff.

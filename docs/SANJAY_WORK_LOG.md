@@ -492,3 +492,28 @@ Shared Repository Frontend Integration
 - `npm run build`: Passed (Vite exit 0)
 - `npx tsc --noEmit`: Passed
 - **Automated QA & UI Screenshots:** BLOCKED. Testing via automated browser driver (Playwright) is unavailable in this environment. Manual verification required for country selector dropdown UI and error validation boundaries.
+
+---
+
+## 2026-09-17: Sprint 1 Frontend - Status Navigation and Payment UI Unlocking
+
+### Branch
+- Branch: `frontend/sprint-1-auth-integration` (continued)
+
+### Implementation Details
+- **Status Navigation Fixes:**
+  - Moved `/status` out of the `<ProtectedRoute>` boundary in `App.tsx` allowing unauthenticated and persistent access to the HR tracking page.
+  - Added `end` matching property to React Router `NavLink`s in `AppHeader.tsx` to prevent accidental multi-highlighting and ensure `/status` highlights only when explicitly on the `/status` route.
+  - Verified `AppFooter.tsx` uses native `<Link>` without page reloads.
+- **Payment Page Visibility and Lock Mechanics:**
+  - Extracted `/payment` from `<ProtectedRoute>` making the visual design available universally.
+  - Interfaced `PaymentPage.tsx` with the `useAuth()` hook to read the `isAuthenticated` boolean.
+  - Added explicit locked UI messaging: "Verify your email to continue with payment" along with a fast-travel `Go to Email Verification` button when unauthenticated.
+  - Disabled the Razorpay test-mode checkout button globally unless a verified session token validates `isLocked = false`.
+- **OTP Input Strictness:**
+  - Verified that `EmailVerificationPage.tsx` successfully trims non-digits (`replace(/\D/g, '')`) and enforces a strict 6-character length before issuing the `verify-otp` API call. Error boundaries correctly map upstream `apiClient` JSON rejections to the UI.
+  
+### Tests & Verification
+- `npm run build`: Passed (Vite exit 0)
+- `npx tsc --noEmit`: Passed
+- **Manual Verification:** Confirmed via code analysis and local dev server routes that reloads on `/status` maintain the route, the Razorpay button is visibly disabled prior to OTP completion, and subsequent routes (`/candidate`) remain completely protected. E2E browser tests remain BLOCKED.
