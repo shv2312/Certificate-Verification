@@ -127,3 +127,27 @@
 - **Email Delivery Verification**: BLOCKED (Missing real SMTP `SMTP_USERNAME`, `SMTP_PASSWORD` configuration)
 - **Razorpay Test Checkout**: BLOCKED (Razorpay blocked by dummy `PAYMENT_GATEWAY_KEY_ID=rzp_test_dummy` credentials)
 - **Browser Automation**: BLOCKED (Playwright Chromium download failed with `ECONNRESET`. Manual Checklist provided for UI flow tests utilizing `.test_mailbox.json` outbox testing file).
+
+## 2026-09-17 - Sprint 5 Database Integration and Concurrency Validation
+
+**Reviewer:** Shri Hari Vishnu S
+**Status:** Completed successfully
+
+### 1. Reconcile Database Changes
+- **Finding:** Parthiban's updated schema was verified. The `CANDIDATE_BOUND` enum missing from the reported constraint `verification_requests_status_check` was intentionally preserved in the integration branch as it represents a valid and legitimately supported state required by the backend API.
+- **Verdict:** PASS. Schema safely reconciled and backwards-compatibility maintained via transactional SQL migrations.
+
+### 2. Concurrency Correctness (Candidate Binding)
+- **Finding:** Inspected the candidate-binding transaction logic. A formal concurrency test (`test_concurrency.py`) was created to execute simultaneous connections against the same payment order utilizing `asyncpg`.
+- **Verdict:** PASS. Exactly one transaction succeeds and returns `SUCCESS`. Concurrent attempts safely encounter PostgreSQL-enforced exceptions or strict application-level `ValueError: Row not found or already bound`, leaving no orphaned or partial records. Payment state and ownership strictly preserved.
+
+### 3. Combined Validation
+- **Finding:** Executed Parthiban's test suite `test_postgres_integration.py` against the candidate branch database schema and constraints. 
+  - 7/7 Workflow tests PASS (PostgreSQL 15).
+  - 47/47 Backend Regression tests PASS.
+- **Environment:** PostgreSQL 15 `(PostgreSQL 15.x)` via `asyncpg`.
+- **Commands run:**
+  - `backend/.venv/Scripts/python.exe -m pytest tests/test_concurrency.py -v`
+  - `backend/.venv/Scripts/python.exe -m pytest verification_engine/tests/test_postgres_integration.py -v`
+  - `backend/.venv/Scripts/python.exe -m pytest -v`
+- **Verdict:** PASS. External service mocks (`DEV_MOCK_OTP`, `DEV_MOCK_PAYMENT`) strictly distinguished from database-layer verification; SMTP/Razorpay were not implicitly inferred as functional. Database-level ownership filtering securely segregates admin accounts.
