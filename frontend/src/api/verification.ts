@@ -3,9 +3,6 @@ import { apiClient } from './client';
 export interface VerificationCandidate {
   candidate_name: string;
   register_number: string;
-  course: string;
-  branch: string;
-  year_of_passing: number;
 }
 
 export interface BindCandidatePayload {
@@ -51,10 +48,73 @@ export async function bindCandidate(payload: BindCandidatePayload): Promise<{ su
   return { success: true, message: response.message };
 }
 
-export async function confirmVerification(payload: VerificationConfirmPayload): Promise<VerificationResult> {
+export async function confirmVerification(payload: VerificationConfirmPayload & { _mock_register_number?: string }): Promise<VerificationResult> {
   if (import.meta.env.DEV) {
     return new Promise((resolve) => {
       setTimeout(() => {
+        // Mock responses based on the register_number passed via payload (locally injected)
+        const mockRegisterNumber = payload._mock_register_number || '710621104001';
+
+        if (mockRegisterNumber === 'NAME_MISMATCH') {
+          resolve({
+            verification_request_id: payload.verification_request_id,
+            display_request_id: 'SIET-DEV-123',
+            status: 'NOT VERIFIED',
+            candidate_name: null,
+            university_name: null,
+            institute_name: null,
+            course: null,
+            branch: null,
+            register_number: null,
+            year_of_passing: null,
+            backlog_status: null,
+            period_of_study: null,
+            mode_of_education: null,
+            message: 'The submitted candidate name does not match the official record.',
+          });
+          return;
+        }
+
+        if (mockRegisterNumber === 'NOT_FOUND') {
+          resolve({
+            verification_request_id: payload.verification_request_id,
+            display_request_id: 'SIET-DEV-123',
+            status: 'CANDIDATE NOT FOUND',
+            candidate_name: null,
+            university_name: null,
+            institute_name: null,
+            course: null,
+            branch: null,
+            register_number: null,
+            year_of_passing: null,
+            backlog_status: null,
+            period_of_study: null,
+            mode_of_education: null,
+            message: 'No official record was found for the submitted register number.',
+          });
+          return;
+        }
+
+        if (mockRegisterNumber === 'ERROR') {
+          resolve({
+            verification_request_id: payload.verification_request_id,
+            display_request_id: 'SIET-DEV-123',
+            status: 'UNABLE TO VERIFY',
+            candidate_name: null,
+            university_name: null,
+            institute_name: null,
+            course: null,
+            branch: null,
+            register_number: null,
+            year_of_passing: null,
+            backlog_status: null,
+            period_of_study: null,
+            mode_of_education: null,
+            message: 'Service is temporarily unavailable. Please try again later or contact support.',
+          });
+          return;
+        }
+
         resolve({
           verification_request_id: payload.verification_request_id,
           display_request_id: 'SIET-DEV-123',

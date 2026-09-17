@@ -13,6 +13,7 @@ export default function ConfirmPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const verificationRequestId = location.state?.verification_request_id;
+  const mockRegisterNumber = location.state?._mock_register_number;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string>();
@@ -27,7 +28,10 @@ export default function ConfirmPage() {
     setSubmitError(undefined);
 
     try {
-      const result = await confirmVerification({ verification_request_id: verificationRequestId });
+      const result = await confirmVerification({ 
+        verification_request_id: verificationRequestId,
+        ...(mockRegisterNumber ? { _mock_register_number: mockRegisterNumber } : {})
+      });
       navigate(ROUTES.RESULT, { state: { result } });
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Failed to confirm verification.');

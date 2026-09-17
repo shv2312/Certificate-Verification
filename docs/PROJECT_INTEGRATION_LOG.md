@@ -486,3 +486,25 @@
 **QA & Testing Status:**
 - Logic validated manually via local dev environment checks matching all navigation acceptance criteria.
 - Automated browser testing is BLOCKED in this environment. E2E system testing against the live FastAPI environment is ready for backend handoff.
+
+---
+
+## 2026-09-17 (Sprint 1 Frontend - Candidate Input Simplification and Report UI)
+
+### Sanjay V
+
+**Task:** Reduce candidate input to Name + Register Number and build result interface
+**Branch:** `frontend/candidate-minimal-report`
+**Integration Status:** COMPLETED (Pending Backend Contract Alignment).
+
+**Frontend Integration Results:**
+- Simplified HR verification entry in `CandidatePage.tsx` to strictly two identifier fields: `Candidate Name` and `Register Number`. All redundant academic queries (`course`, `branch`, `year_of_passing`) were aggressively removed to adhere to the zero-trust HR input policy.
+- Re-architected `ResultPage.tsx` logic to explicitly partition verified payloads from mismatched logic:
+  - Added native UI rendering support for `VERIFIED`, `NOT VERIFIED` (Name Mismatch), `CANDIDATE NOT FOUND`, and `UNABLE TO VERIFY` (500s).
+- Verified `api/verification.ts` payload serialization conforms strictly to the new two-parameter `BindCandidatePayload` requirement.
+- Confirmed `npm run build` and `npx tsc --noEmit` pass flawlessly.
+
+**QA & Testing Status:**
+- Confirmed zero data leakage on unverified results via state mocking.
+- Automated browser testing is BLOCKED in this environment. 
+- **CRITICAL BACKEND BLOCKER/HANDOFF:** Shri Hari / Parthiban, please ensure the live FastAPI endpoint for `POST /api/v1/verification/bind-candidate` NO LONGER expects `course`, `branch`, or `year_of_passing` in the payload body. The frontend now strictly omits these.
