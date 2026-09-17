@@ -834,3 +834,15 @@ Because local automated Chromium downloads fail due to networking issues (`ECONN
 - **Razorpay Integration:** BLOCKED (Pending actual credentials)
 - **Database & Concurrency:** PASS
 - **Browser Workflow:** BLOCKED (Pending manual execution due to missing credentials and automated Chromium download block)
+
+## 2026-09-17 (Sprint 1 Razorpay Test Mode Verification)
+
+### Shri Hari Vishnu S
+
+**Task:** Verify Razorpay Test Mode Configuration and Security
+**Branch:** integration/sprint-1-candidate
+
+- **Configuration:** Verified PAYMENT_GATEWAY_KEY_ID and SECRET are populated. Webhook secret and SMTP credentials remain unconfigured.
+- **Order Creation:** Verified the backend successfully interacts with Razorpay Test API to create orders with correct amounts (50000 Paise) and currency (INR).
+- **Security Check:** Validated that the backend correctly rejects spoofed or invalid Razorpay checkout signatures (409 Conflict), maintaining strict gatekeeping prior to candidate binding.
+- **Browser Execution:** End-to-end checkout flow remains BLOCKED pending a manual browser test drive of the Razorpay checkout UI.

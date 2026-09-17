@@ -532,3 +532,33 @@ Because local automated Chromium downloads fail due to networking issues (`ECONN
 - **Razorpay Integration:** BLOCKED (Pending actual credentials)
 - **Database & Concurrency:** PASS
 - **Browser Workflow:** BLOCKED (Pending manual execution due to missing credentials and automated Chromium download block)
+
+## 2026-09-17 (Sprint 1 Razorpay Test Mode Verification)
+
+### Shri Hari Vishnu S (Coordinator)
+
+**Task:** Verify Razorpay Test Mode Configuration and Security
+**Branch:** integration/sprint-1-candidate
+
+**1. Configuration Check:**
+- PAYMENT_GATEWAY_KEY_ID: CONFIGURED
+- PAYMENT_GATEWAY_KEY_SECRET: CONFIGURED
+- PAYMENT_GATEWAY_WEBHOOK_SECRET: MISSING
+- DEV_MOCK_PAYMENT: False (Real Test Mode enabled)
+- SMTP_USERNAME / SMTP_PASSWORD: MISSING (Email delivery still mocked via DEV_MOCK_OTP=True)
+
+**2. Backend Restart & Authentication Setup:**
+The backend was successfully restarted with the new Test Mode credentials. Email authentication still relies on the OTP outbox bypass because real SMTP credentials remain unconfigured (BLOCKED). The authentication and session issuance flow works securely.
+
+**3. Razorpay Server-Side API Tests (PASS):**
+A local API test (	est_razorpay_initiate.py) was executed against the running backend to verify Razorpay Test Mode interactions without the browser frontend:
+- **Order Creation (PASS):** Backend successfully called Razorpay API and generated a valid Test Order ID (order_...).
+- **Amount & Currency (PASS):** Validated at 50000 Paise / INR.
+- **Security & Integrity (PASS):** Verified that submitting an invalid Razorpay signature correctly results in a 409 Conflict (Invalid checkout signature), preventing unauthorized candidate submission.
+- **Concurrency & Duplication (PASS):** As proven in previous tests (	est_concurrency.py), reusing a payment session is blocked at the PostgreSQL transaction level.
+
+**4. Final Verdicts & End-to-End Status:**
+- **Webhook Configuration:** BLOCKED (Requires PAYMENT_GATEWAY_WEBHOOK_SECRET for async verification).
+- **End-to-End Browser Checkout:** BLOCKED. While the backend API correctly initiates and secures the test payment, the full browser checkout UI flow (involving the Razorpay pop-up and test card entry) has not been executed yet.
+
+Sprint 1 remains open until real SMTP is verified and the E2E browser checkout is fully run.
