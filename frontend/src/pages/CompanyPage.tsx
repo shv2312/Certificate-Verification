@@ -26,6 +26,7 @@ import FormField from '../components/FormField';
 import StatusMessage from '../components/StatusMessage';
 import 'react-phone-number-input/style.css';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
+import SearchableCountrySelect from '../components/SearchableCountrySelect';
 import { registerCompany } from '../api/auth';
 import { useAuth } from '../context/AuthContext';
 import { ROUTES } from '../utils/routes';
@@ -180,6 +181,7 @@ export default function CompanyPage() {
               defaultCountry="IN"
               international
               withCountryCallingCode
+              countrySelectComponent={SearchableCountrySelect}
               placeholder="e.g. 82701 69894"
               value={values.hrPhone}
               onChange={(value) => {
