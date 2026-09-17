@@ -93,7 +93,10 @@ import os
 outbox: list[tuple[str, str, str]] = []  # For testing: (hr_email, company_name, otp)
 
 def _write_local_capture_mailbox(hr_email: str, company_name: str, otp: str):
-    mailbox_file = ".test_mailbox.json"
+    if not os.getenv("PYTEST_CURRENT_TEST"):
+        return
+    import tempfile
+    mailbox_file = os.path.join(tempfile.gettempdir(), "siet_test_mailbox.json")
     mailbox = []
     if os.path.exists(mailbox_file):
         try:

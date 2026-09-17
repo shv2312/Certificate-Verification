@@ -445,12 +445,90 @@
 **Handoff to Shri Hari (Backend Lead):**
 - Please pull `frontend/sprint-1-auth-integration` and perform live tests connecting frontend -> backend API (OTP, Payment, Tracking).
 - E2E testing (QA) is BLOCKED because the local environment lacks actual backend connectivity and email delivery secrets.
-# #   I n t e g r a t i o n :   S p r i n t   1   E m a i l   a n d   H R   D e t a i l s  
- -   C o m b i n e d   B a c k e n d   ( 3 8 c 5 5 e 8 )   a n d   F r o n t e n d   ( 2 9 1 c f 9 c )   i n t o   i n t e g r a t i o n / s p r i n t - 1 - c a n d i d a t e  
- -   I d e n t i f i e d   a n d   f i x e d   m i s s i n g   h r _ n a m e   p a y l o a d   i n   f r o n t e n d .  
- -   R e s o l v e d   v e r i f y - c h e c k o u t   c o n t r a c t   m a p p i n g .  
- -   D B   S c h e m a   u p d a t e d   s e c u r e l y .  
- # #   I n t e g r a t i o n   E v i d e n c e   U p d a t e s  
- -   W r o t e   m i g r a t i o n   0 0 1 _ a d d _ h r _ d e t a i l s . s q l .  
- -   S w i t c h e d   O T P   t o   t e s t _ m a i l b o x   f i l e   t o   s u p p o r t   b r o w s e r   t e s t s   s e c u r e l y .  
- 
+## Integration: Sprint 1 Email and HR Details
+
+- Combined Backend (38c55e8) and Frontend (291cf9c) into integration/sprint-1-candidate
+
+- Identified and fixed missing hr_name payload in frontend.
+
+- Resolved verify-checkout contract mapping.
+
+- DB Schema updated securely.
+
+## Integration Evidence Updates
+
+- Wrote migration 001_add_hr_details.sql.
+
+- Switched OTP to test_mailbox file to support browser tests securely.
+
+
+## 2026-09-17 (Sprint 1 Final Coordinator Handoff)
+
+### Shri Hari Vishnu S (Coordinator)
+
+**Task:** Finish configuration handoff and prepare executable browser QA
+**Branch:** integration/sprint-1-candidate
+
+**1. Final Baseline**
+- **Remote Commit:** 90abe33
+- **Test Suite Results:**
+  - 47 Backend regression tests: PASS (Mocks enabled for SMTP/Razorpay).
+  - 7 PostgreSQL integration tests: PASS.
+  - 1 Concurrency test (test_concurrency.py): PASS (Verified exactly 1 transaction succeeds during race condition).
+  - Frontend typecheck & build: PASS.
+- **Note:** Mock-based tests do NOT imply functional real-world SMTP/Razorpay capabilities.
+
+**2. Test Mailbox Isolation**
+- The `test_mailbox.json` outbox mechanism has been explicitly isolated. It now correctly relies on `PYTEST_CURRENT_TEST` and writes only to the system temporary directory (`/tmp/siet_test_mailbox.json`), preventing normal application leaks and git pollution.
+- Any stray `.test_mailbox.json` files in the repository root have been removed.
+
+**3. Configuration Setup & Required Action**
+The backend `app/config.py` uses the following environment variables that must be configured in `.env` for production functionality:
+- **SMTP Delivery:**
+  - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_NAME`, `SMTP_FROM_EMAIL`.
+  - To enable real email delivery, set `DEV_MOCK_OTP=False` and restart `uvicorn`. Failed delivery will throw a 500 API response, and logs will report "Failed to send OTP email to..." without exposing the credentials.
+- **Razorpay Integration:**
+  - `PAYMENT_GATEWAY_KEY_ID`, `PAYMENT_GATEWAY_KEY_SECRET`. (There is also `PAYMENT_GATEWAY_WEBHOOK_SECRET` for future webhook implementations).
+  - To disable mocks, set `DEV_MOCK_PAYMENT=False` and restart `uvicorn`. Test Mode is confirmed when Razorpay API triggers sandbox behavior (e.g., test card input).
+
+*Configuration Template (.env)*:
+```env
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=your_email@siet.ac.in
+SMTP_PASSWORD=your_app_password
+SMTP_FROM_NAME="SIET Verification"
+SMTP_FROM_EMAIL=your_email@siet.ac.in
+DEV_MOCK_OTP=False
+
+PAYMENT_GATEWAY_KEY_ID=rzp_test_...
+PAYMENT_GATEWAY_KEY_SECRET=...
+DEV_MOCK_PAYMENT=False
+```
+**Required Action:** The project owner must populate these real test credentials in their local `.env` file before full system verification can be signed off.
+
+**4. Browser QA Manual Checklist**
+Because local automated Chromium downloads fail due to networking issues (`ECONNRESET`), the following checklist must be run manually using an installed browser.
+*Start Commands:*
+- Terminal 1: `cd backend; .venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000`
+- Terminal 2: `cd frontend; npm run dev`
+- Open URL: `http://localhost:5173/`
+
+*Manual Checklist:*
+- [ ] Submit all four mandatory HR/company fields. (Can run now)
+- [ ] Confirm invalid phone rejection. (Can run now)
+- [ ] Request and receive an actual email OTP once SMTP is configured. (Depends on credentials)
+- [ ] Verify wrong-code rejection and resend cooldown. (Can run now, use terminal logs if DEV_MOCK_OTP=True)
+- [ ] Verify the correct code and continue to payment. (Can run now)
+- [ ] Complete Razorpay Test Mode checkout once configured. (Depends on credentials)
+- [ ] Confirm backend payment eligibility before candidate submission. (Can run now)
+- [ ] Submit one synthetic candidate and retrieve its tracking status. (Can run now)
+- [ ] Confirm the same payment cannot authorize another candidate. (Can run now)
+- [ ] Confirm another HR cannot access that request. (Can run now)
+- [ ] Verify logo, mobile layout, and clean error messages. (Can run now)
+
+**5. Final Verdicts**
+- **SMTP Integration:** BLOCKED (Pending actual credentials)
+- **Razorpay Integration:** BLOCKED (Pending actual credentials)
+- **Database & Concurrency:** PASS
+- **Browser Workflow:** BLOCKED (Pending manual execution due to missing credentials and automated Chromium download block)
