@@ -13,27 +13,17 @@ const steps = buildStepStatuses(3);
 interface FormValues {
   candidate_name: string;
   register_number: string;
-  course: string;
-  branch: string;
-  year_of_passing: string;
 }
 
 interface FormErrors {
   candidate_name?: string;
   register_number?: string;
-  course?: string;
-  branch?: string;
-  year_of_passing?: string;
 }
 
 function validateForm(values: FormValues): FormErrors {
   const errors: FormErrors = {};
   if (!values.candidate_name.trim()) errors.candidate_name = 'Candidate name is required.';
   if (!values.register_number.trim()) errors.register_number = 'Register number is required.';
-  if (!values.course.trim()) errors.course = 'Course is required.';
-  if (!values.branch.trim()) errors.branch = 'Branch is required.';
-  if (!values.year_of_passing.trim()) errors.year_of_passing = 'Year of passing is required.';
-  else if (isNaN(Number(values.year_of_passing))) errors.year_of_passing = 'Must be a valid year.';
   return errors;
 }
 
@@ -42,9 +32,6 @@ export default function CandidatePage() {
   const [values, setValues] = useState<FormValues>({
     candidate_name: '',
     register_number: '',
-    course: '',
-    branch: '',
-    year_of_passing: '',
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -97,10 +84,7 @@ export default function CandidatePage() {
       
       await bindCandidate({
         verification_request_id: activeRequestId,
-        candidate: {
-          ...values,
-          year_of_passing: Number(values.year_of_passing),
-        },
+        candidate: values,
       });
       // Navigate to Confirm page and pass the verification_request_id in state
       navigate(ROUTES.CONFIRM, { state: { verification_request_id: activeRequestId } });
@@ -125,7 +109,7 @@ export default function CandidatePage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-siet-navy mb-1">Candidate Details</h1>
         <p className="text-siet-slate text-sm">
-          Enter the academic details of the candidate you wish to verify.
+          Enter the candidate’s name and register number to verify the official academic record.
         </p>
       </div>
 
@@ -158,38 +142,9 @@ export default function CandidatePage() {
           />
         </FormField>
 
-        <FormField id="course" label="Course" required error={errors.course}>
-          <select id="course" className="form-select" value={values.course} onChange={handleChange('course')}>
-            <option value="">Select Course</option>
-            <option value="B.E.">B.E.</option>
-            <option value="B.Tech.">B.Tech.</option>
-            <option value="M.E.">M.E.</option>
-          </select>
-        </FormField>
-
-        <FormField id="branch" label="Branch" required error={errors.branch}>
-          <input
-            id="branch"
-            type="text"
-            className="form-input"
-            value={values.branch}
-            onChange={handleChange('branch')}
-          />
-        </FormField>
-
-        <FormField id="year-of-passing" label="Year of Passing" required error={errors.year_of_passing}>
-          <input
-            id="year-of-passing"
-            type="text"
-            className="form-input"
-            value={values.year_of_passing}
-            onChange={handleChange('year_of_passing')}
-          />
-        </FormField>
-
         <div className="pt-2">
           <button type="submit" className="btn-primary" disabled={isSubmitting}>
-            {isSubmitting ? 'Submitting...' : 'Continue'}
+            {isSubmitting ? 'Verifying against official institutional records…' : 'Verify Candidate'}
           </button>
         </div>
       </form>

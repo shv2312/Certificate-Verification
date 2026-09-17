@@ -3,9 +3,6 @@ import { apiClient } from './client';
 export interface VerificationCandidate {
   candidate_name: string;
   register_number: string;
-  course: string;
-  branch: string;
-  year_of_passing: number;
 }
 
 export interface BindCandidatePayload {

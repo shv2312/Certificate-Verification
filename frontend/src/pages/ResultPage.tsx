@@ -16,6 +16,10 @@ export default function ResultPage() {
   }
 
   const isVerified = result.status === 'VERIFIED';
+  const isNameMismatch = result.status === 'NOT VERIFIED';
+  const isNotFound = result.status === 'CANDIDATE NOT FOUND';
+  // Fallback for everything else (UNABLE TO VERIFY or ERROR)
+  const isError = !isVerified && !isNameMismatch && !isNotFound;
 
   return (
     <PageContainer>
@@ -40,7 +44,7 @@ export default function ResultPage() {
             </div>
             <div>
               <h2 className={`text-xl font-bold ${isVerified ? 'text-siet-success' : 'text-siet-error'}`}>
-                {isVerified ? 'VERIFIED' : 'NOT VERIFIED'}
+                {result.status}
               </h2>
               <p className="text-sm font-medium mt-1">Request ID: {result.display_request_id}</p>
             </div>
@@ -49,42 +53,86 @@ export default function ResultPage() {
         </div>
 
         <div className="p-6">
-          <h3 className="text-lg font-bold text-siet-navy mb-4">Academic Details</h3>
-          {isVerified ? (
-            <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-6">
-              <div>
-                <dt className="text-xs text-siet-muted font-medium uppercase tracking-wider mb-1">Candidate Name</dt>
-                <dd className="text-sm text-siet-navy font-semibold">{result.candidate_name}</dd>
+          {isVerified && (
+            <>
+              <h3 className="text-lg font-bold text-siet-navy mb-4">Academic Details</h3>
+              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-6">
+                <div>
+                  <dt className="text-xs text-siet-muted font-medium uppercase tracking-wider mb-1">Candidate Name</dt>
+                  <dd className="text-sm text-siet-navy font-semibold">{result.candidate_name}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-siet-muted font-medium uppercase tracking-wider mb-1">Register Number</dt>
+                  <dd className="text-sm text-siet-navy font-semibold">{result.register_number}</dd>
+                </div>
+                <div className="sm:col-span-2">
+                  <dt className="text-xs text-siet-muted font-medium uppercase tracking-wider mb-1">Course & Branch</dt>
+                  <dd className="text-sm text-siet-navy font-semibold">{result.course} - {result.branch}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-siet-muted font-medium uppercase tracking-wider mb-1">Period of Study</dt>
+                  <dd className="text-sm text-siet-navy font-semibold">{result.period_of_study}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-siet-muted font-medium uppercase tracking-wider mb-1">Year of Passing</dt>
+                  <dd className="text-sm text-siet-navy font-semibold">{result.year_of_passing}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-siet-muted font-medium uppercase tracking-wider mb-1">Mode of Education</dt>
+                  <dd className="text-sm text-siet-navy font-semibold">{result.mode_of_education}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-siet-muted font-medium uppercase tracking-wider mb-1">Backlog Status</dt>
+                  <dd className="text-sm text-siet-navy font-semibold">{result.backlog_status}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-siet-muted font-medium uppercase tracking-wider mb-1">Verification Time</dt>
+                  <dd className="text-sm text-siet-navy font-semibold">{new Date().toLocaleString()}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-siet-muted font-medium uppercase tracking-wider mb-1">Institution</dt>
+                  <dd className="text-sm text-siet-navy font-semibold">{result.university_name}</dd>
+                </div>
+              </dl>
+              <div className="mt-8 pt-4 border-t border-siet-border">
+                <p className="text-xs text-siet-muted italic">
+                  Institutional Disclaimer: This document is an electronic verification report issued directly from the 
+                  official records of Sri Shakthi Institute of Engineering and Technology. It confirms the academic standing 
+                  of the specified candidate at the time of verification.
+                </p>
               </div>
-              <div>
-                <dt className="text-xs text-siet-muted font-medium uppercase tracking-wider mb-1">Register Number</dt>
-                <dd className="text-sm text-siet-navy font-semibold">{result.register_number}</dd>
-              </div>
-              <div className="sm:col-span-2">
-                <dt className="text-xs text-siet-muted font-medium uppercase tracking-wider mb-1">Course & Branch</dt>
-                <dd className="text-sm text-siet-navy font-semibold">{result.course} - {result.branch}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-siet-muted font-medium uppercase tracking-wider mb-1">Period of Study</dt>
-                <dd className="text-sm text-siet-navy font-semibold">{result.period_of_study}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-siet-muted font-medium uppercase tracking-wider mb-1">Year of Passing</dt>
-                <dd className="text-sm text-siet-navy font-semibold">{result.year_of_passing}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-siet-muted font-medium uppercase tracking-wider mb-1">Mode of Education</dt>
-                <dd className="text-sm text-siet-navy font-semibold">{result.mode_of_education}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-siet-muted font-medium uppercase tracking-wider mb-1">Backlog Status</dt>
-                <dd className="text-sm text-siet-navy font-semibold">{result.backlog_status}</dd>
-              </div>
-            </dl>
-          ) : (
+            </>
+          )}
+
+          {isNameMismatch && (
             <div className="bg-siet-silver p-4 rounded text-center">
-              <p className="text-sm text-siet-slate">
-                No matching records found in the institutional database. For privacy reasons, candidate details are redacted.
+              <p className="text-sm font-medium text-siet-navy">
+                The submitted candidate name does not match the official record.
+              </p>
+              <p className="text-xs text-siet-slate mt-2">
+                For privacy and security reasons, academic details are not disclosed when candidate names mismatch.
+              </p>
+            </div>
+          )}
+
+          {isNotFound && (
+            <div className="bg-siet-silver p-4 rounded text-center">
+              <p className="text-sm font-medium text-siet-navy">
+                No official record was found for the submitted register number.
+              </p>
+              <p className="text-xs text-siet-slate mt-2">
+                Please verify the register number format and try again.
+              </p>
+            </div>
+          )}
+
+          {isError && (
+            <div className="bg-red-50 p-4 rounded text-center border border-red-200">
+              <p className="text-sm font-medium text-siet-error">
+                Service is temporarily unavailable.
+              </p>
+              <p className="text-xs text-red-700 mt-2">
+                Please retry your request later or contact support if the issue persists.
               </p>
             </div>
           )}

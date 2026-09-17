@@ -688,13 +688,13 @@ px tsc --noEmit) pass flawlessly.
 
 **2. Real SMTP Activation & Error Handling**
 - Securely inspected the FastAPI environment. Confirmed all SMTP_* variables are fully configured.
-- Turned off development mocking (DEV_MOCK_OTP=False) in .env to enforce real email delivery via iosmtplib and STARTTLS.
+- Turned off development mocking (DEV_MOCK_OTP=False) in .env to enforce real email delivery via  iosmtplib and STARTTLS.
 - Corrected exception handling in email_service.py to raise a ValueError upon delivery failure, cleanly mapping to a 409 Conflict so the frontend gracefully surfaces the error without breaking the UI flow.
-- Forced DEV_MOCK_OTP = True in ackend/tests/conftest.py so automated regression testing does not continuously trigger real outbound SMTP emails.
+- Forced DEV_MOCK_OTP = True in  ackend/tests/conftest.py so automated regression testing does not continuously trigger real outbound SMTP emails.
 
 **3. Payment Authorization Guard for Candidate Page**
 - **Issue:** Previously, CandidatePage only enforced authentication via <ProtectedRoute>, allowing any verified HR to manually type the /candidate URL without a confirmed payment.
-- **Resolution:** Purged the import.meta.env.DEV mock configurations from pi/verification.ts. Hooked CandidatePage.tsx to automatically fetch getVerificationHistory upon mount. It strictly isolates the first PAID_UNUSED backend-confirmed payment session and binds to it. If none exist, it unconditionally bounces the user to the /payment page, resolving the authorization bypass.
+- **Resolution:** Purged the import.meta.env.DEV mock configurations from  pi/verification.ts. Hooked CandidatePage.tsx to automatically fetch getVerificationHistory upon mount. It strictly isolates the first PAID_UNUSED backend-confirmed payment session and binds to it. If none exist, it unconditionally bounces the user to the /payment page, resolving the authorization bypass.
 
 **4. Test Results & Checks**
 - **Frontend:** Type checks (
@@ -726,3 +726,24 @@ pm run build) pass.
 - The POST request now successfully returns the 200 OK PaymentInitiateResponse.
 - Existing tests (47/47) pass.
 - **Browser E2E Blockers:** Manual Live Razorpay Checkout remains blocked until a physical test by a human operator, due to environmental limitations on downloading Playwright.
+---
+
+## 2026-09-17 (Sprint 1 Frontend - Candidate Input Simplification and Report UI)
+
+### Sanjay V
+
+**Task:** Reduce candidate input to Name + Register Number and build result interface
+**Branch:** `frontend/candidate-minimal-report`
+**Integration Status:** COMPLETED (Pending Backend Contract Alignment).
+
+**Frontend Integration Results:**
+- Simplified HR verification entry in `CandidatePage.tsx` to strictly two identifier fields: `Candidate Name` and `Register Number`. All redundant academic queries (`course`, `branch`, `year_of_passing`) were aggressively removed to adhere to the zero-trust HR input policy.
+- Re-architected `ResultPage.tsx` logic to explicitly partition verified payloads from mismatched logic:
+  - Added native UI rendering support for `VERIFIED`, `NOT VERIFIED` (Name Mismatch), `CANDIDATE NOT FOUND`, and `UNABLE TO VERIFY` (500s).
+- Verified `api/verification.ts` payload serialization conforms strictly to the new two-parameter `BindCandidatePayload` requirement.
+- Confirmed `npm run build` and `npx tsc --noEmit` pass flawlessly.
+
+**QA & Testing Status:**
+- Confirmed zero data leakage on unverified results via state mocking.
+- Automated browser testing is BLOCKED in this environment. 
+- **CRITICAL BACKEND BLOCKER/HANDOFF:** Shri Hari / Parthiban, please ensure the live FastAPI endpoint for `POST /api/v1/verification/bind-candidate` NO LONGER expects `course`, `branch`, or `year_of_passing` in the payload body. The frontend now strictly omits these.
