@@ -26,6 +26,7 @@ export interface PaymentVerifyResponse {
 export async function initiatePayment(): Promise<PaymentInitiateResponse> {
   return apiClient<PaymentInitiateResponse>('/api/v1/payment/initiate', {
     method: 'POST',
+    body: JSON.stringify({}),
   });
 }
 

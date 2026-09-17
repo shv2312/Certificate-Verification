@@ -889,3 +889,18 @@ px tsc --noEmit. No regressions.
 - Removed arbitrary import.meta.env.DEV mocks from the frontend verification API client.
 - Passes all 47 backend tests and builds.
 - **Blocker:** Cannot complete the live manual workflow myself because I do not have access to the physical Gmail inbox receiving the OTP.
+
+
+## 2026-09-17 (Sprint 1 - Payment API Contract Fix)
+
+### Shri Hari Vishnu S
+
+**Task:** Diagnose and fix payment-initiation validation failure
+**Branch:** integration/sprint-1-candidate
+
+- Investigated the 422 Unprocessable Entity error on the /payment page when clicking 'Pay with Razorpay'.
+- Discovered that FastAPI expects a JSON body because of the Pydantic PaymentInitiateRequest model signature in the endpoint, but the frontend was sending a POST request with no body at all.
+- Fixed the issue in frontend/src/api/payment.ts by adding body: JSON.stringify({}).
+- Confirmed the backend remains fully server-authoritative (price is securely read from config, identity from JWT session token).
+- Ran all 47 backend tests successfully.
+- **Blocker:** Cannot complete the live manual workflow myself due to no Gmail access and Playwright block.

@@ -704,3 +704,25 @@ pm run build) pass.
 - **Manual UI / Live Workflow:** **BLOCKED**. I am unable to perform a full E2E workflow since I lack access to the real Gmail inbox configured to read the live OTPs, and automated Playwright execution remains network-blocked.
 
 **Status:** The system is syntactically ready and fully integrated for a manual, E2E human test.
+
+
+## 2026-09-17 (Sprint 1 - Payment API Contract Fix)
+
+### Shri Hari Vishnu S (Coordinator)
+
+**Task:** Diagnose and fix payment-initiation validation failure
+**Branch:** integration/sprint-1-candidate
+
+**1. Root Cause Analysis (HTTP 422 on /initiate)**
+- **Symptom:** Clicking 'Pay with Razorpay' yielded a 422 Unprocessable Entity ('The submitted data contains validation errors').
+- **Diagnosis:** The backend POST /api/v1/payment/initiate expects a Pydantic PaymentInitiateRequest model. Even though the schema logically has no fields, FastAPI strictly requires a JSON body (e.g. {}) to be present in the POST request. The frontend apiClient was omitting the body parameter entirely, resulting in a Content-Length: 0 request which FastAPI immediately rejected before route logic executed.
+
+**2. Resolution**
+- Updated frontend/src/api/payment.ts to explicitly send body: JSON.stringify({}).
+- **Security Check:** Verified that the backend continues to derive company name, HR email, and the 10,000 paise (INR 100) amount exclusively from the verified JWT session and server config. The client cannot inject an overriding price or identity.
+- Verified that Razorpay secrets remain backend-exclusive.
+
+**3. Test Results**
+- The POST request now successfully returns the 200 OK PaymentInitiateResponse.
+- Existing tests (47/47) pass.
+- **Browser E2E Blockers:** Manual Live Razorpay Checkout remains blocked until a physical test by a human operator, due to environmental limitations on downloading Playwright.
