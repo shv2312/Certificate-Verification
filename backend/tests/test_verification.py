@@ -59,9 +59,9 @@ async def test_bind_candidate_success(
     candidate_data = {
         "candidate_name": "John Doe",
         "register_number": "713519104001",
-        "course": "B.E",
-        "branch": "CSE",
-        "year_of_passing": 2023
+        "course": "B.E.",
+        "branch": "Computer Science",
+        "year_of_passing": 2025
     }
 
     response = client.post(
@@ -87,8 +87,8 @@ async def test_confirm_verification_success(
     db_session: AsyncSession,
     auth_headers_hr: dict,
 ):
-    # Mock the engine to return NOT_VERIFIED
-    mock_call_verification_engine.return_value = {"status": "NOT_VERIFIED"}
+    # Mock the engine to return NAME_MISMATCH
+    mock_call_verification_engine.return_value = {"status": "NAME_MISMATCH"}
 
     # Seed a bound verification request
     request_id = "test-req-456"
@@ -97,9 +97,9 @@ async def test_confirm_verification_success(
     candidate_data = {
         "candidate_name": "Jane Doe",
         "register_number": "713519104002",
-        "course": "B.E",
-        "branch": "IT",
-        "year_of_passing": 2023
+        "course": "B.E.",
+        "branch": "Information Technology",
+        "year_of_passing": 2024
     }
     
     vr = VerificationRequest(
@@ -131,9 +131,9 @@ async def test_confirm_verification_success(
 
     assert response.status_code == 200
     data = response.json()
-    # Given we use mock verification, it should be VERIFIED
-    assert data["data"]["status"] == RequestStatus.NOT_VERIFIED # Test dummy doesn't have JANE DOE so it will be NOT_VERIFIED
-    # We no longer expect name/university to be returned on NOT_VERIFIED
+    # Given we use mock verification, it should be NAME_MISMATCH
+    assert data["data"]["status"] == RequestStatus.NAME_MISMATCH 
+    # We no longer expect name/university to be returned on failure
 
 @pytest.mark.asyncio
 async def test_verification_request_orm_model_fields(db_session: AsyncSession):

@@ -16,8 +16,8 @@ export default function ResultPage() {
   }
 
   const isVerified = result.status === 'VERIFIED';
-  const isNameMismatch = result.status === 'NOT VERIFIED';
-  const isNotFound = result.status === 'CANDIDATE NOT FOUND';
+  const isNameMismatch = result.status === 'NAME_MISMATCH';
+  const isNotFound = result.status === 'NOT_FOUND';
   // Fallback for everything else (UNABLE TO VERIFY or ERROR)
   const isError = !isVerified && !isNameMismatch && !isNotFound;
 

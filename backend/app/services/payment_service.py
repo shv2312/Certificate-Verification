@@ -39,7 +39,7 @@ from typing import Optional
 
 import razorpay
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 
 from app.config import get_settings
 from app.db.models import PaymentSession, VerificationRequest
@@ -70,7 +70,9 @@ class RequestStatus:
     CANDIDATE_BOUND = "CANDIDATE_BOUND"
     VERIFICATION_IN_PROGRESS = "VERIFICATION_IN_PROGRESS"
     VERIFIED = "VERIFIED"
-    NOT_VERIFIED = "NOT_VERIFIED"
+    NAME_MISMATCH = "NAME_MISMATCH"
+    NOT_FOUND = "NOT_FOUND"
+    ERROR = "ERROR"
     COMPLETED = "COMPLETED"
 
 
@@ -79,14 +81,25 @@ class RequestStatus:
 # ------------------------------------------------------------------ #
 
 
-def _generate_display_request_id() -> str:
+async def _generate_display_request_id(db: AsyncSession) -> str:
     """
     Generate a human-readable verification request ID.
     Example: BGV-2026-000001
     """
     global _request_counter
-    _request_counter += 1
     year = time.strftime("%Y")
+
+    if _request_counter == 0:
+        stmt = select(func.max(VerificationRequest.display_request_id)).where(VerificationRequest.display_request_id.like(f"BGV-{year}-%"))
+        result = await db.execute(stmt)
+        max_id = result.scalar()
+        if max_id:
+            try:
+                _request_counter = int(max_id.split("-")[-1])
+            except ValueError:
+                pass
+
+    _request_counter += 1
     return f"BGV-{year}-{_request_counter:06d}"
 
 
@@ -215,7 +228,7 @@ async def process_payment_webhook(
 
         if session.status == "PAYMENT_PENDING":
             verification_request_id = secrets.token_urlsafe(24)
-            display_id = _generate_display_request_id()
+            display_id = await _generate_display_request_id(db)
 
             session.status = "PAID_UNUSED"
             session.verification_request_id = verification_request_id
@@ -290,7 +303,7 @@ async def verify_checkout_signature(
 
     if session.status == "PAYMENT_PENDING":
         verification_request_id = secrets.token_urlsafe(24)
-        display_id = _generate_display_request_id()
+        display_id = await _generate_display_request_id(db)
 
         session.status = "PAID_UNUSED"
         session.verification_request_id = verification_request_id
@@ -343,7 +356,7 @@ async def confirm_payment_mock(db: AsyncSession, payment_session_id: str, compan
         )
 
     verification_request_id = secrets.token_urlsafe(24)
-    display_id = _generate_display_request_id()
+    display_id = await _generate_display_request_id(db)
 
     session.status = "PAID_UNUSED"
     session.verification_request_id = verification_request_id

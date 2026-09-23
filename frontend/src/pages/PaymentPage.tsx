@@ -83,8 +83,11 @@ export default function PaymentPage() {
             );
             if (verifyRes.success) {
               setStatus('SUCCESS');
+              const verificationRequestId = verifyRes.data?.verification_request_id;
               setTimeout(() => {
-                navigate(ROUTES.CANDIDATE);
+                navigate(ROUTES.CANDIDATE, {
+                  state: { verification_request_id: verificationRequestId },
+                });
               }, 1500);
             } else {
               throw new Error(verifyRes.message || 'Payment verification failed.');

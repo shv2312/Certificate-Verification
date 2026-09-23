@@ -63,29 +63,27 @@ class CandidateDetails(BaseModel):
         description="Register / roll number assigned by SIET.",
         examples=["710621104001"],
     )
-    course: str = Field(
-        ...,
+    course: Optional[str] = Field(
+        None,
         min_length=2,
         max_length=100,
-        description="Course / programme (e.g. B.E., M.E., B.Tech).",
-        examples=["B.E."],
+        description="Programme/Course name.",
     )
-    branch: str = Field(
-        ...,
+    branch: Optional[str] = Field(
+        None,
         min_length=2,
         max_length=150,
-        description="Branch / specialization (e.g. Computer Science and Engineering).",
-        examples=["Computer Science and Engineering"],
+        description="Branch/Specialization name.",
     )
-    year_of_passing: int = Field(
-        ...,
+    year_of_passing: Optional[int] = Field(
+        None,
         ge=1990,
         le=2100,
-        description="Year in which the candidate passed / graduated.",
-        examples=[2024],
+        description="Year of passing.",
+        examples=[2025],
     )
 
-    @field_validator("candidate_name", "register_number", "course", "branch", mode="before")
+    @field_validator("candidate_name", "register_number", mode="before")
     @classmethod
     def strip_whitespace(cls, v: str) -> str:
         return v.strip()
@@ -161,8 +159,8 @@ class VerificationResultResponse(BaseModel):
         Only approved fields are returned (data minimization).
         The full report is also sent to the verified HR email.
 
-    FAILURE case:
-        status = "NOT_VERIFIED"
+    FAILURE cases:
+        status = "NAME_MISMATCH" | "NOT_FOUND" | "ERROR"
         message = neutral failure message
         All academic_data fields are None.
         No internal DB values are leaked.
@@ -172,7 +170,7 @@ class VerificationResultResponse(BaseModel):
     """
     verification_request_id: str
     display_request_id: str
-    status: str   # VERIFIED | NOT_VERIFIED
+    status: str   # VERIFIED | NAME_MISMATCH | NOT_FOUND | ERROR
 
     # Populated only when status == VERIFIED.
     # All values originate from Parthiban's institutional DB.

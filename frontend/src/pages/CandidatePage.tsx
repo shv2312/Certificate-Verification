@@ -1,5 +1,5 @@
 import React, { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import PageContainer from '../components/PageContainer';
 import FormField from '../components/FormField';
 import ProgressStepper from '../components/ProgressStepper';
@@ -29,6 +29,9 @@ function validateForm(values: FormValues): FormErrors {
 
 export default function CandidatePage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const stateRequestId: string | undefined = location.state?.verification_request_id;
+
   const [values, setValues] = useState<FormValues>({
     candidate_name: '',
     register_number: '',
@@ -36,10 +39,14 @@ export default function CandidatePage() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string>();
-  const [activeRequestId, setActiveRequestId] = useState<string | null>(null);
-  const [isInitializing, setIsInitializing] = useState(true);
+  const [activeRequestId, setActiveRequestId] = useState<string | null>(stateRequestId ?? null);
+  const [isInitializing, setIsInitializing] = useState(!stateRequestId);
 
   React.useEffect(() => {
+    // If we already got the ID from navigation state, skip the history API call
+    if (stateRequestId) {
+      return;
+    }
     async function checkPaymentStatus() {
       try {
         const history = await getVerificationHistory();
@@ -57,7 +64,7 @@ export default function CandidatePage() {
       }
     }
     checkPaymentStatus();
-  }, [navigate]);
+  }, [navigate, stateRequestId]);
 
   function handleChange(field: keyof FormValues) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {

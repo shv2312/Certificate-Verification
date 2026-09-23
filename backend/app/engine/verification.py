@@ -30,9 +30,6 @@ async def verify_candidate(
     db: AsyncSession,
     candidate_name: str,
     register_number: str,
-    course: str,
-    branch: str,
-    year_of_passing: int,
 ) -> VerificationResult:
     """
     Engine interface for verifying a candidate's background against the institution's DB.
@@ -54,8 +51,6 @@ async def verify_candidate(
         request_id="dummy-req-id",  # Request ID is not used for matching logic
         register_number=register_number,
         candidate_name=candidate_name,
-        branch=branch,
-        year_of_passing=year_of_passing
     )
 
     outcome = await engine.verify(req)
@@ -73,8 +68,8 @@ async def verify_candidate(
                 s.period_of_study_end, 
                 s.mode_of_education, 
                 s.has_arrear,
-                b.full_name AS branch_name,
-                p.full_name AS course_name
+                b.name AS branch_name,
+                p.name AS course_name
             FROM students s
             JOIN branches b ON s.branch_id = b.id
             JOIN programmes p ON b.programme_id = p.id
@@ -85,23 +80,30 @@ async def verify_candidate(
         
         if row:
             row_dict = row._mapping
-            start = row_dict["period_of_study_start"]
-            end = row_dict["period_of_study_end"]
+            start = row_dict.get("period_of_study_start")
+            end = row_dict.get("period_of_study_end")
             period = f"{start}-{end}" if start and end else None
-            backlog = "HAS ARREARS" if row_dict["has_arrear"] else "NO BACKLOGS"
+            
+            backlog_val = row_dict.get("has_arrear")
+            if backlog_val is True:
+                backlog = "HAS ARREARS"
+            elif backlog_val is False:
+                backlog = "NO BACKLOGS"
+            else:
+                backlog = None
             
             return VerificationResult(
                 status="VERIFIED",
-                candidate_name=row_dict["full_name"],
-                university_name=row_dict["university_name"],
-                institute_name=row_dict["institute_name"],
-                course=row_dict["course_name"],
-                branch=row_dict["branch_name"],
-                register_number=row_dict["register_number"],
-                year_of_passing=row_dict["year_of_passing"],
+                candidate_name=row_dict.get("full_name"),
+                university_name=row_dict.get("university_name"),
+                institute_name=row_dict.get("institute_name"),
+                course=row_dict.get("course_name"),
+                branch=row_dict.get("branch_name"),
+                register_number=row_dict.get("register_number"),
+                year_of_passing=row_dict.get("year_of_passing"),
                 backlog_status=backlog,
                 period_of_study=period,
-                mode_of_education=row_dict["mode_of_education"] or "FULL TIME"
+                mode_of_education=row_dict.get("mode_of_education") or "FULL TIME"
             )
     
     # Otherwise return NOT_VERIFIED

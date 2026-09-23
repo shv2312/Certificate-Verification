@@ -99,9 +99,6 @@ async def _call_verification_engine(db: AsyncSession, candidate: CandidateDetail
         db=db,
         candidate_name=candidate.candidate_name,
         register_number=candidate.register_number,
-        course=candidate.course,
-        branch=candidate.branch,
-        year_of_passing=candidate.year_of_passing
     )
     
     return {
@@ -267,14 +264,14 @@ async def confirm_and_verify(
         engine_result = await _call_verification_engine(db, candidate_obj)
     except NotImplementedError as exc:
         # Reset status so the request is not stuck – but payment is still consumed
-        vr.status = RequestStatus.NOT_VERIFIED
+        vr.status = RequestStatus.ERROR
         if payment_session:
             payment_session.status = RequestStatus.COMPLETED
         await db.flush()
         raise  # Re-raise so the route layer can return 503
 
     # Update final status
-    final_status = engine_result.get("status", RequestStatus.NOT_VERIFIED)
+    final_status = engine_result.get("status", RequestStatus.ERROR)
     vr.status = final_status
     vr.verification_result = json.dumps(engine_result)
     if payment_session:
@@ -304,15 +301,18 @@ async def confirm_and_verify(
             ),
         )
     else:
-        # NOT_VERIFIED – neutral message, no DB values leaked
+        # NAME_MISMATCH or NOT_FOUND – neutral message, no DB values leaked
+        message = "The submitted candidate details could not be verified against the official institutional records."
+        if final_status == RequestStatus.NOT_FOUND:
+             message = "No official record was found for the submitted register number."
+        elif final_status == RequestStatus.NAME_MISMATCH:
+             message = "The submitted candidate name does not match the official record."
+
         return VerificationResultResponse(
             verification_request_id=vr.id,
             display_request_id=vr.display_request_id,
-            status=RequestStatus.NOT_VERIFIED,
-            message=(
-                "The submitted candidate details could not be verified "
-                "against the official institutional records."
-            ),
+            status=final_status,
+            message=message,
         )
 
 
@@ -382,7 +382,7 @@ async def get_verification_report(
     if vr.hr_email.lower() != session_email.lower():
         raise PermissionError("You are not authorized to access this verification request.")
 
-    if vr.status not in (RequestStatus.VERIFIED, RequestStatus.NOT_VERIFIED):
+    if vr.status not in (RequestStatus.VERIFIED, RequestStatus.NAME_MISMATCH, RequestStatus.NOT_FOUND, RequestStatus.ERROR):
         raise ValueError("Verification report is not available for this request state.")
         
     engine_result = {}
@@ -414,12 +414,17 @@ async def get_verification_report(
             ),
         )
     else:
+        message = "The submitted candidate details could not be verified against the official institutional records."
+        if vr.status == RequestStatus.NOT_FOUND:
+             message = "No official record was found for the submitted register number."
+        elif vr.status == RequestStatus.NAME_MISMATCH:
+             message = "The submitted candidate name does not match the official record."
+        elif vr.status == RequestStatus.ERROR:
+             message = "Service is temporarily unavailable. Please try again later or contact support."
+
         return VerificationResultResponse(
             verification_request_id=vr.id,
             display_request_id=vr.display_request_id,
-            status=RequestStatus.NOT_VERIFIED,
-            message=(
-                "The submitted candidate details could not be verified "
-                "against the official institutional records."
-            ),
+            status=vr.status,
+            message=message,
         )

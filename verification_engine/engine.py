@@ -63,8 +63,6 @@ class VerificationRequest:
     request_id: str               # UUID from verification_requests table
     register_number: str
     candidate_name: str
-    branch: str                   # Raw HR input (e.g. "CSE", "Computer Science")
-    year_of_passing: object       # int or string; normalized internally
 
 
 @dataclass
@@ -150,8 +148,8 @@ class VerificationEngine:
         normalized, validation_errors = validate_and_normalize(
             raw_register_number=request.register_number,
             raw_name=request.candidate_name,
-            raw_branch=request.branch,
-            raw_year_of_passing=request.year_of_passing,
+            raw_branch="",
+            raw_year_of_passing=2000,
             alias_map=self._alias_map,
         )
 
@@ -187,8 +185,6 @@ class VerificationEngine:
         result = compare_records(
             normalized_register_number=normalized.register_number,
             normalized_name=normalized.name_normalized,
-            resolved_branch_id=normalized.branch_id,
-            normalized_year=normalized.year_of_passing,
             official_record=official_record,
         )
 

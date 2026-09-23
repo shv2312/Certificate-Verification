@@ -35,7 +35,8 @@ from typing import Optional
 
 class VerificationStatus(str, Enum):
     VERIFIED = "VERIFIED"
-    NOT_VERIFIED = "NOT_VERIFIED"
+    NAME_MISMATCH = "NAME_MISMATCH"
+    NOT_FOUND = "NOT_FOUND"
 
 
 @dataclass
@@ -73,46 +74,29 @@ class MatchResult:
 def compare_records(
     normalized_register_number: str,
     normalized_name: str,
-    resolved_branch_id: int,
-    normalized_year: int,
     official_record: StudentRecord,
 ) -> MatchResult:
     """
     Compare normalized HR input against the official student record.
 
-    All fields must match exactly for a VERIFIED result.
-    Any mismatch → NOT_VERIFIED (no detail about which field failed).
-
-    The register number is the primary lookup key — the official record was
-    fetched using it. We re-confirm it here for defense-in-depth.
+    Only name and register_number are compared (minimal zero-trust payload).
 
     Args:
         normalized_register_number: From normalizer.normalize_register_number()
         normalized_name:            From normalizer.normalize_candidate_name()
-        resolved_branch_id:         From normalizer.resolve_branch_alias()
-        normalized_year:            From normalizer.normalize_year_of_passing()
         official_record:            StudentRecord retrieved from PostgreSQL
 
     Returns:
-        MatchResult with status VERIFIED or NOT_VERIFIED.
+        MatchResult with status VERIFIED, NAME_MISMATCH, or NOT_FOUND.
         student_id is set only on VERIFIED.
     """
-    # Defense-in-depth: confirm register number matches (should always be true
-    # since we fetched by register_number, but we check anyway)
+    # Defense-in-depth: confirm register number matches
     if normalized_register_number != official_record.register_number.strip().upper():
-        return MatchResult(status=VerificationStatus.NOT_VERIFIED)
+        return MatchResult(status=VerificationStatus.NOT_FOUND)
 
     # Name comparison: both sides are normalized to uppercase collapsed form
     if normalized_name != official_record.full_name_normalized:
-        return MatchResult(status=VerificationStatus.NOT_VERIFIED)
-
-    # Branch comparison: exact integer ID match (resolved via alias table)
-    if resolved_branch_id != official_record.branch_id:
-        return MatchResult(status=VerificationStatus.NOT_VERIFIED)
-
-    # Year of passing: exact integer match
-    if normalized_year != official_record.year_of_passing:
-        return MatchResult(status=VerificationStatus.NOT_VERIFIED)
+        return MatchResult(status=VerificationStatus.NAME_MISMATCH)
 
     # All fields match
     return MatchResult(
@@ -123,11 +107,7 @@ def compare_records(
 
 def handle_record_not_found() -> MatchResult:
     """
-    Returns a NOT_VERIFIED result when the register number is not found
+    Returns a NOT_FOUND result when the register number is not found
     in the database.
-
-    This is a separate function to make the intent explicit and avoid
-    accidentally leaking the reason (record not found vs field mismatch).
-    The caller receives the same NOT_VERIFIED result either way.
     """
-    return MatchResult(status=VerificationStatus.NOT_VERIFIED)
+    return MatchResult(status=VerificationStatus.NOT_FOUND)

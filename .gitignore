@@ -88,3 +88,20 @@ logs/
 *.tmp
 *.temp
 scratch/
+
+# ----- Dev / Scratch scripts (never commit) -----
+scratch.py
+update_constraints.py
+test_connection.py
+test_browser_int*.py
+test_tracking.py
+test_flow*.py
+
+# ----- Student data (sensitive, never commit) -----
+Student Data/
+*.xlsx
+*.xls
+*.csv
+
+# ----- Gemini / AI context docs -----
+docs/GEM_PROJECT_MASTER_CONTEXT.md.txt
