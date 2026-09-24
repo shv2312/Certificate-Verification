@@ -13,6 +13,7 @@
   "dependencies": {
     "clsx": "^2.1.1",
     "libphonenumber-js": "^1.13.13",
+    "lucide-react": "^1.48.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-phone-number-input": "^3.4.18",

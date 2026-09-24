@@ -13,7 +13,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-// Removed useNavigate
+import { useLocation } from 'react-router-dom';
 import AdminSidebar from '../../components/AdminSidebar';
 import { apiClient } from '../../api/client';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
@@ -101,7 +101,7 @@ function StatCard({
   color: string;
 }) {
   return (
-    <div className="surface-card p-5 flex items-center gap-4">
+    <div className="surface-card p-5 flex items-center gap-4 transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-md cursor-default">
       <div
         className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
         style={{ background: color + '20' }}
@@ -122,12 +122,33 @@ function StatCard({
   );
 }
 
+const renderCustomLabel = (props: any) => {
+  const { cx, cy, midAngle, outerRadius, percent, name } = props;
+  const RADIAN = Math.PI / 180;
+  const radius = outerRadius + 25;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+  const textAnchor = x > cx ? 'start' : 'end';
+
+  return (
+    <text x={x} y={y} textAnchor={textAnchor} dominantBaseline="central" fontSize={12}>
+      <tspan fill="#475569">{name}</tspan>
+      <tspan fontWeight="bold" fill="#1e293b"> {(percent * 100).toFixed(0)}%</tspan>
+    </text>
+  );
+};
+
 export default function AdminDashboard() {
   const [stats,       setStats]       = useState<AdminStats | null>(null);
   const [requests,    setRequests]    = useState<VerificationRequestRow[]>([]);
   const [loadingReqs,  setLoadingReqs]  = useState(true);
   const [statsError,   setStatsError]   = useState<string | null>(null);
   const [reqsError,    setReqsError]    = useState<string | null>(null);
+
+  const location = useLocation();
+  const currentView = location.pathname.endsWith('/admin') || location.pathname.endsWith('/admin/') 
+    ? 'overview' 
+    : location.pathname.split('/').pop() || 'overview';
 
   const [companySearch, setCompanySearch] = useState('');
   const [volumeFilter, setVolumeFilter] = useState<'all' | '5' | '10' | '25'>('all');
@@ -190,111 +211,20 @@ export default function AdminDashboard() {
     [requests],
   );
 
-  return (
-    <div className="flex flex-col md:flex-row flex-1 bg-gray-50/50">
-      <AdminSidebar />
+  const renderPlaceholder = (title: string, desc: string) => (
+    <div className="surface-card p-16 text-center flex flex-col items-center justify-center animate-slide-up">
+      <div className="w-20 h-20 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center mb-6 shadow-inner">
+        <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+        </svg>
+      </div>
+      <h2 className="text-2xl font-bold text-siet-navy mb-3">{title}</h2>
+      <p className="text-siet-slate max-w-md mx-auto">{desc}</p>
+    </div>
+  );
 
-      <main className="flex-1 w-full animate-slide-up">
-        <div className="p-6 md:p-8 max-w-6xl mx-auto space-y-8">
-
-          {/* Header */}
-          <header>
-            <h1 className="text-2xl sm:text-3xl font-bold text-siet-navy mb-1">
-              Dashboard Overview
-            </h1>
-            <p className="text-siet-slate text-sm">
-              Signed in as <strong className="text-siet-navy">Administrator</strong>
-            </p>
-          </header>
-
-          {/* Stats Cards */}
-          {statsError ? (
-            <div className="p-4 rounded-xl text-sm text-red-700 bg-red-50 border border-red-200">
-              ⚠ Could not load statistics: {statsError}
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-              <StatCard label="Total"       value={stats?.total}       color="#0047AB" icon="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              <StatCard label="Verified"    value={stats?.verified}    color="#16a34a" icon="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              <StatCard label="Pending"     value={stats?.pending}     color="#7c3aed" icon="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              <StatCard label="In Progress" value={stats?.in_progress} color="#2563eb" icon="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              <StatCard label="Not Verified" value={stats?.not_verified} color="#dc2626" icon="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              <StatCard label="Errors"      value={stats?.error}       color="#ea580c" icon="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              <StatCard label="Total HRs Attempted" value={stats?.total_hrs} color="#db2777" icon="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-            </div>
-          )}
-
-          {/* Company Distribution Chart */}
-          {!statsError && stats?.company_distribution && stats.company_distribution.length > 0 && (
-            <section className="surface-card p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-                <h2 className="text-lg font-semibold text-siet-navy">Company Distribution</h2>
-                <div className="flex items-center gap-3">
-                  <select 
-                    value={volumeFilter} 
-                    onChange={(e) => setVolumeFilter(e.target.value as any)}
-                    className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="all">All Companies</option>
-                    <option value="5">Top 5 Most Visited</option>
-                    <option value="10">Top 10 Most Visited</option>
-                    <option value="25">Top 25 Most Visited</option>
-                  </select>
-                  <div className="relative">
-                    <svg
-                      className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"
-                      fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                    <input
-                      type="search"
-                      placeholder="Search companies..."
-                      value={companySearch}
-                      onChange={(e) => setCompanySearch(e.target.value)}
-                      className="form-input pl-9 text-sm py-1.5 w-full sm:w-56"
-                      aria-label="Search companies in chart"
-                    />
-                  </div>
-                </div>
-              </div>
-              <div className="h-[300px] w-full max-w-4xl mx-auto">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={filteredCompanies}
-                      dataKey="count"
-                      nameKey="company_name"
-                      cx="40%"
-                      cy="50%"
-                      outerRadius={100}
-                      innerRadius={60}
-                      label={false}
-                      labelLine={false}
-                    >
-                      {filteredCompanies.map((_, index) => {
-                        const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#8dd1e1', '#a4de6c', '#d0ed57'];
-                        return <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />;
-                      })}
-                    </Pie>
-                    <Tooltip 
-                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
-                    />
-                    <Legend 
-                      layout="vertical" 
-                      verticalAlign="middle" 
-                      align="right" 
-                      wrapperStyle={{ paddingLeft: '20px' }} 
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </section>
-          )}
-
-          {/* Requests table */}
-          <section>
+  const renderVerificationTable = () => (
+    <section className="animate-slide-up">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
               <h2 className="text-lg font-semibold text-siet-navy">
                 Verification Requests
@@ -311,7 +241,7 @@ export default function AdminDashboard() {
                   id="admin-status-filter"
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="form-input text-sm py-1.5"
+                  className="form-input text-sm py-1.5 transition duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                   aria-label="Filter by status"
                 >
                   <option value="ALL">All Statuses</option>
@@ -337,7 +267,7 @@ export default function AdminDashboard() {
                     placeholder="Search ID, company, email…"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="form-input pl-8 text-sm py-1.5 w-full sm:w-56"
+                    className="form-input pl-8 text-sm py-1.5 w-full sm:w-56 transition duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                     aria-label="Search verification requests"
                   />
                 </div>
@@ -408,6 +338,140 @@ export default function AdminDashboard() {
               )}
             </div>
           </section>
+  );
+
+  return (
+    <div className="flex flex-col md:flex-row flex-1 bg-gray-50/50">
+      <AdminSidebar />
+
+      <main className="flex-1 w-full">
+        <div className="p-6 md:p-8 max-w-6xl mx-auto space-y-8">
+
+          {/* Header */}
+          <header>
+            <h1 className="text-2xl sm:text-3xl font-bold text-siet-navy mb-1 capitalize">
+              {currentView === 'overview' ? 'Dashboard Overview' : currentView.replace('-', ' ')}
+            </h1>
+            <p className="text-siet-slate text-sm">
+              Signed in as <strong className="text-siet-navy">Administrator</strong>
+            </p>
+          </header>
+
+          {currentView === 'overview' && (
+            <div className="space-y-8 animate-slide-up">
+              {/* Stats Cards */}
+              {statsError ? (
+                <div className="p-4 rounded-xl text-sm text-red-700 bg-red-50 border border-red-200">
+                  ⚠ Could not load statistics: {statsError}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                  <StatCard label="Total"       value={stats?.total}       color="#0047AB" icon="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  <StatCard label="Verified"    value={stats?.verified}    color="#16a34a" icon="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <StatCard label="Pending"     value={stats?.pending}     color="#7c3aed" icon="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <StatCard label="In Progress" value={stats?.in_progress} color="#2563eb" icon="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  <StatCard label="Not Verified" value={stats?.not_verified} color="#dc2626" icon="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <StatCard label="Errors"      value={stats?.error}       color="#ea580c" icon="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  <StatCard label="Total HRs Attempted" value={stats?.total_hrs} color="#db2777" icon="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </div>
+              )}
+
+              {/* Company Distribution Chart */}
+              {!statsError && stats?.company_distribution && stats.company_distribution.length > 0 && (
+                <section className="surface-card p-6 transition-all duration-300 shadow-sm hover:shadow-md">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                    <h2 className="text-lg font-semibold text-siet-navy">Company Distribution</h2>
+                    <div className="flex items-center gap-3">
+                      <select 
+                        value={volumeFilter} 
+                        onChange={(e) => setVolumeFilter(e.target.value as any)}
+                        className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm bg-white text-slate-700 transition duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                      >
+                        <option value="all">All Companies</option>
+                        <option value="5">Top 5 Most Visited</option>
+                        <option value="10">Top 10 Most Visited</option>
+                        <option value="25">Top 25 Most Visited</option>
+                      </select>
+                      <div className="relative">
+                        <svg
+                          className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"
+                          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <input
+                          type="search"
+                          placeholder="Search companies..."
+                          value={companySearch}
+                          onChange={(e) => setCompanySearch(e.target.value)}
+                          className="form-input pl-9 text-sm py-1.5 w-full sm:w-56 transition duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                          aria-label="Search companies in chart"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="h-[300px] w-full max-w-4xl mx-auto">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={filteredCompanies}
+                          dataKey="count"
+                          nameKey="company_name"
+                          cx="40%"
+                          cy="50%"
+                          outerRadius={80}
+                          innerRadius={50}
+                          label={renderCustomLabel}
+                          labelLine={{
+                            stroke: '#94a3b8',
+                            strokeWidth: 1.5,
+                          }}
+                          isAnimationActive={true}
+                          animationBegin={100}
+                          animationDuration={900}
+                          animationEasing="ease-out"
+                        >
+                          {filteredCompanies.map((_, index) => {
+                            const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#8dd1e1', '#a4de6c', '#d0ed57'];
+                            return <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />;
+                          })}
+                        </Pie>
+                        <Tooltip 
+                          contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', transition: 'all 0.3s ease' }}
+                        />
+                        <Legend 
+                          layout="vertical" 
+                          verticalAlign="middle" 
+                          align="right" 
+                          wrapperStyle={{ paddingLeft: '20px' }} 
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </section>
+              )}
+
+              {renderVerificationTable()}
+            </div>
+          )}
+
+          {currentView === 'verifications' && renderVerificationTable()}
+
+          {currentView === 'students' && renderPlaceholder(
+            'Student Records',
+            'This view will display all students in the database loaded from the batch Excel import. The API endpoint for this is currently pending.'
+          )}
+
+          {currentView === 'audit' && renderPlaceholder(
+            'Audit / Activity Log',
+            'Detailed historical logs for verification attempts, state changes, and admin activities will appear here.'
+          )}
+
+          {currentView === 'system' && renderPlaceholder(
+            'System Overview',
+            'Displays core service health, API ping times, database status, and error rate telemetry.'
+          )}
 
         </div>
       </main>
