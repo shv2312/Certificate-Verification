@@ -28,7 +28,7 @@ ONE-PAYMENT-ONE-CANDIDATE:
 
 import logging
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
@@ -43,6 +43,7 @@ from app.schemas.verification import (
     VerificationHistoryResponse,
 )
 from app.services import verification_service
+from app.services.email_service import send_verification_report_email
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/verification", tags=["Verification"])
@@ -96,6 +97,7 @@ async def bind_candidate(
 )
 async def confirm_verification(
     body: ConfirmVerificationRequest,
+    background_tasks: BackgroundTasks,
     session: dict = Depends(require_role(["HR"])),
     db: AsyncSession = Depends(get_db),
 ) -> APIResponse[VerificationResultResponse]:
@@ -128,6 +130,15 @@ async def confirm_verification(
             "The submitted candidate details could not be verified "
             "against the official institutional records."
         )
+
+    # Enqueue report email as a background task so the response
+    # is returned immediately to the frontend regardless of SMTP latency.
+    background_tasks.add_task(
+        send_verification_report_email,
+        hr_email=session["hr_email"],
+        company_name=session["company_name"],
+        report=data.model_dump(),
+    )
 
     return APIResponse(
         success=True,

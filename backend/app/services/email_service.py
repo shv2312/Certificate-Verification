@@ -122,14 +122,14 @@ async def _send_otp_email(hr_email: str, company_name: str, otp: str) -> None:
         outbox.append((hr_email, company_name, otp))
         _write_local_capture_mailbox(hr_email, company_name, otp)
         logger.warning(
-            "[DEV-ONLY] Simulated OTP email dispatched for %s (%s).",
+            "[DEV-ONLY] Simulated OTP email dispatched for %s (%s). OTP: %s",
             hr_email,
             company_name,
+            otp
         )
         return
 
-    # --- Production path (Sprint 2+) ---
-    # Import here to avoid failing at startup when SMTP is not configured.
+    # --- Production path ---
     try:
         import aiosmtplib
         from email.mime.multipart import MIMEMultipart
@@ -149,6 +149,10 @@ async def _send_otp_email(hr_email: str, company_name: str, otp: str) -> None:
         )
         msg.attach(MIMEText(text_body, "plain"))
 
+        logger.info(
+            "[SMTP] Connecting to %s:%s to dispatch OTP email to %s ...",
+            settings.SMTP_HOST, settings.SMTP_PORT, _mask_email(hr_email),
+        )
         await aiosmtplib.send(
             msg,
             hostname=settings.SMTP_HOST,
@@ -157,7 +161,7 @@ async def _send_otp_email(hr_email: str, company_name: str, otp: str) -> None:
             password=settings.SMTP_PASSWORD,
             start_tls=True,
         )
-        logger.info("OTP email dispatched to %s", _mask_email(hr_email))
+        logger.info("[SMTP] OTP email successfully delivered to %s", _mask_email(hr_email))
     except Exception as exc:
         logger.error("Failed to send OTP email to %s: %s", _mask_email(hr_email), exc)
         raise ValueError("Failed to deliver OTP email. Please verify the address and try again.")
@@ -328,3 +332,168 @@ async def _issue_session_token(db: AsyncSession, company_name: str, hr_email: st
     # Encode as: base payload (url-safe b64) + "." + signature
     encoded_payload = base64.urlsafe_b64encode(payload.encode()).decode()
     return f"{encoded_payload}.{signature}", role
+
+
+# ------------------------------------------------------------------ #
+# Verification Report Email                                            #
+# ------------------------------------------------------------------ #
+
+def _build_report_html(report: dict, company_name: str) -> str:
+    """
+    Render a clean HTML email body summarising a completed verification.
+    Works for both VERIFIED and NOT_VERIFIED outcomes.
+    """
+    status = report.get("status", "UNKNOWN")
+    status_color = "#2e7d32" if status == "VERIFIED" else "#c62828"
+    status_label = "✔ VERIFIED" if status == "VERIFIED" else "✘ NOT VERIFIED"
+
+    def row(label: str, value) -> str:
+        display = value if value not in (None, "", "null") else "—"
+        return (
+            f"<tr>"
+            f"<td style='padding:8px 12px;border-bottom:1px solid #e0e0e0;"
+            f"font-weight:600;color:#37474f;width:40%;'>{label}</td>"
+            f"<td style='padding:8px 12px;border-bottom:1px solid #e0e0e0;"
+            f"color:#212121;'>{display}</td>"
+            f"</tr>"
+        )
+
+    rows_html = ""
+    if status == "VERIFIED":
+        rows_html = "".join([
+            row("Candidate Name",   report.get("candidate_name")),
+            row("Register Number",  report.get("register_number")),
+            row("University",        report.get("university_name")),
+            row("Institute",         report.get("institute_name")),
+            row("Programme",         report.get("course")),
+            row("Branch",            report.get("branch")),
+            row("Year of Passing",   report.get("year_of_passing")),
+            row("Period of Study",   report.get("period_of_study")),
+            row("Mode of Education", report.get("mode_of_education")),
+            row("Backlog Status",    report.get("backlog_status")),
+        ])
+
+    return f"""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head><meta charset="UTF-8"><title>Verification Report</title></head>
+    <body style="font-family:Arial,sans-serif;background:#f5f5f5;margin:0;padding:24px;">
+      <div style="max-width:600px;margin:0 auto;background:#fff;
+                  border-radius:8px;overflow:hidden;
+                  box-shadow:0 2px 8px rgba(0,0,0,.12);">
+
+        <!-- Header -->
+        <div style="background:#1a237e;padding:24px 32px;">
+          <h1 style="margin:0;color:#fff;font-size:18px;">
+            SIET Academic Background Verification Portal
+          </h1>
+          <p style="margin:4px 0 0;color:#c5cae9;font-size:13px;">
+            Sri Shakthi Institute of Engineering and Technology
+          </p>
+        </div>
+
+        <!-- Status banner -->
+        <div style="background:{status_color};padding:16px 32px;">
+          <p style="margin:0;color:#fff;font-size:16px;font-weight:700;">
+            {status_label}
+          </p>
+        </div>
+
+        <!-- Body -->
+        <div style="padding:24px 32px;">
+          <p style="color:#37474f;margin-top:0;">
+            Dear <strong>{company_name}</strong>,<br/>
+            The following is the official result of the academic background
+            verification conducted through the SIET portal.
+          </p>
+
+          {'<table style="width:100%;border-collapse:collapse;margin-top:16px;">' + rows_html + '</table>' if status == 'VERIFIED' else
+           '<p style="color:#c62828;font-weight:600;">The submitted candidate details could not be matched against the official institutional records.</p>'}
+
+          <p style="color:#78909c;font-size:12px;margin-top:24px;">
+            This report was generated automatically. Do not reply to this email.
+            For disputes, contact the institution directly.
+          </p>
+        </div>
+
+        <!-- Footer -->
+        <div style="background:#f5f5f5;padding:16px 32px;border-top:1px solid #e0e0e0;">
+          <p style="margin:0;color:#9e9e9e;font-size:11px;">
+            © Sri Shakthi Institute of Engineering and Technology — Confidential
+          </p>
+        </div>
+      </div>
+    </body>
+    </html>
+    """
+
+
+async def send_verification_report_email(
+    hr_email: str,
+    company_name: str,
+    report: dict,
+) -> None:
+    """
+    Dispatch the completed verification report to the HR's verified email.
+
+    This is designed to be called as a FastAPI BackgroundTask so that
+    SMTP latency never blocks the API response.
+
+    Failures are logged but never re-raised — the verification DB
+    transaction must not be affected by email delivery issues.
+    """
+    try:
+        if settings.DEV_MOCK_OTP:
+            # In dev mode just log it – don't attempt real SMTP
+            logger.warning(
+                "[DEV-ONLY] Verification report email simulated for %s (%s). Status: %s",
+                _mask_email(hr_email),
+                company_name,
+                report.get("status"),
+            )
+            return
+
+        import aiosmtplib
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.text import MIMEText
+
+        status = report.get("status", "UNKNOWN")
+        subject = (
+            "SIET Verification Report – Candidate VERIFIED"
+            if status == "VERIFIED"
+            else "SIET Verification Report – Candidate NOT VERIFIED"
+        )
+
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = f"{settings.SMTP_FROM_NAME} <{settings.SMTP_FROM_EMAIL}>"
+        msg["To"] = hr_email
+
+        html_body = _build_report_html(report, company_name)
+        msg.attach(MIMEText(html_body, "html"))
+
+        logger.info(
+            "[SMTP] Connecting to %s:%s to dispatch verification report to %s (status: %s) ...",
+            settings.SMTP_HOST, settings.SMTP_PORT, _mask_email(hr_email), status,
+        )
+        await aiosmtplib.send(
+            msg,
+            hostname=settings.SMTP_HOST,
+            port=settings.SMTP_PORT,
+            username=settings.SMTP_USERNAME,
+            password=settings.SMTP_PASSWORD,
+            start_tls=True,
+        )
+        logger.info(
+            "[SMTP] Verification report successfully delivered to %s (status: %s)",
+            _mask_email(hr_email),
+            status,
+        )
+    except Exception as exc:
+        # Log the failure but DO NOT raise — report email must never block
+        # or roll back the successful verification database record.
+        logger.error(
+            "Failed to send verification report to %s: %s",
+            _mask_email(hr_email),
+            exc,
+        )

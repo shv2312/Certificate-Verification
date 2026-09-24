@@ -226,8 +226,6 @@ class NormalizedInput:
     """
     register_number: str
     name_normalized: str
-    branch_id: Optional[int]
-    year_of_passing: int
 
 
 @dataclass
@@ -240,9 +238,6 @@ class ValidationError:
 def validate_and_normalize(
     raw_register_number: str,
     raw_name: str,
-    raw_branch: str,
-    raw_year_of_passing,
-    alias_map: dict,
 ) -> tuple:
     """
     Validate and normalize all HR-submitted candidate fields.
@@ -256,8 +251,6 @@ def validate_and_normalize(
     errors = []
     register_number = None
     name_normalized = None
-    branch_id = None
-    year_of_passing = None
 
     # Register number
     try:
@@ -271,31 +264,10 @@ def validate_and_normalize(
     except ValueError as e:
         errors.append(ValidationError(field="name", message=str(e)))
 
-    # Year of passing
-    try:
-        year_of_passing = normalize_year_of_passing(raw_year_of_passing)
-    except ValueError as e:
-        errors.append(ValidationError(field="year_of_passing", message=str(e)))
-
-    # Branch alias resolution
-    alias_result = resolve_branch_alias(raw_branch, alias_map)
-    if alias_result.resolved:
-        branch_id = alias_result.branch_id
-    else:
-        errors.append(ValidationError(
-            field="branch",
-            message=(
-                f"Branch '{raw_branch}' could not be mapped to a recognized "
-                f"branch. Please use a standard branch name or abbreviation."
-            ),
-        ))
-
     if errors:
         return None, errors
 
     return NormalizedInput(
         register_number=register_number,
         name_normalized=name_normalized,
-        branch_id=branch_id,
-        year_of_passing=year_of_passing,
     ), None

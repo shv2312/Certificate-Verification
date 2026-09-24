@@ -148,9 +148,6 @@ class VerificationEngine:
         normalized, validation_errors = validate_and_normalize(
             raw_register_number=request.register_number,
             raw_name=request.candidate_name,
-            raw_branch="",
-            raw_year_of_passing=2000,
-            alias_map=self._alias_map,
         )
 
         if validation_errors:

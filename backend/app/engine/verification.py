@@ -1,11 +1,9 @@
 import logging
-import asyncio
 from dataclasses import dataclass
 from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
-from app.config import get_settings
 from verification_engine.engine import VerificationEngine, VerificationRequest as EngineRequest
 from verification_engine.lookup import load_alias_map, lookup_student_by_register_number
 
@@ -68,8 +66,8 @@ async def verify_candidate(
                 s.period_of_study_end, 
                 s.mode_of_education, 
                 s.has_arrear,
-                b.name AS branch_name,
-                p.name AS course_name
+                b.full_name AS branch_name,
+                p.full_name AS course_name
             FROM students s
             JOIN branches b ON s.branch_id = b.id
             JOIN programmes p ON b.programme_id = p.id
@@ -107,7 +105,6 @@ async def verify_candidate(
             )
     
     # Otherwise return NOT_VERIFIED
-    # Note: NOT_VERIFIED does not expose any database fields, respecting the privacy rule.
     return VerificationResult(
-        status="NOT_VERIFIED"
+        status=outcome.status
     )
