@@ -77,6 +77,7 @@ from app.schemas.verification import (
     ConfirmVerificationRequest,
     VerificationResultResponse,
     VerificationStatusResponse,
+    PublicVerificationStatusResponse,
 )
 from app.services.payment_service import RequestStatus, get_session_by_request_id
 
@@ -428,3 +429,103 @@ async def get_verification_report(
             status=vr.status,
             message=message,
         )
+
+
+# ------------------------------------------------------------------ #
+# Public status (no auth, masked PII)                                 #
+# ------------------------------------------------------------------ #
+_STATUS_LABELS: dict[str, str] = {
+    "PAID_UNUSED":               "Payment Received — Pending Submission",
+    "CANDIDATE_BOUND":           "Details Submitted — Awaiting Confirmation",
+    "VERIFICATION_IN_PROGRESS":  "Verification In Progress",
+    "VERIFIED":                  "Verified ✔",
+    "NOT_VERIFIED":              "Could Not Be Verified",
+    "NAME_MISMATCH":             "Could Not Be Verified",
+    "NOT_FOUND":                 "Could Not Be Verified",
+    "ERROR":                     "Processing Error",
+}
+
+
+def _mask_name(full_name: Optional[str]) -> Optional[str]:
+    """
+    Mask a candidate name for public display.
+    Each word is reduced to its first letter followed by '***'.
+    Example: 'Arjun Ramaswamy' -> 'A*** R***'
+    """
+    if not full_name:
+        return None
+    words = full_name.strip().split()
+    return " ".join(w[0].upper() + "***" for w in words if w)
+
+
+async def get_public_verification_status(
+    db: AsyncSession,
+    request_id: str,
+) -> PublicVerificationStatusResponse:
+    """
+    Return masked verification status for public (unauthenticated) lookup.
+
+    Accepts both:
+      - Internal UUID (vr.id)              e.g. "a3f9..."
+      - Human-readable display ID (vr.display_request_id)  e.g. "SIET-2024-0001"
+
+    PII guarantees:
+      - Raw UUID primary key is NEVER included in the response.
+      - Candidate name is masked: first letter of each word + '***'.
+      - HR email is OMITTED entirely.
+      - No SQL error details are leaked (generic 404 on not found).
+    """
+    from sqlalchemy import or_
+    from fastapi import HTTPException, status as http_status
+
+    stmt = select(VerificationRequest).where(
+        or_(
+            VerificationRequest.id == request_id,
+            VerificationRequest.display_request_id == request_id,
+        )
+    )
+    result = await db.execute(stmt)
+    vr = result.scalar_one_or_none()
+
+    if not vr:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND,
+            detail={
+                "success": False,
+                "message": "Verification request not found. Please check the Request ID and try again.",
+                "error_code": "REQUEST_NOT_FOUND",
+            },
+        )
+
+    # Extract candidate name from stored JSON if available
+    candidate_name_raw: Optional[str] = None
+    if vr.candidate_data:
+        try:
+            cd = json.loads(vr.candidate_data)
+            candidate_name_raw = cd.get("candidate_name")
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    # If verification result has a name (from engine), prefer it
+    if vr.verification_result:
+        try:
+            vr_data = json.loads(vr.verification_result)
+            engine_name = vr_data.get("candidate_name")
+            if engine_name:
+                candidate_name_raw = engine_name
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    status_label = _STATUS_LABELS.get(vr.status, vr.status.replace("_", " ").title())
+
+    return PublicVerificationStatusResponse(
+        display_request_id=vr.display_request_id,
+        status=vr.status,
+        status_label=status_label,
+        company_name=vr.company_name,
+        candidate_name_masked=_mask_name(candidate_name_raw),
+        verification_reference_url=(
+            f"{settings.VERIFICATION_BASE_URL}/status/{vr.display_request_id}"
+            if vr.status == "VERIFIED" else None
+        ),
+    )

@@ -85,6 +85,18 @@ class Settings(BaseSettings):
     OTP_RESEND_COOLDOWN_SECONDS: int = 60
 
     # ------------------------------------------------------------------ #
+    # Admin Authentication                                                 #
+    # ------------------------------------------------------------------ #
+    # Username for the admin login endpoint.
+    ADMIN_USERNAME: str = "admin"
+    # Secret key used to HMAC the admin password for constant-time comparison.
+    # Must be rotated before production deployment.
+    ADMIN_HMAC_KEY: str = "SIET_ADMIN_HMAC_KEY_2024"
+    # HMAC-SHA256(ADMIN_HMAC_KEY, admin_password) hex digest.
+    # Regenerate: python -c "import hashlib,hmac; print(hmac.new(b'KEY',b'PASS',hashlib.sha256).hexdigest())"
+    ADMIN_PASSWORD_HASH: str = ""
+
+    # ------------------------------------------------------------------ #
     # Payment Gateway                                                      #
     # ------------------------------------------------------------------ #
     PAYMENT_GATEWAY_KEY_ID: str = ""

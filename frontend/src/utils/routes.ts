@@ -16,6 +16,7 @@ export const ROUTES = {
   RESULT:      '/result',
   HELP:        '/help',
   STATUS:      '/status',
+  ADMIN:       '/admin',
 } as const;
 
 export type AppRoute = typeof ROUTES[keyof typeof ROUTES];

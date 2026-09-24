@@ -218,3 +218,35 @@ class VerificationHistoryResponse(BaseModel):
     Returns a list of all verification requests owned by the authenticated HR user.
     """
     requests: list[VerificationStatusResponse]
+
+
+# ------------------------------------------------------------------ #
+# GET /api/v1/verification/public-status/{request_id}                 #
+# ------------------------------------------------------------------ #
+class PublicVerificationStatusResponse(BaseModel):
+    """
+    Public (unauthenticated) status response.
+
+    PII MASKING RULES (strictly enforced):
+      - display_request_id only — raw UUID primary key is NEVER returned.
+      - candidate_name_masked:  First letter + '***'  e.g. 'A***' or 'A*** R***'
+      - company_name:           Returned as-is (not PII).
+      - hr_email:               OMITTED entirely from this response.
+      - verification_reference_url: Optional public badge URL.
+
+    STATUS VALUES:
+      PAID_UNUSED          → "Payment Received — Pending Submission"
+      CANDIDATE_BOUND      → "Details Submitted — Awaiting Confirmation"
+      VERIFICATION_IN_PROGRESS → "Verification In Progress"
+      VERIFIED             → "Verified"
+      NOT_VERIFIED         → "Could Not Be Verified"
+      NAME_MISMATCH        → "Could Not Be Verified"
+      NOT_FOUND            → "Could Not Be Verified"
+      ERROR                → "Processing Error"
+    """
+    display_request_id: str
+    status: str
+    status_label: str  # Human-readable label safe for public display
+    company_name: str
+    candidate_name_masked: Optional[str] = None
+    verification_reference_url: Optional[str] = None

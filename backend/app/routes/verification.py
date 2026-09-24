@@ -11,9 +11,12 @@ Endpoints:
         → HR confirms details; triggers the verification engine
 
     GET  /api/v1/verification/{request_id}/status
-        → Get current status of a verification request
+        → Get current status (auth-protected, HR-only)
 
-All endpoints require a valid session token.
+    GET  /api/v1/verification/public-status/{request_id}
+        → Public status lookup — masked PII, no auth required
+
+All endpoints except public-status require a valid session token.
 
 AUTHORIZATION:
     Every endpoint verifies that the requesting session owns the
@@ -41,6 +44,7 @@ from app.schemas.verification import (
     VerificationResultResponse,
     VerificationStatusResponse,
     VerificationHistoryResponse,
+    PublicVerificationStatusResponse,
 )
 from app.services import verification_service
 from app.services.email_service import send_verification_report_email
@@ -224,5 +228,39 @@ async def get_verification_report_route(
     return APIResponse(
         success=True,
         message=data.message,
+        data=data,
+    )
+
+
+@router.get(
+    "/public-status/{request_id}",
+    response_model=APIResponse[PublicVerificationStatusResponse],
+    summary="[Public] Get masked verification status",
+    description=(
+        "Returns the current status of a verification request with all PII masked. "
+        "No authentication required. Safe to call from any client. "
+        "Does NOT expose HR email, candidate full name, or any database primary keys."
+    ),
+)
+async def get_public_verification_status(
+    request_id: str,
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse[PublicVerificationStatusResponse]:
+    """
+    PUBLIC endpoint — no Bearer token required.
+
+    PII masking rules applied:
+        candidate_name: first letter + '***' (e.g., 'Arjun' → 'A***')
+        company_name:   returned as-is (company name is not PII)
+        hr_email:       NOT included in response
+        request ID:     only display_request_id is returned, never the raw UUID
+    """
+    data = await verification_service.get_public_verification_status(
+        db=db,
+        request_id=request_id,
+    )
+    return APIResponse(
+        success=True,
+        message=f"Verification status: {data.status}",
         data=data,
     )
