@@ -72,6 +72,11 @@ class VerificationRequestSummary(BaseModel):
     created_at: Any
 
 
+class CompanyDistribution(BaseModel):
+    company_name: str
+    count: int
+
+
 class AdminStats(BaseModel):
     total: int
     verified: int
@@ -79,6 +84,8 @@ class AdminStats(BaseModel):
     pending: int
     in_progress: int
     error: int
+    total_hrs: Optional[int] = None
+    company_distribution: Optional[List[CompanyDistribution]] = None
 
 
 # ------------------------------------------------------------------ #
@@ -275,6 +282,19 @@ async def get_admin_stats(
     error        = await _count("ERROR")
     pending      = total - verified - not_verified - in_progress - error
 
+    total_hrs_q = await db.execute(select(func.count(func.distinct(VerificationRequest.hr_email))))
+    total_hrs = total_hrs_q.scalar_one() or 0
+
+    dist_q = await db.execute(
+        select(VerificationRequest.company_name, func.count(VerificationRequest.id))
+        .group_by(VerificationRequest.company_name)
+        .order_by(func.count(VerificationRequest.id).desc())
+    )
+    dist_rows = dist_q.fetchall()
+    company_distribution = [
+        CompanyDistribution(company_name=row[0], count=row[1]) for row in dist_rows
+    ]
+
     return APIResponse(
         success=True,
         message="Statistics retrieved.",
@@ -285,5 +305,7 @@ async def get_admin_stats(
             pending=pending,
             in_progress=in_progress,
             error=error,
+            total_hrs=total_hrs,
+            company_distribution=company_distribution,
         ),
     )

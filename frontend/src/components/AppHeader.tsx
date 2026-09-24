@@ -19,7 +19,6 @@
 import { useState, useEffect } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { ROUTES } from '../utils/routes';
-import { useAuth } from '../context/AuthContext';
 import AdminLoginModal from './AdminLoginModal';
 import sietLogo from '../assets/siet-logo.jpg';
 
@@ -43,9 +42,20 @@ export default function AppHeader() {
 
   const location = useLocation();
   const navigate  = useNavigate();
-  const { role, isAuthenticated, clearAuth } = useAuth();
 
-  const isAdmin = isAuthenticated && role === 'admin';
+  const [isAdmin, setIsAdmin] = useState(() => Boolean(localStorage.getItem('siet_admin_token')));
+
+  // Listen for admin login/logout events
+  useEffect(() => {
+    const handleLogin = () => setIsAdmin(true);
+    const handleLogout = () => setIsAdmin(false);
+    window.addEventListener('siet:admin-login-success', handleLogin);
+    window.addEventListener('siet:admin-logout', handleLogout);
+    return () => {
+      window.removeEventListener('siet:admin-login-success', handleLogin);
+      window.removeEventListener('siet:admin-logout', handleLogout);
+    };
+  }, []);
 
   // Listen for custom event from ProtectedRoute (unauthenticated /admin access)
   useEffect(() => {
@@ -75,7 +85,8 @@ export default function AppHeader() {
   }
 
   function handleAdminLogout() {
-    clearAuth();
+    localStorage.removeItem('siet_admin_token');
+    window.dispatchEvent(new Event('siet:admin-logout'));
     navigate(ROUTES.HOME);
   }
 

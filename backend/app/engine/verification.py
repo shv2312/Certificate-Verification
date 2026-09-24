@@ -4,6 +4,13 @@ from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
+import sys
+import os
+from pathlib import Path
+
+# Add the project root to sys.path to resolve verification_engine
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent.parent))
+
 from verification_engine.engine import VerificationEngine, VerificationRequest as EngineRequest
 from verification_engine.lookup import load_alias_map, lookup_student_by_register_number
 

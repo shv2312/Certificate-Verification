@@ -10,9 +10,8 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import type { FormEvent, KeyboardEvent } from 'react';
+import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
 import { apiClient } from '../api/client';
 
 interface AdminLoginModalProps {
@@ -38,7 +37,6 @@ export default function AdminLoginModal({ isOpen, onClose }: AdminLoginModalProp
 
   const usernameRef = useRef<HTMLInputElement>(null);
   const navigate    = useNavigate();
-  const { setRole } = useAuth();
 
   // Auto-focus username field when modal opens
   useEffect(() => {
@@ -77,7 +75,8 @@ export default function AdminLoginModal({ isOpen, onClose }: AdminLoginModalProp
       });
 
       if (resp.success && resp.data?.session_token) {
-        setRole('admin', resp.data.session_token);
+        localStorage.setItem('siet_admin_token', resp.data.session_token);
+        window.dispatchEvent(new Event('siet:admin-login-success'));
         onClose();
         navigate('/admin');
       } else {

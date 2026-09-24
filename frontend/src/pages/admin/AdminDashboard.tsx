@@ -13,10 +13,10 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+// Removed useNavigate
 import AdminSidebar from '../../components/AdminSidebar';
 import { apiClient } from '../../api/client';
-import { useAuth } from '../../context/AuthContext';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -27,6 +27,8 @@ interface AdminStats {
   pending: number;
   in_progress: number;
   error: number;
+  total_hrs?: number;
+  company_distribution?: { company_name: string; count: number }[];
 }
 
 interface VerificationRequestRow {
@@ -120,18 +122,15 @@ function StatCard({
   );
 }
 
-// ── Main Component ─────────────────────────────────────────────────────────────
-
 export default function AdminDashboard() {
-  const { hrEmail } = useAuth();
-  const navigate = useNavigate();
-
   const [stats,       setStats]       = useState<AdminStats | null>(null);
   const [requests,    setRequests]    = useState<VerificationRequestRow[]>([]);
-  const [loadingStats, setLoadingStats] = useState(true);
   const [loadingReqs,  setLoadingReqs]  = useState(true);
   const [statsError,   setStatsError]   = useState<string | null>(null);
   const [reqsError,    setReqsError]    = useState<string | null>(null);
+
+  const [companySearch, setCompanySearch] = useState('');
+  const [volumeFilter, setVolumeFilter] = useState<'all' | '5' | '10' | '25'>('all');
 
   // Filtering + search
   const [search,       setSearch]       = useState('');
@@ -141,8 +140,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     apiClient<StatsResponse>('/api/v1/admin/stats')
       .then((r) => { if (r.success) setStats(r.data); })
-      .catch((e) => setStatsError(e instanceof Error ? e.message : 'Failed to load stats.'))
-      .finally(() => setLoadingStats(false));
+      .catch((e) => setStatsError(e instanceof Error ? e.message : 'Failed to load stats.'));
   }, []);
 
   // Fetch requests on mount
@@ -152,6 +150,21 @@ export default function AdminDashboard() {
       .catch((e) => setReqsError(e instanceof Error ? e.message : 'Failed to load requests.'))
       .finally(() => setLoadingReqs(false));
   }, []);
+
+  const filteredCompanies = useMemo(() => {
+    if (!stats?.company_distribution) return [];
+    let comps = stats.company_distribution;
+
+    if (volumeFilter !== 'all') {
+      comps = comps.slice(0, Number(volumeFilter));
+    }
+
+    if (companySearch.trim()) {
+      const q = companySearch.trim().toLowerCase();
+      comps = comps.filter((c) => c.company_name.toLowerCase().includes(q));
+    }
+    return comps;
+  }, [stats?.company_distribution, companySearch, volumeFilter]);
 
   // Client-side filtering
   const filtered = useMemo(() => {
@@ -190,7 +203,7 @@ export default function AdminDashboard() {
               Dashboard Overview
             </h1>
             <p className="text-siet-slate text-sm">
-              Signed in as <strong className="text-siet-navy">{hrEmail ?? 'Admin'}</strong>
+              Signed in as <strong className="text-siet-navy">Administrator</strong>
             </p>
           </header>
 
@@ -207,7 +220,77 @@ export default function AdminDashboard() {
               <StatCard label="In Progress" value={stats?.in_progress} color="#2563eb" icon="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               <StatCard label="Not Verified" value={stats?.not_verified} color="#dc2626" icon="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
               <StatCard label="Errors"      value={stats?.error}       color="#ea580c" icon="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              <StatCard label="Total HRs Attempted" value={stats?.total_hrs} color="#db2777" icon="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
             </div>
+          )}
+
+          {/* Company Distribution Chart */}
+          {!statsError && stats?.company_distribution && stats.company_distribution.length > 0 && (
+            <section className="surface-card p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                <h2 className="text-lg font-semibold text-siet-navy">Company Distribution</h2>
+                <div className="flex items-center gap-3">
+                  <select 
+                    value={volumeFilter} 
+                    onChange={(e) => setVolumeFilter(e.target.value as any)}
+                    className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="all">All Companies</option>
+                    <option value="5">Top 5 Most Visited</option>
+                    <option value="10">Top 10 Most Visited</option>
+                    <option value="25">Top 25 Most Visited</option>
+                  </select>
+                  <div className="relative">
+                    <svg
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"
+                      fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <input
+                      type="search"
+                      placeholder="Search companies..."
+                      value={companySearch}
+                      onChange={(e) => setCompanySearch(e.target.value)}
+                      className="form-input pl-9 text-sm py-1.5 w-full sm:w-56"
+                      aria-label="Search companies in chart"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="h-[300px] w-full max-w-4xl mx-auto">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={filteredCompanies}
+                      dataKey="count"
+                      nameKey="company_name"
+                      cx="40%"
+                      cy="50%"
+                      outerRadius={100}
+                      innerRadius={60}
+                      label={false}
+                      labelLine={false}
+                    >
+                      {filteredCompanies.map((_, index) => {
+                        const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#8dd1e1', '#a4de6c', '#d0ed57'];
+                        return <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />;
+                      })}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}
+                    />
+                    <Legend 
+                      layout="vertical" 
+                      verticalAlign="middle" 
+                      align="right" 
+                      wrapperStyle={{ paddingLeft: '20px' }} 
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </section>
           )}
 
           {/* Requests table */}

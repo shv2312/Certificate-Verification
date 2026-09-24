@@ -11,8 +11,8 @@
  *   - Wrong role: redirected to /unauthorized.
  */
 
-import { useEffect } from 'react';
-import { Navigate, Outlet, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import type { UserRole } from '../context/AuthContext';
 import { ROUTES } from '../utils/routes';
@@ -66,13 +66,29 @@ function AdminAccessPrompt() {
 export default function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
   const { isAuthenticated, role } = useAuth();
   const isAdminRoute = allowedRoles.includes('admin');
+  const [hasAdminToken, setHasAdminToken] = useState(() => Boolean(localStorage.getItem('siet_admin_token')));
 
-  // 1. Not authenticated at all
-  if (!isAuthenticated) {
-    if (isAdminRoute) {
-      // Show the admin prompt page (fires modal event) instead of hard redirect
+  useEffect(() => {
+    if (!isAdminRoute) return;
+    const handleLogin = () => setHasAdminToken(true);
+    const handleLogout = () => setHasAdminToken(false);
+    window.addEventListener('siet:admin-login-success', handleLogin);
+    window.addEventListener('siet:admin-logout', handleLogout);
+    return () => {
+      window.removeEventListener('siet:admin-login-success', handleLogin);
+      window.removeEventListener('siet:admin-logout', handleLogout);
+    };
+  }, [isAdminRoute]);
+
+  if (isAdminRoute) {
+    if (!hasAdminToken) {
       return <AdminAccessPrompt />;
     }
+    return <Outlet />;
+  }
+
+  // 1. Not authenticated at all (HR routes)
+  if (!isAuthenticated) {
     // For HR routes, redirect to home
     return <Navigate to={ROUTES.HOME} replace />;
   }

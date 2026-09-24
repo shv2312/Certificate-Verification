@@ -20,15 +20,22 @@ export async function apiClient<T>(
   headers.set('Content-Type', 'application/json');
   
   // Add auth token injection
-  const authStateStr = sessionStorage.getItem('siet_auth_state');
-  if (authStateStr) {
-    try {
-      const authState = JSON.parse(authStateStr);
-      if (authState.sessionToken) {
-        headers.set('Authorization', `Bearer ${authState.sessionToken}`);
+  if (endpoint.startsWith('/api/v1/admin') && endpoint !== '/api/v1/admin/login') {
+    const adminToken = localStorage.getItem('siet_admin_token');
+    if (adminToken) {
+      headers.set('Authorization', `Bearer ${adminToken}`);
+    }
+  } else {
+    const authStateStr = sessionStorage.getItem('siet_auth_state');
+    if (authStateStr) {
+      try {
+        const authState = JSON.parse(authStateStr);
+        if (authState.sessionToken) {
+          headers.set('Authorization', `Bearer ${authState.sessionToken}`);
+        }
+      } catch {
+        // Ignore parse errors
       }
-    } catch {
-      // Ignore parse errors
     }
   }
 

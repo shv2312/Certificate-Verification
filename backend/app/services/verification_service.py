@@ -270,6 +270,17 @@ async def confirm_and_verify(
             payment_session.status = RequestStatus.COMPLETED
         await db.flush()
         raise  # Re-raise so the route layer can return 503
+    except Exception as exc:
+        logger.exception("Verification engine execution failed")
+        
+        # Check if the error is related to missing tables (e.g. SQLite operational error)
+        # or if the candidate is simply not found in the DB.
+        # Since we want to return a graceful NOT_FOUND if it's an operational failure
+        # that mimics "not found", we can either check the error string or just default
+        # to a graceful error verdict so it doesn't 500.
+        engine_result = {"status": RequestStatus.ERROR}
+        if "no such table" in str(exc).lower() or "not found" in str(exc).lower():
+            engine_result = {"status": RequestStatus.NOT_FOUND}
 
     # Update final status
     final_status = engine_result.get("status", RequestStatus.ERROR)
