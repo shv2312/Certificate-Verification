@@ -16,7 +16,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import AdminSidebar from '../../components/AdminSidebar';
 import { apiClient } from '../../api/client';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Sector } from 'recharts';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -122,8 +122,10 @@ function StatCard({
   );
 }
 
-const renderCustomLabel = (props: any) => {
-  const { cx, cy, midAngle, outerRadius, percent, name } = props;
+const CustomLabel = (props: any) => {
+  const { cx, cy, midAngle, outerRadius, percent, name, index, activeIndex } = props;
+  if (index === activeIndex) return null;
+
   const RADIAN = Math.PI / 180;
   const radius = outerRadius + 25;
   const x = cx + radius * Math.cos(-midAngle * RADIAN);
@@ -138,7 +140,55 @@ const renderCustomLabel = (props: any) => {
   );
 };
 
+const CustomLabelLine = (props: any) => {
+  const { points, index, activeIndex } = props;
+  if (index === activeIndex || !points) return null;
+  const pointString = points.map((p: any) => `${p.x},${p.y}`).join(' ');
+  return <polyline points={pointString} fill="none" stroke="#94a3b8" strokeWidth={1.5} />;
+};
+
+const ActiveShape = (props: any) => {
+  const { cx, cy, midAngle, innerRadius, outerRadius, startAngle, endAngle, percent, name, fill } = props;
+  const RADIAN = Math.PI / 180;
+  
+  const popupOuterRadius = outerRadius + 12;
+  const popupInnerRadius = innerRadius + 2;
+
+  const cos = Math.cos(-midAngle * RADIAN);
+  const sin = Math.sin(-midAngle * RADIAN);
+  const sx = cx + popupOuterRadius * cos;
+  const sy = cy + popupOuterRadius * sin;
+  const mx = cx + (popupOuterRadius + 15) * cos;
+  const my = cy + (popupOuterRadius + 15) * sin;
+  const ex = mx + (cos >= 0 ? 1 : -1) * 15;
+  const ey = my;
+  const textAnchor = cos >= 0 ? 'start' : 'end';
+
+  return (
+    <g>
+      <Sector
+        cx={cx}
+        cy={cy}
+        innerRadius={popupInnerRadius}
+        outerRadius={popupOuterRadius}
+        startAngle={startAngle}
+        endAngle={endAngle}
+        fill={fill}
+        style={{ filter: 'drop-shadow(0px 4px 6px rgba(0,0,0,0.15))' }}
+      />
+      <polyline points={`${sx},${sy} ${mx},${my} ${ex},${ey}`} fill="none" stroke={fill} strokeWidth={2} />
+      <text x={ex + (cos >= 0 ? 1 : -1) * 8} y={ey - 8} textAnchor={textAnchor} dominantBaseline="central" fontSize={14} fontWeight="bold" fill="#0f172a">
+        {name}
+      </text>
+      <text x={ex + (cos >= 0 ? 1 : -1) * 8} y={ey + 8} textAnchor={textAnchor} dominantBaseline="central" fontSize={13} fontWeight="bold" fill={fill}>
+        {(percent * 100).toFixed(1)}%
+      </text>
+    </g>
+  );
+};
+
 export default function AdminDashboard() {
+  const [activeIndex, setActiveIndex] = useState(-1);
   const [stats,       setStats]       = useState<AdminStats | null>(null);
   const [requests,    setRequests]    = useState<VerificationRequestRow[]>([]);
   const [loadingReqs,  setLoadingReqs]  = useState(true);
@@ -422,11 +472,13 @@ export default function AdminDashboard() {
                           cy="50%"
                           outerRadius={80}
                           innerRadius={50}
-                          label={renderCustomLabel}
-                          labelLine={{
-                            stroke: '#94a3b8',
-                            strokeWidth: 1.5,
-                          }}
+                          // @ts-expect-error Recharts 3.x types might be missing activeIndex on Pie
+                          activeIndex={activeIndex}
+                          activeShape={<ActiveShape />}
+                          onMouseEnter={(_, index) => setActiveIndex(index)}
+                          onMouseLeave={() => setActiveIndex(-1)}
+                          label={<CustomLabel activeIndex={activeIndex} />}
+                          labelLine={<CustomLabelLine activeIndex={activeIndex} />}
                           isAnimationActive={true}
                           animationBegin={100}
                           animationDuration={900}
@@ -437,9 +489,7 @@ export default function AdminDashboard() {
                             return <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />;
                           })}
                         </Pie>
-                        <Tooltip 
-                          contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', transition: 'all 0.3s ease' }}
-                        />
+                        {/* Tooltip removed to prevent duplicate text with ActiveShape callout */}
                         <Legend 
                           layout="vertical" 
                           verticalAlign="middle" 
