@@ -85,8 +85,8 @@ export default function AdminSidebar() {
   };
 
   return (
-    <aside className="w-full md:w-64 flex-shrink-0 bg-white border-r border-siet-border flex flex-col h-full min-h-[calc(100vh-4rem)]">
-      <div className="p-4 border-b border-siet-border bg-siet-silver">
+    <aside className="sticky top-0 md:top-16 h-[calc(100vh-4rem)] flex flex-col w-full md:w-64 shrink-0 bg-white border-r border-siet-border z-10">
+      <div className="p-4 border-b border-siet-border bg-siet-silver shrink-0">
         <h2 className="text-sm font-bold text-siet-navy uppercase tracking-wider">
           Admin Portal
         </h2>
@@ -95,7 +95,7 @@ export default function AdminSidebar() {
         </p>
       </div>
 
-      <nav className="flex-1 p-3 space-y-1" aria-label="Admin Navigation">
+      <nav className="flex-1 p-3 space-y-1 overflow-y-auto" aria-label="Admin Navigation">
         {ADMIN_LINKS.map((link) => (
           <NavLink
             key={link.to}
@@ -116,7 +116,7 @@ export default function AdminSidebar() {
         ))}
       </nav>
 
-      <div className="p-4 border-t border-siet-border">
+      <div className="p-4 border-t border-siet-border shrink-0 bg-white">
         <button
           onClick={handleSignOut}
           className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors"

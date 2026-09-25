@@ -347,48 +347,64 @@ def _build_report_html(report: dict, company_name: str) -> str:
     status_color = "#2e7d32" if status == "VERIFIED" else "#c62828"
     status_label = "✔ VERIFIED" if status == "VERIFIED" else "✘ NOT VERIFIED"
 
-    def row(label: str, value) -> str:
-        display = value if value not in (None, "", "null") else "—"
+    def row(label: str, value, verify_val="Y") -> str:
+        display = value if value not in (None, "", "null") else "-"
         return (
             f"<tr>"
-            f"<td style='padding:8px 12px;border-bottom:1px solid #e0e0e0;"
-            f"font-weight:600;color:#37474f;width:40%;'>{label}</td>"
-            f"<td style='padding:8px 12px;border-bottom:1px solid #e0e0e0;"
-            f"color:#212121;'>{display}</td>"
+            f"<td style='padding:8px 12px;border-bottom:1px solid #e0e0e0;font-weight:600;color:#37474f;'>{label}</td>"
+            f"<td style='padding:8px 12px;border-bottom:1px solid #e0e0e0;color:#212121;'>{display}</td>"
+            f"<td style='padding:8px 12px;border-bottom:1px solid #e0e0e0;text-align:center;font-weight:bold;color:#2e7d32;'>{verify_val}</td>"
+            f"<td style='padding:8px 12px;border-bottom:1px solid #e0e0e0;text-align:center;'>-</td>"
             f"</tr>"
         )
 
     rows_html = ""
     if status == "VERIFIED":
+        backlog_val = report.get("backlog_status", "No Backlogs")
+        verify_backlog = "NO" if "No" in str(backlog_val) else "YES"
+        
         rows_html = "".join([
-            row("Candidate Name",   report.get("candidate_name")),
-            row("Register Number",  report.get("register_number")),
-            row("University",        report.get("university_name")),
-            row("Institute",         report.get("institute_name")),
-            row("Programme",         report.get("course")),
-            row("Branch",            report.get("branch")),
-            row("Year of Passing",   report.get("year_of_passing")),
-            row("Period of Study",   report.get("period_of_study")),
-            row("Mode of Education", report.get("mode_of_education")),
-            row("Backlog Status",    report.get("backlog_status")),
+            row("Candidate Name", report.get("candidate_name")),
+            row("Institute Name", "Sri Shakthi Institute of Engineering and Technology, Coimbatore"),
+            row("University Name", "Anna University, Chennai"),
+            row("Course Name", report.get("course", "Bachelor of Engineering")),
+            row("Specialization", report.get("branch")),
+            row("Roll No/ Reg. No", report.get("register_number")),
+            row("Year of Passing", report.get("year_of_passing")),
+            row("Backlog Status", "Confirmed", verify_backlog),
+            row("Date Attend / Period of Study", report.get("period_of_study")),
+            row("Mode Of Education", "Regular"),
         ])
+        
+        table_html = (
+            "<table style='width:100%;border-collapse:collapse;margin-top:16px;font-size:13px;'>"
+            "<thead><tr style='background:#f1f5f9;'>"
+            "<th style='padding:10px 12px;text-align:left;border-bottom:2px solid #cbd5e1;'>Details</th>"
+            "<th style='padding:10px 12px;text-align:left;border-bottom:2px solid #cbd5e1;'>Candidate's Input</th>"
+            "<th style='padding:10px 12px;text-align:center;border-bottom:2px solid #cbd5e1;'>Verification (Y/N)</th>"
+            "<th style='padding:10px 12px;text-align:center;border-bottom:2px solid #cbd5e1;'>Comments</th>"
+            "</tr></thead>"
+            "<tbody>" + rows_html + "</tbody></table>"
+        )
+    else:
+        table_html = '<p style="color:#c62828;font-weight:600;">The submitted candidate details could not be matched against the official institutional records.</p>'
 
     return f"""
     <!DOCTYPE html>
     <html lang="en">
     <head><meta charset="UTF-8"><title>Verification Report</title></head>
     <body style="font-family:Arial,sans-serif;background:#f5f5f5;margin:0;padding:24px;">
-      <div style="max-width:600px;margin:0 auto;background:#fff;
+      <div style="max-width:800px;margin:0 auto;background:#fff;
                   border-radius:8px;overflow:hidden;
                   box-shadow:0 2px 8px rgba(0,0,0,.12);">
 
         <!-- Header -->
         <div style="background:#1a237e;padding:24px 32px;">
           <h1 style="margin:0;color:#fff;font-size:18px;">
-            SIET Academic Background Verification Portal
+            SRI SHAKTHI INSTITUTE OF ENGINEERING AND TECHNOLOGY
           </h1>
           <p style="margin:4px 0 0;color:#c5cae9;font-size:13px;">
-            Sri Shakthi Institute of Engineering and Technology
+            COIMBATORE - 641 062 (Affiliated to Anna University, Chennai)
           </p>
         </div>
 
@@ -403,18 +419,23 @@ def _build_report_html(report: dict, company_name: str) -> str:
         <div style="padding:24px 32px;">
           <p style="color:#37474f;margin-top:0;">
             Dear <strong>{company_name}</strong>,<br/>
-            The following is the official result of the academic background
-            verification conducted through the SIET portal.
+            Please find attached the official academic background verification report for your candidate.
           </p>
 
-          {'<table style="width:100%;border-collapse:collapse;margin-top:16px;">' + rows_html + '</table>' if status == 'VERIFIED' else
-           '<p style="color:#c62828;font-weight:600;">The submitted candidate details could not be matched against the official institutional records.</p>'}
+          {table_html}
 
-          <p style="color:#78909c;font-size:12px;margin-top:24px;">
+          <div style="margin-top:40px;text-align:right;">
+             <p style="margin:0;font-weight:bold;color:#1e293b;font-size:14px;">DR K E KANNAMMAL</p>
+             <p style="margin:4px 0;color:#475569;font-size:13px;">HOD / Academic Verification Officer</p>
+             <p style="margin:0;color:#475569;font-size:13px;">verification@siet.ac.in</p>
+          </div>
+
+          <p style="color:#78909c;font-size:12px;margin-top:24px;border-top:1px solid #e0e0e0;padding-top:16px;">
             This report was generated automatically. Do not reply to this email.
             For disputes, contact the institution directly.
           </p>
         </div>
+
 
         <!-- Footer -->
         <div style="background:#f5f5f5;padding:16px 32px;border-top:1px solid #e0e0e0;">
@@ -471,6 +492,15 @@ async def send_verification_report_email(
 
         html_body = _build_report_html(report, company_name)
         msg.attach(MIMEText(html_body, "html"))
+
+        if status == "VERIFIED":
+            from app.services.pdf_service import generate_verification_pdf
+            from email.mime.application import MIMEApplication
+            pdf_buffer = generate_verification_pdf(report)
+            pdf_attachment = MIMEApplication(pdf_buffer.read(), _subtype="pdf")
+            pdf_filename = f"SIET_Verification_{report.get('display_request_id', 'report')}.pdf"
+            pdf_attachment.add_header('Content-Disposition', f'attachment; filename="{pdf_filename}"')
+            msg.attach(pdf_attachment)
 
         logger.info(
             "[SMTP] Connecting to %s:%s to dispatch verification report to %s (status: %s) ...",

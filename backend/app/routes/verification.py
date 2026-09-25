@@ -264,3 +264,60 @@ async def get_public_verification_status(
         message=f"Verification status: {data.status}",
         data=data,
     )
+
+
+@router.get(
+    "/{request_id}/download-pdf",
+    summary="Download official verification PDF report",
+    description="Returns the generated binary directly as a downloadable application/pdf stream.",
+)
+async def download_verification_pdf(
+    request_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    from fastapi.responses import StreamingResponse
+    from fastapi import HTTPException
+    import json
+    from app.db.models import VerificationRequest
+    from app.services.pdf_service import generate_verification_pdf
+    
+    vr = await db.get(VerificationRequest, request_id)
+    if not vr:
+        raise HTTPException(status_code=404, detail="Verification request not found")
+        
+    if vr.status != "VERIFIED":
+        raise HTTPException(status_code=400, detail="PDF report is only available for VERIFIED requests.")
+        
+    engine_result = {}
+    if vr.verification_result:
+        try:
+            engine_result = json.loads(vr.verification_result)
+        except Exception:
+            pass
+            
+    # Assemble record_data
+    record_data = {
+        "verification_request_id": vr.id,
+        "display_request_id": vr.display_request_id,
+        "company_name": vr.company_name,
+        "hr_email": vr.hr_email,
+        "status": vr.status,
+        "candidate_name": engine_result.get("candidate_name") or vr.hr_submitted_name,
+        "register_number": engine_result.get("register_number") or vr.hr_submitted_register_number,
+        "course": engine_result.get("course") or vr.hr_submitted_programme,
+        "branch": engine_result.get("branch") or vr.hr_submitted_branch,
+        "year_of_passing": engine_result.get("year_of_passing") or vr.hr_submitted_year_of_passing,
+        "period_of_study": engine_result.get("period_of_study", "N/A"),
+        "backlog_status": engine_result.get("backlog_status", "N/A"),
+    }
+    
+    pdf_buffer = generate_verification_pdf(record_data)
+    
+    return StreamingResponse(
+        pdf_buffer,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="SIET_Verification_{vr.display_request_id}.pdf"'
+        }
+    )
+

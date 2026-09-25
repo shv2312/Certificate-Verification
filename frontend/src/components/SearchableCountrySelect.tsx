@@ -32,12 +32,13 @@ export default function SearchableCountrySelect({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const selectedOption = options.find((o) => o.value === value) || options[0];
+  const safeOptions = options || [];
+  const selectedOption = safeOptions.find((o) => o.value === value) || safeOptions[0];
   const Icon = selectedOption?.icon;
 
-  const filteredOptions = options.filter((o) => {
+  const filteredOptions = safeOptions.filter((o) => {
     if (!o.value) return false; // Skip the "ZZ" or International empty option if it lacks value
-    return o.label.toLowerCase().includes(search.toLowerCase());
+    return o?.label?.toLowerCase().includes(search.toLowerCase());
   });
 
   return (
@@ -97,7 +98,7 @@ export default function SearchableCountrySelect({
                       setIsOpen(false);
                     }}
                   >
-                    <OptionIcon country={option.value} label={option.label} />
+                    {OptionIcon ? <OptionIcon country={option.value} label={option.label} /> : null}
                     <span className="truncate">{option.label}</span>
                   </li>
                 );

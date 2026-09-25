@@ -42,3 +42,7 @@ aiosqlite==0.21.0
 # ----- Data Import -----
 pandas>=2.2.0
 openpyxl>=3.1.0
+
+# ----- PDF Generation -----
+reportlab>=4.0.0
+qrcode[pil]>=7.4.2
