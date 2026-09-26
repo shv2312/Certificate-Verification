@@ -20,8 +20,8 @@ def generate_verification_pdf(record_data: dict) -> io.BytesIO:
         pagesize=A4,
         rightMargin=40,
         leftMargin=40,
-        topMargin=40,
-        bottomMargin=40
+        topMargin=36,
+        bottomMargin=36
     )
     
     styles = getSampleStyleSheet()
@@ -30,64 +30,49 @@ def generate_verification_pdf(record_data: dict) -> io.BytesIO:
     title_style = ParagraphStyle(
         'InstitutionalTitle',
         parent=styles['Heading1'],
-        fontSize=14,
-        leading=18,
-        alignment=1, # Center
-        spaceAfter=2,
-        textColor=colors.HexColor("#1e293b")
+        fontSize=15,
+        leading=19,
+        alignment=1,  # Center
+        spaceAfter=3,
+        textColor=colors.HexColor("#0f172a")
     )
     
     subtitle_style = ParagraphStyle(
         'Subtitle',
         parent=styles['Heading2'],
-        fontSize=10,
-        alignment=1, # Center
-        spaceAfter=15,
-        textColor=colors.HexColor("#475569")
+        fontSize=9.5,
+        leading=13,
+        alignment=1,  # Center
+        spaceAfter=3,
+        textColor=colors.HexColor("#334155")
     )
     
     report_title_style = ParagraphStyle(
         'ReportTitle',
         parent=styles['Heading3'],
-        fontSize=12,
-        alignment=1, # Center
-        spaceAfter=20,
-        textColor=colors.HexColor("#1e293b")
+        fontSize=11,
+        leading=15,
+        alignment=1,  # Center
+        spaceAfter=14,
+        textColor=colors.HexColor("#0f172a")
     )
-    
-    normal_style = styles['Normal']
-    normal_style.fontSize = 10
-    normal_style.leading = 14
-    
+
+    seal_header_style = ParagraphStyle(
+        'SealHeader',
+        parent=styles['Normal'],
+        fontSize=8.5,
+        leading=12,
+        textColor=colors.HexColor("#0f172a")
+    )
+
     elements = []
     
-    # 1. Header
+    # 1. Institutional Header
     elements.append(Paragraph("<b>SRI SHAKTHI INSTITUTE OF ENGINEERING AND TECHNOLOGY</b>", title_style))
-    elements.append(Paragraph("COIMBATORE - 641 062", subtitle_style))
-    elements.append(Paragraph("(Affiliated to Anna University, Chennai)", subtitle_style))
-    elements.append(Paragraph("<b>OFFICIAL ACADEMIC BACKGROUND VERIFICATION REPORT</b>", report_title_style))
+    elements.append(Paragraph("COIMBATORE - 641 062 &nbsp;|&nbsp; Affiliated to Anna University, Chennai", subtitle_style))
+    elements.append(Paragraph("<b>OFFICE OF THE CONTROLLER OF EXAMINATIONS — OFFICIAL VERIFICATION REPORT</b>", report_title_style))
     
-    # 2. Verification Metadata Block
-    req_id = record_data.get("display_request_id", "N/A")
-    issued_date = datetime.datetime.now().strftime("%d-%b-%Y")
-    
-    meta_data = [
-        ["Verification ID:", req_id, "Issued Date:", issued_date],
-    ]
-    
-    meta_table = Table(meta_data, colWidths=[1.5 * inch, 2.5 * inch, 1.5 * inch, 1.5 * inch])
-    meta_table.setStyle(TableStyle([
-        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
-        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-        ('FONTNAME', (2, 0), (2, -1), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
-    ]))
-    
-    elements.append(meta_table)
-    elements.append(Spacer(1, 0.2 * inch))
-    
-    # 3. Candidate Transcript Table (4 columns)
+    # 2. Candidate Transcript Table (4 columns)
     transcript_data = [
         ["Details", "Candidate's Input", "Verification (Y/N)", "Comments"],
         ["Candidate Name", record_data.get("candidate_name", "-"), "Y", "-"],
@@ -102,7 +87,7 @@ def generate_verification_pdf(record_data: dict) -> io.BytesIO:
         ["Mode Of Education", "Regular", "Y", "-"],
     ]
     
-    t_table = Table(transcript_data, colWidths=[2.0 * inch, 3.0 * inch, 1.2 * inch, 0.8 * inch])
+    t_table = Table(transcript_data, colWidths=[1.9 * inch, 3.1 * inch, 1.2 * inch, 0.8 * inch])
     t_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#f1f5f9")),
         ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#cbd5e1")),
@@ -111,58 +96,69 @@ def generate_verification_pdf(record_data: dict) -> io.BytesIO:
         ('FONTNAME', (1, 1), (-1, -1), 'Helvetica'),
         ('ALIGN', (2, 1), (2, -1), 'CENTER'),
         ('ALIGN', (3, 1), (3, -1), 'CENTER'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
-        ('PADDING', (0, 0), (-1, -1), 6),
+        ('FONTSIZE', (0, 0), (-1, -1), 8.5),
+        ('PADDING', (0, 0), (-1, -1), 4.5),
     ]))
     
     elements.append(t_table)
-    elements.append(Spacer(1, 0.5 * inch))
+    elements.append(Spacer(1, 0.25 * inch))
     
-    # 4. Attestation Block
-    # 2-column key-value signatory box at the bottom right.
-    # Name: DR K E KANNAMMAL
-    # Designation: HOD / Academic Verification Officer
-    # Official Email: verification@siet.ac.in
-    
-    qr = qrcode.QRCode(version=1, box_size=4, border=1)
-    verification_url = f"http://localhost:5173/status?id={record_data.get('verification_request_id', '')}"
+    # 3. Dynamic QR Code (1.5" x 1.5") pointing to verification status URL
+    req_uuid = record_data.get("verification_request_id") or record_data.get("id") or record_data.get("display_request_id", "")
+    verification_url = f"http://localhost:5173/status?id={req_uuid}"
+
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=6,
+        border=1
+    )
     qr.add_data(verification_url)
     qr.make(fit=True)
-    img = qr.make_image(fill_color="black", back_color="white")
+    qr_img = qr.make_image(fill_color="black", back_color="white")
     
     img_buffer = io.BytesIO()
-    img.save(img_buffer, format="PNG")
+    qr_img.save(img_buffer, format="PNG")
     img_buffer.seek(0)
     
-    qr_image = Image(img_buffer, width=1.0*inch, height=1.0*inch)
-    
-    signatory_data = [
-        ["Name:", "DR K E KANNAMMAL"],
-        ["Designation:", "HOD / Academic Verification Officer"],
-        ["Official Email:", "verification@siet.ac.in"],
-        ["Digital Stamp:", qr_image]
-    ]
-    
-    sig_table = Table(signatory_data, colWidths=[1.5 * inch, 2.5 * inch])
-    sig_table.setStyle(TableStyle([
-        ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-        ('FONTNAME', (1, 0), (1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 0), (-1, -1), 9),
+    qr_image = Image(img_buffer, width=1.5 * inch, height=1.5 * inch)
+
+    # 4. Institutional Attestation & Digital Verification Seal Box
+    display_req_id = record_data.get("display_request_id") or record_data.get("id", "N/A")
+    timestamp_str = datetime.datetime.now().strftime("%d-%b-%Y %H:%M:%S UTC")
+
+    seal_text = (
+        f"<b>Digital Certificate Identifier:</b> {display_req_id}<br/>"
+        f"<b>Authorized By:</b> College Verification Administrator<br/>"
+        f"<b>Attestation Officer:</b> DR K E KANNAMMAL, HOD / CSE<br/>"
+        f"<b>Timestamp:</b> {timestamp_str}<br/>"
+        f"<b>Status:</b> <font color='#16a34a'><b>OFFICIALLY VERIFIED &amp; GENUINE</b></font><br/>"
+        f"<font size=7 color='#64748b'>Scan QR code to verify authenticity on the SIET Portal</font>"
+    )
+
+    seal_left_flowable = Paragraph(seal_text, seal_header_style)
+
+    # Table holding the metadata description and the 1.5" x 1.5" QR code cleanly side-by-side
+    bottom_seal_table = Table(
+        [[seal_left_flowable, qr_image]],
+        colWidths=[5.2 * inch, 1.8 * inch]
+    )
+    bottom_seal_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor("#f8fafc")),
+        ('BOX', (0, 0), (-1, -1), 1, colors.HexColor("#0f172a")),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('ALIGN', (1, 0), (1, 0), 'CENTER'),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('LEFTPADDING', (0, 0), (0, 0), 12),
+        ('RIGHTPADDING', (-1, -1), (-1, -1), 10),
     ]))
-    
-    # Push it to the right
-    layout_table = Table([["", sig_table]], colWidths=[3.0 * inch, 4.0 * inch])
-    layout_table.setStyle(TableStyle([
-        ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
-    ]))
-    
-    elements.append(layout_table)
+
+    elements.append(bottom_seal_table)
     
     # Build PDF
     doc.build(elements)
     
     buffer.seek(0)
     return buffer
+

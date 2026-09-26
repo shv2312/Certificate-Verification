@@ -266,6 +266,102 @@ async def get_public_verification_status(
     )
 
 
+# ------------------------------------------------------------------ #
+# GET /api/v1/verification/status/{lookup_id}                        #
+# ------------------------------------------------------------------ #
+
+from pydantic import BaseModel
+from typing import Optional, Any
+
+class PublicVerificationLookupResponse(BaseModel):
+    display_request_id: str
+    institution_id: str
+    status: str
+    admin_decision: Optional[str] = None
+    verified_at: Optional[Any] = None
+    candidate_name_masked: Optional[str] = None
+    is_verified: bool
+    academic_year: Optional[int] = None
+    course_name: Optional[str] = None
+
+
+def _mask_candidate_name(name: Optional[str]) -> Optional[str]:
+    if not name:
+        return None
+    tokens = name.strip().split()
+    masked_tokens = []
+    for token in tokens:
+        if len(token) <= 1:
+            masked_tokens.append(token)
+        elif len(token) == 2:
+            masked_tokens.append(token[0] + "*")
+        else:
+            masked_tokens.append(token[0] + ("*" * (len(token) - 2)) + token[-1])
+    return " ".join(masked_tokens)
+
+
+@router.get(
+    "/status/{lookup_id}",
+    response_model=PublicVerificationLookupResponse,
+    summary="[Public] Verify Academic Credential Authenticity",
+    description="Public-facing status verification endpoint supporting lookup by UUID or display_request_id (e.g., QR scan).",
+)
+async def public_lookup_status(
+    lookup_id: str,
+    db: AsyncSession = Depends(get_db),
+) -> PublicVerificationLookupResponse:
+    import json
+    from sqlalchemy import select, or_
+    from app.db.models import VerificationRequest
+
+    stmt = select(VerificationRequest).where(
+        or_(
+            VerificationRequest.id == lookup_id,
+            VerificationRequest.display_request_id == lookup_id,
+        )
+    )
+    res = await db.execute(stmt)
+    vr = res.scalar_one_or_none()
+
+    if not vr:
+        raise HTTPException(
+            status_code=404,
+            detail="Verification request not found"
+        )
+
+    # Candidate details & academic data
+    candidate_name = vr.hr_submitted_name
+    course_name = vr.hr_submitted_programme
+    academic_year = vr.hr_submitted_year_of_passing
+    institution_id = "siet-cbe"
+
+    if vr.candidate_data:
+        try:
+            cd = json.loads(vr.candidate_data)
+            candidate_name = cd.get("candidate_name") or candidate_name
+            course_name = cd.get("course") or cd.get("course_name") or cd.get("programme") or course_name
+            academic_year = cd.get("year_of_passing") or academic_year
+            institution_id = cd.get("institution_id") or institution_id
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    is_verified = (vr.status == "VERIFIED" or vr.admin_decision == "APPROVED")
+    verified_at = vr.completed_at
+
+    return PublicVerificationLookupResponse(
+        display_request_id=vr.display_request_id,
+        institution_id=institution_id,
+        status=vr.status,
+        admin_decision=vr.admin_decision,
+        verified_at=verified_at,
+        candidate_name_masked=_mask_candidate_name(candidate_name),
+        is_verified=is_verified,
+        academic_year=academic_year,
+        course_name=course_name,
+    )
+
+
+
 @router.get(
     "/{request_id}/download-pdf",
     summary="Download official verification PDF report",
