@@ -58,6 +58,10 @@ class VerificationRequest(Base):
     candidate_data = Column(Text)  # Stored as JSON string
     verification_result = Column(Text)  # Stored as JSON string
     
+    admin_decision = Column(String(32), nullable=True)
+    admin_remarks = Column(Text, nullable=True)
+    certificate_url = Column(String(500), nullable=True)
+    
     created_at = Column(BigInteger, nullable=False)
     completed_at = Column(BigInteger, nullable=True)
 

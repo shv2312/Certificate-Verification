@@ -32,7 +32,7 @@ import logging
 import time
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -249,6 +249,81 @@ async def get_all_requests(
 
 
 # ------------------------------------------------------------------ #
+# GET /api/v1/admin/requests/pending                                 #
+# ------------------------------------------------------------------ #
+
+class PendingVerificationRequestItem(BaseModel):
+    id: str
+    display_request_id: str
+    candidate_name: Optional[str] = None
+    register_number: Optional[str] = None
+    course_name: Optional[str] = None
+    year_of_passing: Optional[int] = None
+    company_name: str
+    hr_email: str
+    certificate_url: Optional[str] = None
+    status: str
+    admin_decision: Optional[str] = None
+    created_at: Any
+
+
+@router.get(
+    "/requests/pending",
+    response_model=List[PendingVerificationRequestItem],
+    summary="[Admin] Get all pending verification requests",
+    description="Query all VerificationRequest rows where admin_decision == 'PENDING_REVIEW', ordered by descending creation timestamp.",
+)
+async def get_pending_requests(
+    db: AsyncSession = Depends(get_db),
+) -> List[PendingVerificationRequestItem]:
+    import json
+
+    stmt = (
+        select(VerificationRequest)
+        .where(VerificationRequest.admin_decision == "PENDING_REVIEW")
+        .order_by(VerificationRequest.created_at.desc())
+    )
+    result = await db.execute(stmt)
+    requests = result.scalars().all()
+
+    data: List[PendingVerificationRequestItem] = []
+    for req in requests:
+        candidate_name = req.hr_submitted_name
+        register_number = req.hr_submitted_register_number
+        course_name = req.hr_submitted_programme
+        year_of_passing = req.hr_submitted_year_of_passing
+
+        if req.candidate_data:
+            try:
+                cd = json.loads(req.candidate_data)
+                candidate_name = cd.get("candidate_name") or candidate_name
+                register_number = cd.get("register_number") or register_number
+                course_name = cd.get("course") or cd.get("course_name") or cd.get("programme") or course_name
+                year_of_passing = cd.get("year_of_passing") or year_of_passing
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        data.append(
+            PendingVerificationRequestItem(
+                id=req.id,
+                display_request_id=req.display_request_id,
+                candidate_name=candidate_name,
+                register_number=register_number,
+                course_name=course_name,
+                year_of_passing=year_of_passing,
+                company_name=req.company_name,
+                hr_email=req.hr_email,
+                certificate_url=req.certificate_url,
+                status=req.status,
+                admin_decision=req.admin_decision,
+                created_at=req.created_at,
+            )
+        )
+
+    return data
+
+
+# ------------------------------------------------------------------ #
 # GET /api/v1/admin/stats                                              #
 # ------------------------------------------------------------------ #
 
@@ -309,3 +384,266 @@ async def get_admin_stats(
             company_distribution=company_distribution,
         ),
     )
+
+
+# ------------------------------------------------------------------ #
+# POST /api/v1/admin/requests/{request_id}/approve                   #
+# ------------------------------------------------------------------ #
+
+class RejectRequestPayload(BaseModel):
+    reason: str
+
+
+@router.post(
+    "/requests/{request_id}/approve",
+    summary="[Admin] Approve a verification request",
+    description="Updates admin_decision to APPROVED and status to VERIFIED, generates PDF, and emails report.",
+)
+async def approve_verification_request(
+    request_id: str,
+    background_tasks: BackgroundTasks,
+    session: dict = Depends(require_role(["ADMIN"])),
+    db: AsyncSession = Depends(get_db),
+):
+    import json
+    from app.services.email_service import send_verification_report_email
+
+    vr = await db.get(VerificationRequest, request_id)
+    if not vr:
+        raise HTTPException(status_code=404, detail="Verification request not found.")
+
+    vr.admin_decision = "APPROVED"
+    vr.status = "VERIFIED"
+    vr.completed_at = int(time.time())
+    await db.commit()
+    await db.refresh(vr)
+
+    engine_result = {}
+    if vr.verification_result:
+        try:
+            engine_result = json.loads(vr.verification_result)
+        except Exception:
+            pass
+
+    report_data = {
+        "verification_request_id": vr.id,
+        "display_request_id": vr.display_request_id,
+        "company_name": vr.company_name,
+        "hr_email": vr.hr_email,
+        "status": vr.status,
+        "candidate_name": engine_result.get("candidate_name") or vr.hr_submitted_name or "N/A",
+        "register_number": engine_result.get("register_number") or vr.hr_submitted_register_number or "N/A",
+        "course": engine_result.get("course") or vr.hr_submitted_programme or "N/A",
+        "branch": engine_result.get("branch") or vr.hr_submitted_branch or "N/A",
+        "year_of_passing": engine_result.get("year_of_passing") or vr.hr_submitted_year_of_passing or "N/A",
+        "period_of_study": engine_result.get("period_of_study", "N/A"),
+        "backlog_status": engine_result.get("backlog_status", "N/A"),
+    }
+
+    # Dispatch verification report email to the HR contact
+    background_tasks.add_task(
+        send_verification_report_email,
+        hr_email=vr.hr_email,
+        company_name=vr.company_name,
+        report=report_data,
+    )
+
+    return {
+        "status": "APPROVED",
+        "message": "Verification approved and certificate issued."
+    }
+
+
+# ------------------------------------------------------------------ #
+# POST /api/v1/admin/requests/{request_id}/reject                    #
+# ------------------------------------------------------------------ #
+
+@router.post(
+    "/requests/{request_id}/reject",
+    summary="[Admin] Reject a verification request",
+    description="Updates admin_decision to REJECTED, status to NOT_VERIFIED, stores remarks, and emails notification.",
+)
+async def reject_verification_request(
+    request_id: str,
+    payload: RejectRequestPayload,
+    background_tasks: BackgroundTasks,
+    session: dict = Depends(require_role(["ADMIN"])),
+    db: AsyncSession = Depends(get_db),
+):
+    import json
+    from app.services.email_service import send_verification_report_email
+
+    vr = await db.get(VerificationRequest, request_id)
+    if not vr:
+        raise HTTPException(status_code=404, detail="Verification request not found.")
+
+    vr.admin_decision = "REJECTED"
+    vr.status = "NOT_VERIFIED"
+    vr.admin_remarks = payload.reason
+    vr.completed_at = int(time.time())
+    await db.commit()
+    await db.refresh(vr)
+
+    engine_result = {}
+    if vr.verification_result:
+        try:
+            engine_result = json.loads(vr.verification_result)
+        except Exception:
+            pass
+
+    report_data = {
+        "verification_request_id": vr.id,
+        "display_request_id": vr.display_request_id,
+        "company_name": vr.company_name,
+        "hr_email": vr.hr_email,
+        "status": vr.status,
+        "remarks": payload.reason,
+        "candidate_name": engine_result.get("candidate_name") or vr.hr_submitted_name or "N/A",
+        "register_number": engine_result.get("register_number") or vr.hr_submitted_register_number or "N/A",
+        "course": engine_result.get("course") or vr.hr_submitted_programme or "N/A",
+        "branch": engine_result.get("branch") or vr.hr_submitted_branch or "N/A",
+        "year_of_passing": engine_result.get("year_of_passing") or vr.hr_submitted_year_of_passing or "N/A",
+        "period_of_study": engine_result.get("period_of_study", "N/A"),
+        "backlog_status": engine_result.get("backlog_status", "N/A"),
+    }
+
+    # Dispatch rejection notification to the HR contact
+    background_tasks.add_task(
+        send_verification_report_email,
+        hr_email=vr.hr_email,
+        company_name=vr.company_name,
+        report=report_data,
+    )
+
+    return {
+        "status": "REJECTED"
+    }
+
+
+# ------------------------------------------------------------------ #
+# GET /api/v1/admin/dashboard/metrics                                #
+# ------------------------------------------------------------------ #
+
+class DashboardMetricsResponse(BaseModel):
+    total: int
+    pending: int
+    approved: int
+    rejected: int
+    approval_rate: str
+
+
+@router.get(
+    "/dashboard/metrics",
+    response_model=DashboardMetricsResponse,
+    summary="[Admin] Get dashboard metrics",
+    description="Returns aggregate metrics grouped by admin_decision including total, pending, approved, rejected, and approval rate.",
+)
+async def get_dashboard_metrics(
+    db: AsyncSession = Depends(get_db),
+) -> DashboardMetricsResponse:
+    # Query counts grouped by admin_decision
+    total_q = await db.execute(select(func.count()).select_from(VerificationRequest))
+    total_count = total_q.scalar_one() or 0
+
+    pending_q = await db.execute(
+        select(func.count())
+        .select_from(VerificationRequest)
+        .where(VerificationRequest.admin_decision == "PENDING_REVIEW")
+    )
+    pending_count = pending_q.scalar_one() or 0
+
+    approved_q = await db.execute(
+        select(func.count())
+        .select_from(VerificationRequest)
+        .where(VerificationRequest.admin_decision == "APPROVED")
+    )
+    approved_count = approved_q.scalar_one() or 0
+
+    rejected_q = await db.execute(
+        select(func.count())
+        .select_from(VerificationRequest)
+        .where(VerificationRequest.admin_decision == "REJECTED")
+    )
+    rejected_count = rejected_q.scalar_one() or 0
+
+    decided = approved_count + rejected_count
+    if decided > 0:
+        rate = (approved_count / decided) * 100
+        approval_rate = f"{rate:.1f}%"
+    else:
+        approval_rate = "0.0%"
+
+    return DashboardMetricsResponse(
+        total=total_count,
+        pending=pending_count,
+        approved=approved_count,
+        rejected=rejected_count,
+        approval_rate=approval_rate,
+    )
+
+
+# ------------------------------------------------------------------ #
+# GET /api/v1/admin/requests/history                                 #
+# ------------------------------------------------------------------ #
+
+class ProcessedVerificationRequestItem(BaseModel):
+    id: str
+    display_request_id: str
+    candidate_name: Optional[str] = None
+    register_number: Optional[str] = None
+    admin_decision: Optional[str] = None
+    reviewed_at: Optional[Any] = None
+    admin_remarks: Optional[str] = None
+
+
+@router.get(
+    "/requests/history",
+    response_model=List[ProcessedVerificationRequestItem],
+    summary="[Admin] Get processed verification requests history",
+    description="Query completed requests (admin_decision in APPROVED, REJECTED) with pagination.",
+)
+async def get_processed_requests_history(
+    limit: int = 50,
+    offset: int = 0,
+    db: AsyncSession = Depends(get_db),
+) -> List[ProcessedVerificationRequestItem]:
+    import json
+
+    stmt = (
+        select(VerificationRequest)
+        .where(VerificationRequest.admin_decision.in_(["APPROVED", "REJECTED"]))
+        .order_by(VerificationRequest.completed_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    result = await db.execute(stmt)
+    requests = result.scalars().all()
+
+    data: List[ProcessedVerificationRequestItem] = []
+    for req in requests:
+        candidate_name = req.hr_submitted_name
+        register_number = req.hr_submitted_register_number
+
+        if req.candidate_data:
+            try:
+                cd = json.loads(req.candidate_data)
+                candidate_name = cd.get("candidate_name") or candidate_name
+                register_number = cd.get("register_number") or register_number
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        data.append(
+            ProcessedVerificationRequestItem(
+                id=req.id,
+                display_request_id=req.display_request_id,
+                candidate_name=candidate_name,
+                register_number=register_number,
+                admin_decision=req.admin_decision,
+                reviewed_at=req.completed_at,
+                admin_remarks=req.admin_remarks,
+            )
+        )
+
+    return data
+
+

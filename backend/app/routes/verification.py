@@ -31,7 +31,7 @@ ONE-PAYMENT-ONE-CANDIDATE:
 
 import logging
 
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, File, UploadFile, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
@@ -320,4 +320,67 @@ async def download_verification_pdf(
             "Content-Disposition": f'attachment; filename="SIET_Verification_{vr.display_request_id}.pdf"'
         }
     )
+
+
+@router.post(
+    "/upload-certificate",
+    summary="Upload Candidate Certificate File",
+    description="Accepts PDF/PNG/JPG certificate file under 5MB and saves it securely with a UUID prefix."
+)
+async def upload_certificate(
+    file: UploadFile = File(...)
+):
+    import os
+    import uuid
+    from fastapi.responses import JSONResponse
+
+    allowed_extensions = {".pdf", ".png", ".jpg", ".jpeg"}
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext not in allowed_extensions:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid file extension '{ext}'. Allowed extensions: {', '.join(allowed_extensions)}"
+        )
+
+    # 5 MB max size check
+    MAX_FILE_SIZE = 5 * 1024 * 1024
+    content = await file.read()
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail="File size exceeds maximum allowed limit of 5 MB."
+        )
+
+    upload_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads", "certificates")
+    os.makedirs(upload_dir, exist_ok=True)
+
+    safe_filename = f"{uuid.uuid4()}_{file.filename}"
+    file_path = os.path.join(upload_dir, safe_filename)
+
+    with open(file_path, "wb") as f:
+        f.write(content)
+
+    return {
+        "file_url": f"/uploads/certificates/{safe_filename}",
+        "filename": safe_filename
+    }
+
+
+@router.get(
+    "/certificate/{filename}",
+    summary="Stream uploaded certificate file",
+    description="Streams the specified uploaded certificate file."
+)
+async def get_certificate_file(filename: str):
+    import os
+    from fastapi.responses import FileResponse
+
+    upload_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads", "certificates")
+    file_path = os.path.join(upload_dir, filename)
+
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Certificate file not found.")
+
+    return FileResponse(file_path)
+
 
