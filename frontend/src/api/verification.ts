@@ -68,3 +68,46 @@ export async function getVerificationHistory(): Promise<VerificationHistoryItem[
   const response = await apiClient<{ data: { requests: VerificationHistoryItem[] } }>('/api/v1/verification/history');
   return response.data.requests;
 }
+
+/**
+ * Upload a degree/provisional certificate file.
+ * Sends a multipart/form-data POST to the backend and returns the stored URL.
+ */
+export async function uploadCertificate(file: File): Promise<string> {
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+  const url = `${API_BASE_URL}/api/v1/verification/upload-certificate`;
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  // Auth header (same pattern as apiClient, but no Content-Type override)
+  const headers = new Headers();
+  const authStateStr = sessionStorage.getItem('siet_auth_state');
+  if (authStateStr) {
+    try {
+      const authState = JSON.parse(authStateStr);
+      if (authState.sessionToken) {
+        headers.set('Authorization', `Bearer ${authState.sessionToken}`);
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const response = await fetch(url, { method: 'POST', body: formData, headers });
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    let detail = `Upload failed (${response.status})`;
+    try {
+      const json = JSON.parse(text);
+      detail = json.detail || json.message || detail;
+    } catch {
+      // ignore
+    }
+    throw new Error(detail);
+  }
+
+  const json: { data: { certificate_url: string } } = await response.json();
+  return json.data.certificate_url;
+}

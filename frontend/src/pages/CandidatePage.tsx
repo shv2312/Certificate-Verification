@@ -4,6 +4,8 @@ import PageContainer from '../components/PageContainer';
 import FormField from '../components/FormField';
 import ProgressStepper from '../components/ProgressStepper';
 import StatusMessage from '../components/StatusMessage';
+import InstitutionSelector, { type Institution, INSTITUTIONS } from '../components/InstitutionSelector';
+import CertificateUploadZone from '../components/CertificateUploadZone';
 import { buildStepStatuses } from '../utils/workflowSteps';
 import { bindCandidate, getVerificationHistory } from '../api/verification';
 import { ROUTES } from '../utils/routes';
@@ -18,12 +20,20 @@ interface FormValues {
 interface FormErrors {
   candidate_name?: string;
   register_number?: string;
+  institution?: string;
+  certificate?: string;
 }
 
-function validateForm(values: FormValues): FormErrors {
+function validateForm(
+  values: FormValues,
+  institution: Institution | null,
+  certificateUrl: string,
+): FormErrors {
   const errors: FormErrors = {};
   if (!values.candidate_name.trim()) errors.candidate_name = 'Candidate name is required.';
   if (!values.register_number.trim()) errors.register_number = 'Register number is required.';
+  if (!institution) errors.institution = 'Please select the institution / college.';
+  if (!certificateUrl) errors.certificate = 'Please upload the degree / provisional certificate.';
   return errors;
 }
 
@@ -41,6 +51,14 @@ export default function CandidatePage() {
   const [submitError, setSubmitError] = useState<string>();
   const [activeRequestId, setActiveRequestId] = useState<string | null>(stateRequestId ?? null);
   const [isInitializing, setIsInitializing] = useState(!stateRequestId);
+
+  // Institution selector state
+  const [selectedInstitution, setSelectedInstitution] = useState<Institution | null>(
+    INSTITUTIONS[0], // Default to SIET
+  );
+
+  // Certificate upload state
+  const [certificateUrl, setCertificateUrl] = useState('');
 
   React.useEffect(() => {
     // If we already got the ID from navigation state, skip the history API call
@@ -75,7 +93,7 @@ export default function CandidatePage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    const newErrors = validateForm(values);
+    const newErrors = validateForm(values, selectedInstitution, certificateUrl);
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
@@ -88,7 +106,7 @@ export default function CandidatePage() {
       if (!activeRequestId) {
         throw new Error('No active verification session found.');
       }
-      
+
       await bindCandidate({
         verification_request_id: activeRequestId,
         candidate: values,
@@ -116,7 +134,8 @@ export default function CandidatePage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-siet-navy mb-1">Candidate Details</h1>
         <p className="text-siet-slate text-sm">
-          Enter the candidate’s name and register number to verify the official academic record.
+          Select the institution, enter the candidate's details, and upload the certificate to verify
+          the official academic record.
         </p>
       </div>
 
@@ -132,35 +151,76 @@ export default function CandidatePage() {
         </p>
       </div>
 
-      <form className="max-w-2xl mx-auto surface-card p-6 space-y-5" onSubmit={handleSubmit} noValidate>
+      <form className="max-w-2xl mx-auto surface-card p-6 space-y-6" onSubmit={handleSubmit} noValidate>
         {submitError && <StatusMessage type="error" message={submitError} className="mb-4" />}
 
         <p className="text-xs text-siet-muted">
           Fields marked with <span className="text-siet-error font-semibold">*</span> are mandatory.
         </p>
 
-        <FormField id="candidate-name" label="Candidate Name" required error={errors.candidate_name}>
-          <input
-            id="candidate-name"
-            type="text"
-            className="form-input"
-            value={values.candidate_name}
-            onChange={handleChange('candidate_name')}
+        {/* ── Step 1: Institution Selector ── */}
+        <div className="pb-4 border-b border-siet-border">
+          <p className="text-xs font-bold text-siet-muted uppercase tracking-wider mb-3">
+            Step 1 — Institution
+          </p>
+          <InstitutionSelector
+            value={selectedInstitution}
+            onChange={(inst) => {
+              setSelectedInstitution(inst);
+              setErrors((prev) => ({ ...prev, institution: undefined }));
+            }}
+            error={errors.institution}
+            required
           />
-        </FormField>
+        </div>
 
-        <FormField id="register-number" label="Register Number" required error={errors.register_number}>
-          <input
-            id="register-number"
-            type="text"
-            className="form-input"
-            value={values.register_number}
-            onChange={handleChange('register_number')}
+        {/* ── Step 2: Candidate Details ── */}
+        <div className="space-y-5 pb-4 border-b border-siet-border">
+          <p className="text-xs font-bold text-siet-muted uppercase tracking-wider mb-1">
+            Step 2 — Candidate Identifiers
+          </p>
+
+          <FormField id="candidate-name" label="Candidate Name" required error={errors.candidate_name}>
+            <input
+              id="candidate-name"
+              type="text"
+              className="form-input"
+              placeholder="Full name as on certificate"
+              value={values.candidate_name}
+              onChange={handleChange('candidate_name')}
+            />
+          </FormField>
+
+          <FormField id="register-number" label="Register Number" required error={errors.register_number}>
+            <input
+              id="register-number"
+              type="text"
+              className="form-input"
+              placeholder="e.g. 812821104058"
+              value={values.register_number}
+              onChange={handleChange('register_number')}
+            />
+          </FormField>
+        </div>
+
+        {/* ── Step 3: Certificate Upload ── */}
+        <div className="space-y-3">
+          <p className="text-xs font-bold text-siet-muted uppercase tracking-wider">
+            Step 3 — Certificate Upload
+          </p>
+          <CertificateUploadZone
+            certificateUrl={certificateUrl}
+            onUpload={(url) => {
+              setCertificateUrl(url);
+              setErrors((prev) => ({ ...prev, certificate: undefined }));
+            }}
+            onRemove={() => setCertificateUrl('')}
+            error={errors.certificate}
           />
-        </FormField>
+        </div>
 
         <div className="pt-2">
-          <button type="submit" className="btn-primary" disabled={isSubmitting}>
+          <button type="submit" className="btn-primary w-full" disabled={isSubmitting}>
             {isSubmitting ? 'Verifying against official institutional records…' : 'Verify Candidate'}
           </button>
         </div>

@@ -6,17 +6,18 @@
  */
 
 export const ROUTES = {
-  HOME:        '/',
-  COMPANY:     '/company',
-  VERIFY_EMAIL:'/verify-email',
-  PAYMENT:     '/payment',
-  CANDIDATE:   '/candidate',
-  CONFIRM:     '/confirm',
-  VERIFICATION:'/verification',
-  RESULT:      '/result',
-  HELP:        '/help',
-  STATUS:      '/status',
-  ADMIN:       '/admin',
+  HOME:          '/',
+  COMPANY:       '/company',
+  VERIFY_EMAIL:  '/verify-email',
+  PAYMENT:       '/payment',
+  CANDIDATE:     '/candidate',
+  CONFIRM:       '/confirm',
+  VERIFICATION:  '/verification',
+  RESULT:        '/result',
+  HELP:          '/help',
+  STATUS:        '/status',
+  ADMIN:         '/admin',
+  ADMIN_REVIEW:  '/admin/review',
 } as const;
 
 export type AppRoute = typeof ROUTES[keyof typeof ROUTES];
