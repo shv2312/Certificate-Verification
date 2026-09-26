@@ -98,6 +98,25 @@ class SendOTPResponse(BaseModel):
 
 
 # ------------------------------------------------------------------ #
+# POST /api/v1/email/resend-otp                                        #
+# ------------------------------------------------------------------ #
+class ResendOTPRequest(BaseModel):
+    """
+    Request body for resending (refreshing) the email verification OTP.
+
+    The frontend keeps the challenge_id from the original send-otp response.
+    Sending it here allows the backend to look up the original email and
+    company without requiring the HR to re-enter their details.
+    """
+    challenge_id: str = Field(
+        ...,
+        min_length=10,
+        max_length=128,
+        description="Opaque challenge identifier from the original send-otp response.",
+    )
+
+
+# ------------------------------------------------------------------ #
 # POST /api/v1/email/verify-otp                                        #
 # ------------------------------------------------------------------ #
 class VerifyOTPRequest(BaseModel):

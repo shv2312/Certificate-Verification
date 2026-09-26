@@ -40,6 +40,10 @@ async def bind_candidate_transaction(request_id: str, candidate_name: str):
             return str(e)
 
 @pytest.mark.asyncio
+@pytest.mark.skipif(
+    get_settings().DATABASE_URL.startswith("sqlite"),
+    reason="Concurrency test requires PostgreSQL (uses PG-specific SQL: RETURNING, extract, ::bigint)"
+)
 async def test_concurrent_bind_candidate():
     # Setup test data
     async with AsyncSessionLocal() as session:

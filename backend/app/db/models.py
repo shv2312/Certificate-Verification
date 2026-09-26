@@ -2,6 +2,37 @@ from sqlalchemy import Boolean, Column, DateTime, Integer, String, Text, BigInte
 from sqlalchemy.sql import func
 from app.db.session import Base
 
+class Institution(Base):
+    __tablename__ = "institutions"
+    
+    id = Column(String(64), primary_key=True, index=True)
+    name = Column(String(255), nullable=False)
+    code = Column(String(32), unique=True, index=True, nullable=False)
+    admin_email = Column(String(255), nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
+
+class Student(Base):
+    __tablename__ = "students"
+    
+    id = Column(BigInteger, primary_key=True, index=True)
+    register_number = Column(String(30), unique=True, index=True, nullable=False)
+    full_name = Column(String(200), nullable=False)
+    full_name_normalized = Column(String(200), nullable=False)
+    programme_id = Column(Integer, nullable=False)
+    branch_id = Column(Integer, nullable=False)
+    year_of_passing = Column(SmallInteger, nullable=False)
+    university_name = Column(String(200), nullable=False, default="Anna University")
+    institute_name = Column(String(200), nullable=False, default="Sri Shakthi Institute of Engineering and Technology")
+    period_of_study_start = Column(SmallInteger, nullable=True)
+    period_of_study_end = Column(SmallInteger, nullable=True)
+    mode_of_education = Column(String(50), nullable=True)
+    has_arrear = Column(Boolean, nullable=False, default=False)
+    is_active = Column(Boolean, nullable=False, default=True)
+    imported_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+    
+    institution_id = Column(String(64), ForeignKey("institutions.id"), index=True, nullable=True)
+
 class AdminAccount(Base):
     __tablename__ = "admin_accounts"
     
@@ -57,11 +88,13 @@ class VerificationRequest(Base):
     
     candidate_data = Column(Text)  # Stored as JSON string
     verification_result = Column(Text)  # Stored as JSON string
-    
-    admin_decision = Column(String(32), nullable=True)
+    institution_id = Column(String(64), ForeignKey("institutions.id"), index=True, nullable=True)
+    certificate_url = Column(String(1024), nullable=True)
+    admin_decision = Column(String(32), default="PENDING_REVIEW", nullable=False)
     admin_remarks = Column(Text, nullable=True)
-    certificate_url = Column(String(500), nullable=True)
-    
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    reviewed_by = Column(String(255), nullable=True)
+
     created_at = Column(BigInteger, nullable=False)
     completed_at = Column(BigInteger, nullable=True)
 

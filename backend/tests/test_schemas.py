@@ -95,9 +95,6 @@ class TestCandidateDetailsSchema:
         base = {
             "candidate_name": "Arjun Ramaswamy",
             "register_number": "710621104001",
-            "course": "B.E.",
-            "branch": "Computer Science and Engineering",
-            "year_of_passing": 2024,
         }
         base.update(overrides)
         return base
@@ -114,14 +111,6 @@ class TestCandidateDetailsSchema:
     def test_register_number_special_chars_rejected(self) -> None:
         with pytest.raises(ValidationError):
             CandidateDetails(**self._valid_candidate(register_number="ABC@123!"))
-
-    def test_year_too_old_rejected(self) -> None:
-        with pytest.raises(ValidationError):
-            CandidateDetails(**self._valid_candidate(year_of_passing=1989))
-
-    def test_year_too_future_rejected(self) -> None:
-        with pytest.raises(ValidationError):
-            CandidateDetails(**self._valid_candidate(year_of_passing=2101))
 
     def test_candidate_name_stripped(self) -> None:
         c = CandidateDetails(**self._valid_candidate(candidate_name="  Arjun  "))

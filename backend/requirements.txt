@@ -6,6 +6,7 @@
 # ----- Core Framework -----
 fastapi==0.115.12
 uvicorn[standard]==0.34.3
+python-multipart>=0.0.9
 
 # ----- Settings / Configuration -----
 pydantic-settings==2.9.1

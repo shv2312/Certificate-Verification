@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.schemas.common import APIResponse
 from app.schemas.email_verification import (
+    ResendOTPRequest,
     SendOTPRequest,
     SendOTPResponse,
     VerifyOTPRequest,
@@ -110,5 +111,39 @@ async def verify_otp(body: VerifyOTPRequest, db: AsyncSession = Depends(get_db))
             f"Email verified successfully for {response_data.verified_company}. "
             "You may now proceed to payment."
         ),
+        data=response_data,
+    )
+
+
+@router.post(
+    "/resend-otp",
+    response_model=APIResponse[SendOTPResponse],
+    summary="Resend email verification OTP",
+    description=(
+        "Regenerates and resends a fresh OTP for an existing, unverified challenge. "
+        "Subject to the same per-email resend cooldown as send-otp. "
+        "The challenge_id remains the same so the frontend state does not need to update."
+    ),
+    status_code=200,
+)
+async def resend_otp(
+    body: ResendOTPRequest, db: AsyncSession = Depends(get_db)
+) -> APIResponse[SendOTPResponse]:
+    """
+    Resend flow:
+        1. Client sends { challenge_id } (kept from the original send-otp response).
+        2. Backend looks up the existing challenge, enforces cooldown, issues a new OTP.
+        3. Returns the same SendOTPResponse shape.
+
+    Raises:
+        409 – If cooldown is still active, challenge is invalid, or already verified.
+    """
+    response_data = await email_service.resend_otp(
+        db=db,
+        challenge_id=body.challenge_id,
+    )
+    return APIResponse(
+        success=True,
+        message=f"A new verification code has been sent to {response_data.masked_email}.",
         data=response_data,
     )

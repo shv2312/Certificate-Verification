@@ -237,6 +237,63 @@ async def create_and_send_otp(
     )
 
 
+
+async def resend_otp(
+    db: AsyncSession,
+    challenge_id: str,
+) -> SendOTPResponse:
+    """
+    Regenerate and resend the OTP for an existing, unverified challenge.
+
+    Enforces the same resend cooldown as create_and_send_otp.
+    On success, the old OTP is invalidated (new HMAC stored) and a fresh
+    6-digit OTP is dispatched to the same email address.
+
+    Returns:
+        SendOTPResponse (same shape as send-otp) with the same challenge_id.
+
+    Raises:
+        ValueError: If challenge not found, already verified, or cooldown active.
+    """
+    challenge = await db.get(EmailChallenge, challenge_id)
+    if not challenge:
+        raise ValueError("Invalid or expired verification session. Please start over.")
+
+    if challenge.verified:
+        raise ValueError("This email address has already been verified.")
+
+    current_time = int(time.time())
+    # Enforce cooldown
+    seconds_since_last = current_time - challenge.last_sent_at
+    if seconds_since_last < settings.OTP_RESEND_COOLDOWN_SECONDS:
+        wait = settings.OTP_RESEND_COOLDOWN_SECONDS - seconds_since_last
+        raise ValueError(f"Please wait {wait} seconds before requesting a new code.")
+
+    # Generate a fresh OTP and reset the challenge (same challenge_id preserved)
+    otp = _generate_otp()
+    challenge.otp_hmac = _hmac_otp(otp)
+    challenge.attempts = 0
+    challenge.last_sent_at = current_time
+    # Reset creation time so the expiry window is fresh
+    challenge.created_at = current_time
+    await db.flush()
+
+    await _send_otp_email(challenge.email, challenge.company_name, otp)
+
+    logger.info(
+        "OTP resent for challenge %s to %s (%s)",
+        challenge_id[:8] + "…",
+        _mask_email(challenge.email),
+        challenge.company_name,
+    )
+
+    return SendOTPResponse(
+        challenge_id=challenge_id,
+        masked_email=_mask_email(challenge.email),
+        resend_allowed_after_seconds=settings.OTP_RESEND_COOLDOWN_SECONDS,
+    )
+
+
 async def verify_otp(
     db: AsyncSession,
     challenge_id: str,

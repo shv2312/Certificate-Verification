@@ -79,6 +79,12 @@ async def lifespan(app: FastAPI):
             "DISABLE before any production deployment."
         )
 
+    # DEV-ONLY: auto-create tables for local SQLite. PostgreSQL uses Alembic.
+    if settings.DATABASE_URL.startswith("sqlite"):
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("[DEV] SQLite tables created from ORM metadata.")
+
     yield  # application runs here
 
     # ---- shutdown ----

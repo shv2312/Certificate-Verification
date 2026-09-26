@@ -105,3 +105,7 @@ Student Data/
 
 # ----- Gemini / AI context docs -----
 docs/GEM_PROJECT_MASTER_CONTEXT.md.txt
+
+# ----- Uploads -----
+backend/uploads/*
+!backend/uploads/.gitkeep

@@ -40,12 +40,18 @@ settings = get_settings()
 # ------------------------------------------------------------------ #
 # pool_pre_ping=True: validates connections before using them, so
 # stale connections from the pool don't cause 500 errors.
-engine = create_async_engine(
-    settings.DATABASE_URL,
-    pool_pre_ping=True,
-    echo=settings.APP_DEBUG,   # SQL logging only in debug mode
-    future=True,
-)
+# SQLite (local dev): disable pool_pre_ping and add check_same_thread=False.
+_is_sqlite = settings.DATABASE_URL.startswith("sqlite")
+_engine_kwargs: dict = {
+    "echo": settings.APP_DEBUG,
+    "future": True,
+}
+if _is_sqlite:
+    _engine_kwargs["connect_args"] = {"check_same_thread": False}
+else:
+    _engine_kwargs["pool_pre_ping"] = True
+
+engine = create_async_engine(settings.DATABASE_URL, **_engine_kwargs)
 
 # ------------------------------------------------------------------ #
 # Session factory                                                      #
