@@ -1,0 +1,18 @@
+{
+  "include": [
+    "app",
+    "../verification_engine"
+  ],
+  "extraPaths": [
+    "..",
+    "../verification_engine"
+  ],
+  "pythonVersion": "3.11",
+  "pythonPlatform": "Windows",
+  "typeCheckingMode": "basic",
+  "reportMissingModuleSource": "none",
+  "reportMissingImports": "warning",
+  "reportUnknownMemberType": "none",
+  "reportUnknownVariableType": "none",
+  "reportUnknownArgumentType": "none"
+}
