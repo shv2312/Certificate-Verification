@@ -21,7 +21,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import AppHeader from './components/AppHeader';
 import AppFooter from './components/AppFooter';
-import LandingPage from './pages/LandingPage';
+import HomePage from './pages/HomePage';
 import CompanyPage from './pages/CompanyPage';
 import EmailVerificationPage from './pages/EmailVerificationPage';
 import PaymentPage from './pages/PaymentPage';
@@ -65,7 +65,7 @@ export default function App() {
           <AppHeader />
           <Routes>
             {/* Public Routes */}
-            <Route path={ROUTES.HOME}    element={<LandingPage />} />
+            <Route path={ROUTES.HOME}    element={<HomePage />} />
             <Route path={ROUTES.COMPANY} element={<CompanyPage />} />
             <Route path={ROUTES.VERIFY_EMAIL} element={<EmailVerificationPage />} />
             <Route path="/unauthorized" element={<UnauthorizedPage />} />
