@@ -71,7 +71,7 @@ export default function SearchableCountrySelect({
               type="text"
               autoFocus
               placeholder="Search country..."
-              className="w-full text-sm p-1.5 border border-siet-border rounded focus:outline-none focus:border-siet-sky"
+              className="w-full text-sm p-1.5 border border-siet-border rounded focus:outline-none focus:border-brand-green focus:ring-1 focus:ring-brand-green/30"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onClick={(e) => e.stopPropagation()}
@@ -91,7 +91,7 @@ export default function SearchableCountrySelect({
                     aria-selected={option.value === value}
                     className={clsx(
                       'flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-slate-50',
-                      option.value === value && 'bg-blue-50 text-siet-navy font-medium'
+                      option.value === value && 'bg-brand-light text-brand-green font-semibold'
                     )}
                     onClick={() => {
                       onChange(option.value);

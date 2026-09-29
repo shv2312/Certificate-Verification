@@ -1,4 +1,5 @@
-import { useLocation, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { useLocation, useNavigate, Navigate } from 'react-router-dom';
 import PageContainer from '../components/PageContainer';
 import ProgressStepper from '../components/ProgressStepper';
 import { buildStepStatuses } from '../utils/workflowSteps';
@@ -9,10 +10,28 @@ const steps = buildStepStatuses(5); // Result step
 
 export default function ResultPage() {
   const location = useLocation();
-  const result = location.state?.result as VerificationResult;
+  const navigate = useNavigate();
+  
+  const result = (location.state?.result as VerificationResult) || (() => {
+    try {
+      const cached = sessionStorage.getItem('siet_verification_result');
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  })();
+
+  useEffect(() => {
+    // Clear temporary workflow drafts upon reaching the final verification result
+    sessionStorage.removeItem('siet_requester_draft');
+    sessionStorage.removeItem('siet_candidate_draft');
+    sessionStorage.removeItem('candidatePayload');
+    sessionStorage.removeItem('siet_payment_draft');
+    sessionStorage.removeItem('siet_active_request_id');
+  }, []);
 
   if (!result) {
-    return <Navigate to={ROUTES.COMPANY} replace />;
+    return <Navigate to={ROUTES.REQUESTER} replace />;
   }
 
   const isVerified = result.status === 'VERIFIED';
@@ -136,6 +155,39 @@ export default function ResultPage() {
               </p>
             </div>
           )}
+        </div>
+
+        {/* ── Actions ── */}
+        <div className="p-6 bg-slate-50 border-t border-siet-border flex flex-col sm:flex-row items-center justify-between gap-4">
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="btn-secondary w-full sm:w-auto flex items-center justify-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            Print Verification Report
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              sessionStorage.removeItem('siet_requester_draft');
+              sessionStorage.removeItem('siet_candidate_draft');
+              sessionStorage.removeItem('candidatePayload');
+              sessionStorage.removeItem('siet_payment_draft');
+              sessionStorage.removeItem('siet_active_request_id');
+              sessionStorage.removeItem('siet_verification_result');
+              navigate(ROUTES.REQUESTER);
+            }}
+            className="btn-primary w-full sm:w-auto flex items-center justify-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Verify Another Candidate
+          </button>
         </div>
       </div>
     </PageContainer>

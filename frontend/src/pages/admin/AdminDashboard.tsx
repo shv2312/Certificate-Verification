@@ -16,7 +16,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import AdminSidebar from '../../components/AdminSidebar';
 import { apiClient } from '../../api/client';
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Sector } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer, Sector, Tooltip } from 'recharts';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -25,8 +25,7 @@ interface AdminStats {
   verified: number;
   not_verified: number;
   pending: number;
-  in_progress: number;
-  error: number;
+  total_payments?: number;
   company_distribution?: { company_name: string; count: number }[];
 }
 
@@ -59,7 +58,7 @@ const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string }>
   NAME_MISMATCH:            { label: 'Name Mismatch',   bg: '#fee2e2', text: '#b91c1c' },
   NOT_FOUND:                { label: 'Not Found',       bg: '#fee2e2', text: '#b91c1c' },
   ERROR:                    { label: 'Error',           bg: '#ffedd5', text: '#c2410c' },
-  VERIFICATION_IN_PROGRESS: { label: 'In Progress',    bg: '#dbeafe', text: '#1d4ed8' },
+  VERIFICATION_IN_PROGRESS: { label: 'In Progress',    bg: '#fef9c3', text: '#854d0e' },
   CANDIDATE_BOUND:          { label: 'Awaiting Confirm',bg: '#ede9fe', text: '#6d28d9' },
   PAID_UNUSED:              { label: 'Paid / Unused',   bg: '#f3e8ff', text: '#7c3aed' },
   PAYMENT_PENDING:          { label: 'Pending Payment', bg: '#f1f5f9', text: '#475569' },
@@ -121,69 +120,39 @@ function StatCard({
   );
 }
 
-const CustomLabel = (props: any) => {
-  const { cx, cy, midAngle, outerRadius, percent, name, index, activeIndex } = props;
-  if (index === activeIndex) return null;
-
-  const RADIAN = Math.PI / 180;
-  const radius = outerRadius + 25;
-  const x = cx + radius * Math.cos(-midAngle * RADIAN);
-  const y = cy + radius * Math.sin(-midAngle * RADIAN);
-  const textAnchor = x > cx ? 'start' : 'end';
-
-  return (
-    <text x={x} y={y} textAnchor={textAnchor} dominantBaseline="central" fontSize={12}>
-      <tspan fill="#475569">{name}</tspan>
-      <tspan fontWeight="bold" fill="#1e293b"> {(percent * 100).toFixed(0)}%</tspan>
-    </text>
-  );
-};
-
-const CustomLabelLine = (props: any) => {
-  const { points, index, activeIndex } = props;
-  if (index === activeIndex || !points) return null;
-  const pointString = points.map((p: any) => `${p.x},${p.y}`).join(' ');
-  return <polyline points={pointString} fill="none" stroke="#94a3b8" strokeWidth={1.5} />;
-};
-
 const ActiveShape = (props: any) => {
-  const { cx, cy, midAngle, innerRadius, outerRadius, startAngle, endAngle, percent, name, fill } = props;
-  const RADIAN = Math.PI / 180;
-  
-  const popupOuterRadius = outerRadius + 12;
-  const popupInnerRadius = innerRadius + 2;
-
-  const cos = Math.cos(-midAngle * RADIAN);
-  const sin = Math.sin(-midAngle * RADIAN);
-  const sx = cx + popupOuterRadius * cos;
-  const sy = cy + popupOuterRadius * sin;
-  const mx = cx + (popupOuterRadius + 15) * cos;
-  const my = cy + (popupOuterRadius + 15) * sin;
-  const ex = mx + (cos >= 0 ? 1 : -1) * 15;
-  const ey = my;
-  const textAnchor = cos >= 0 ? 'start' : 'end';
-
+  const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
   return (
-    <g>
-      <Sector
-        cx={cx}
-        cy={cy}
-        innerRadius={popupInnerRadius}
-        outerRadius={popupOuterRadius}
-        startAngle={startAngle}
-        endAngle={endAngle}
-        fill={fill}
-        style={{ filter: 'drop-shadow(0px 4px 6px rgba(0,0,0,0.15))' }}
-      />
-      <polyline points={`${sx},${sy} ${mx},${my} ${ex},${ey}`} fill="none" stroke={fill} strokeWidth={2} />
-      <text x={ex + (cos >= 0 ? 1 : -1) * 8} y={ey - 8} textAnchor={textAnchor} dominantBaseline="central" fontSize={14} fontWeight="bold" fill="#0f172a">
-        {name}
-      </text>
-      <text x={ex + (cos >= 0 ? 1 : -1) * 8} y={ey + 8} textAnchor={textAnchor} dominantBaseline="central" fontSize={13} fontWeight="bold" fill={fill}>
-        {(percent * 100).toFixed(1)}%
-      </text>
-    </g>
+    <Sector
+      cx={cx}
+      cy={cy}
+      innerRadius={innerRadius}
+      outerRadius={outerRadius + 8}
+      startAngle={startAngle}
+      endAngle={endAngle}
+      fill={fill}
+      style={{ filter: 'drop-shadow(0px 4px 6px rgba(0,0,0,0.15))', transition: 'all 0.3s ease' }}
+    />
   );
+};
+
+const CustomTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    const percent = (data.count / (data.totalCount || 1)) * 100;
+    return (
+      <div className="bg-white p-3 border border-slate-200 rounded-lg shadow-lg">
+        <p className="font-semibold text-slate-800 text-sm mb-1">{data.company_name}</p>
+        <p className="text-slate-600 text-xs flex justify-between gap-4">
+          <span>Requests:</span> <span className="font-medium text-slate-900">{data.count}</span>
+        </p>
+        <p className="text-slate-600 text-xs flex justify-between gap-4">
+          <span>Share:</span> <span className="font-medium text-slate-900">{percent.toFixed(1)}%</span>
+        </p>
+      </div>
+    );
+  }
+  return null;
 };
 
 export default function AdminDashboard() {
@@ -202,9 +171,12 @@ export default function AdminDashboard() {
   const [companySearch, setCompanySearch] = useState('');
   const [volumeFilter, setVolumeFilter] = useState<'all' | '5' | '10' | '25'>('all');
 
-  // Filtering + search
   const [search,       setSearch]       = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+
+  // Payments filtering + search
+  const [paymentSearch, setPaymentSearch] = useState('');
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState('ALL');
 
   // Fetch stats on mount
   useEffect(() => {
@@ -223,7 +195,7 @@ export default function AdminDashboard() {
 
   const filteredCompanies = useMemo(() => {
     if (!stats?.company_distribution) return [];
-    let comps = stats.company_distribution;
+    let comps = [...stats.company_distribution];
 
     if (volumeFilter !== 'all') {
       comps = comps.slice(0, Number(volumeFilter));
@@ -233,7 +205,23 @@ export default function AdminDashboard() {
       const q = companySearch.trim().toLowerCase();
       comps = comps.filter((c) => c.company_name.toLowerCase().includes(q));
     }
-    return comps;
+
+    const totalCount = comps.reduce((sum, c) => sum + c.count, 0);
+
+    // Consolidate 'Others' if there are more than 6 items and no active search
+    if (comps.length > 6 && !companySearch.trim() && volumeFilter === 'all') {
+      const threshold = totalCount * 0.05; // 5% threshold
+      const mainComps = comps.filter(c => c.count >= threshold);
+      const otherComps = comps.filter(c => c.count < threshold);
+
+      if (otherComps.length > 0) {
+        const othersCount = otherComps.reduce((sum, c) => sum + c.count, 0);
+        mainComps.push({ company_name: 'Others', count: othersCount });
+        comps = mainComps;
+      }
+    }
+
+    return comps.map(c => ({ ...c, totalCount }));
   }, [stats?.company_distribution, companySearch, volumeFilter]);
 
   // Client-side filtering
@@ -260,9 +248,50 @@ export default function AdminDashboard() {
     [requests],
   );
 
+  // Derived Payments Data
+  const paymentRows = useMemo(() => {
+    return requests.map((r) => {
+      // In this version, all VerificationRequests represent a successful payment or are generated post-payment.
+      const isPaid = r.status !== 'PAYMENT_PENDING' && r.status !== 'FAILED';
+      const pStatus = isPaid ? 'SUCCESS' : r.status === 'PAYMENT_PENDING' ? 'PENDING' : 'FAILED';
+      return {
+        id: r.verification_request_id,
+        transaction_id: `pay_${r.display_request_id.toLowerCase()}`,
+        company_name: r.company_name,
+        candidate_name: r.candidate_name,
+        amount: 100, // Fixed ₹100
+        gateway: 'Razorpay Test Mode',
+        created_at: r.created_at,
+        status: pStatus,
+      };
+    });
+  }, [requests]);
+
+  const filteredPayments = useMemo(() => {
+    let rows = paymentRows;
+    if (paymentStatusFilter !== 'ALL') {
+      rows = rows.filter((r) => r.status === paymentStatusFilter);
+    }
+    if (paymentSearch.trim()) {
+      const q = paymentSearch.trim().toLowerCase();
+      rows = rows.filter(
+        (r) =>
+          r.transaction_id.toLowerCase().includes(q) ||
+          r.company_name.toLowerCase().includes(q) ||
+          (r.candidate_name ?? '').toLowerCase().includes(q)
+      );
+    }
+    return rows;
+  }, [paymentRows, paymentSearch, paymentStatusFilter]);
+
+  const totalRevenue = paymentRows.filter(p => p.status === 'SUCCESS').reduce((sum, p) => sum + p.amount, 0);
+  const totalPaidTransactions = paymentRows.filter(p => p.status === 'SUCCESS').length;
+  const avgFee = totalPaidTransactions > 0 ? (paymentRows.reduce((sum, p) => sum + (p.amount * 0.02), 0) / paymentRows.length) : 0; // assuming 2% avg fee
+
+
   const renderPlaceholder = (title: string, desc: string) => (
     <div className="surface-card p-16 text-center flex flex-col items-center justify-center animate-slide-up">
-      <div className="w-20 h-20 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center mb-6 shadow-inner">
+      <div className="w-20 h-20 bg-brand-light text-brand-green rounded-2xl flex items-center justify-center mb-6 shadow-inner border border-emerald-100">
         <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
         </svg>
@@ -290,7 +319,7 @@ export default function AdminDashboard() {
                   id="admin-status-filter"
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="form-input text-sm py-1.5 transition duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  className="form-input text-sm py-1.5 transition duration-200 focus:outline-none focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green"
                   aria-label="Filter by status"
                 >
                   <option value="ALL">All Statuses</option>
@@ -316,7 +345,7 @@ export default function AdminDashboard() {
                     placeholder="Search ID, company, email…"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="form-input pl-8 text-sm py-1.5 w-full sm:w-56 transition duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    className="form-input pl-8 text-sm py-1.5 w-full sm:w-56 transition duration-200 focus:outline-none focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green"
                     aria-label="Search verification requests"
                   />
                 </div>
@@ -389,6 +418,154 @@ export default function AdminDashboard() {
           </section>
   );
 
+  const renderPaymentsView = () => (
+    <section className="animate-slide-up space-y-6">
+      {/* Summary Ribbon */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="surface-card p-5 border-l-4 border-green-500">
+          <p className="text-xs font-medium text-siet-muted uppercase tracking-wider mb-1">Total Revenue</p>
+          <p className="text-2xl font-bold text-siet-navy">₹ {totalRevenue.toLocaleString()}</p>
+        </div>
+        <div className="surface-card p-5 border-l-4 border-brand-green">
+          <p className="text-xs font-medium text-siet-muted uppercase tracking-wider mb-1">Paid Transactions</p>
+          <p className="text-2xl font-bold text-siet-navy">{totalPaidTransactions}</p>
+        </div>
+        <div className="surface-card p-5 border-l-4 border-amber-500">
+          <p className="text-xs font-medium text-siet-muted uppercase tracking-wider mb-1">Avg Transaction Fee</p>
+          <p className="text-2xl font-bold text-siet-navy">₹ {avgFee.toFixed(2)}</p>
+        </div>
+        <div className="surface-card p-5 border-l-4 border-purple-500">
+          <p className="text-xs font-medium text-siet-muted uppercase tracking-wider mb-1">Gateway Status</p>
+          <p className="text-sm font-bold text-purple-700 mt-1 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></span>
+            Razorpay - Sandbox / Test Mode
+          </p>
+        </div>
+      </div>
+
+      {/* Filter & Search Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h2 className="text-lg font-semibold text-siet-navy">
+          Payment Transactions
+          {!loadingReqs && (
+            <span className="ml-2 text-sm font-normal text-siet-muted">
+              ({filteredPayments.length} of {paymentRows.length})
+            </span>
+          )}
+        </h2>
+
+        <div className="flex flex-col sm:flex-row gap-2">
+          <select
+            value={paymentStatusFilter}
+            onChange={(e) => setPaymentStatusFilter(e.target.value)}
+            className="form-input text-sm py-1.5 transition duration-200 focus:outline-none focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green"
+            aria-label="Filter by payment status"
+          >
+            <option value="ALL">All Statuses</option>
+            <option value="SUCCESS">Successful</option>
+            <option value="REFUNDED">Refunded</option>
+            <option value="FAILED">Failed</option>
+            <option value="PENDING">Pending</option>
+          </select>
+
+          <div className="relative">
+            <svg
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-siet-muted"
+              fill="none" stroke="currentColor" viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="search"
+              placeholder="Search ID, requester, candidate…"
+              value={paymentSearch}
+              onChange={(e) => setPaymentSearch(e.target.value)}
+              className="form-input pl-8 text-sm py-1.5 w-full sm:w-64 transition duration-200 focus:outline-none focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green"
+              aria-label="Search payment records"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="surface-card overflow-hidden">
+        {loadingReqs ? (
+          <div className="flex items-center justify-center py-16 gap-3 text-siet-slate">
+            <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            </svg>
+            Loading payments…
+          </div>
+        ) : filteredPayments.length === 0 ? (
+          <div className="py-16 text-center text-siet-slate text-sm">
+            No payment transactions found.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm" aria-label="Payment records">
+              <thead>
+                <tr className="bg-siet-silver border-b border-siet-border">
+                  {['Transaction ID', 'Requester / Company', 'Candidate Verified', 'Amount', 'Gateway / Mode', 'Date & Time', 'Status'].map((h) => (
+                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-siet-slate uppercase tracking-wider whitespace-nowrap">
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-siet-border">
+                {filteredPayments.map((row) => (
+                  <tr
+                    key={row.id}
+                    className="hover:bg-siet-silver/50 transition-colors duration-100"
+                  >
+                    <td className="px-4 py-3 font-mono text-xs text-siet-navy font-semibold whitespace-nowrap flex items-center gap-2">
+                      {row.transaction_id}
+                      <button 
+                        onClick={() => navigator.clipboard.writeText(row.transaction_id)}
+                        className="text-siet-muted hover:text-brand-green transition-colors"
+                        title="Copy Transaction ID"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <rect width="8" height="8" x="8" y="8" rx="1" />
+                          <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+                        </svg>
+                      </button>
+                    </td>
+                    <td className="px-4 py-3 text-siet-navy max-w-[160px] truncate" title={row.company_name}>
+                      {row.company_name}
+                    </td>
+                    <td className="px-4 py-3 text-siet-slate">
+                      {row.candidate_name ?? <span className="text-siet-muted italic text-xs">Unknown</span>}
+                    </td>
+                    <td className="px-4 py-3 font-medium text-siet-navy">
+                      ₹ {row.amount.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-siet-slate">
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200">
+                        {row.gateway}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-siet-muted whitespace-nowrap text-xs">
+                      {formatDate(row.created_at)}
+                    </td>
+                    <td className="px-4 py-3">
+                      {row.status === 'SUCCESS' && <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">SUCCESS</span>}
+                      {row.status === 'FAILED' && <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">FAILED</span>}
+                      {row.status === 'PENDING' && <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">PENDING</span>}
+                      {row.status === 'REFUNDED' && <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">REFUNDED</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+
   return (
     <div className="flex-1 flex flex-col md:flex-row w-full relative bg-slate-50">
       <AdminSidebar />
@@ -413,13 +590,13 @@ export default function AdminDashboard() {
                   ⚠ Could not load statistics: {statsError}
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-                  <StatCard label="Total"       value={stats?.total}       color="#0047AB" icon="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                  <StatCard label="Total Requests"       value={stats?.total}       color="#0B6A3E" icon="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                   <StatCard label="Verified"    value={stats?.verified}    color="#16a34a" icon="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   <StatCard label="Pending"     value={stats?.pending}     color="#7c3aed" icon="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  <StatCard label="In Progress" value={stats?.in_progress} color="#2563eb" icon="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   <StatCard label="Not Verified" value={stats?.not_verified} color="#dc2626" icon="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  <StatCard label="Errors"      value={stats?.error}       color="#ea580c" icon="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  <StatCard label="Total Payments"      value={stats?.total_payments ?? paymentRows.length}       color="#059669" icon="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+
                 </div>
               )}
 
@@ -432,7 +609,7 @@ export default function AdminDashboard() {
                       <select 
                         value={volumeFilter} 
                         onChange={(e) => setVolumeFilter(e.target.value as any)}
-                        className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm bg-white text-slate-700 transition duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                        className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm bg-white text-slate-700 transition duration-200 focus:outline-none focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green"
                       >
                         <option value="all">All Companies</option>
                         <option value="5">Top 5 Most Visited</option>
@@ -452,49 +629,74 @@ export default function AdminDashboard() {
                           placeholder="Search companies..."
                           value={companySearch}
                           onChange={(e) => setCompanySearch(e.target.value)}
-                          className="form-input pl-9 text-sm py-1.5 w-full sm:w-56 transition duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                          className="form-input pl-9 text-sm py-1.5 w-full sm:w-56 transition duration-200 focus:outline-none focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green"
                           aria-label="Search companies in chart"
                         />
                       </div>
                     </div>
                   </div>
-                  <div className="h-[300px] w-full max-w-4xl mx-auto">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={filteredCompanies}
-                          dataKey="count"
-                          nameKey="company_name"
-                          cx="40%"
-                          cy="50%"
-                          outerRadius={80}
-                          innerRadius={50}
-                          // @ts-expect-error Recharts 3.x types might be missing activeIndex on Pie
-                          activeIndex={activeIndex}
-                          activeShape={<ActiveShape />}
-                          onMouseEnter={(_, index) => setActiveIndex(index)}
-                          onMouseLeave={() => setActiveIndex(-1)}
-                          label={<CustomLabel activeIndex={activeIndex} />}
-                          labelLine={<CustomLabelLine activeIndex={activeIndex} />}
-                          isAnimationActive={true}
-                          animationBegin={100}
-                          animationDuration={900}
-                          animationEasing="ease-out"
-                        >
-                          {filteredCompanies.map((_, index) => {
-                            const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#8dd1e1', '#a4de6c', '#d0ed57'];
-                            return <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />;
-                          })}
-                        </Pie>
-                        {/* Tooltip removed to prevent duplicate text with ActiveShape callout */}
-                        <Legend 
-                          layout="vertical" 
-                          verticalAlign="middle" 
-                          align="right" 
-                          wrapperStyle={{ paddingLeft: '20px' }} 
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+                    <div className="md:col-span-7 h-[320px] relative flex justify-center items-center">
+                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-0">
+                        <span className="text-sm font-medium text-slate-500">Total Requests</span>
+                        <span className="text-3xl font-bold text-slate-800">{filteredCompanies.reduce((a,c) => a+c.count, 0)}</span>
+                      </div>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={filteredCompanies}
+                            dataKey="count"
+                            nameKey="company_name"
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={85}
+                            outerRadius={115}
+                            // @ts-expect-error Recharts 3.x types might be missing activeIndex on Pie
+                            activeIndex={activeIndex}
+                            activeShape={<ActiveShape />}
+                            onMouseEnter={(_, index) => setActiveIndex(index)}
+                            onMouseLeave={() => setActiveIndex(-1)}
+                            isAnimationActive={true}
+                            animationBegin={100}
+                            animationDuration={900}
+                            animationEasing="ease-out"
+                            stroke="none"
+                          >
+                            {filteredCompanies.map((entry, index) => {
+                              const COLORS = ['#0B6A3E', '#16A34A', '#EAB308', '#074828', '#FACC15', '#059669', '#10B981', '#854D0E', '#64748B'];
+                              return <Cell key={`cell-${index}`} fill={entry.company_name === 'Others' ? '#cbd5e1' : COLORS[index % COLORS.length]} />;
+                            })}
+                          </Pie>
+                          <Tooltip content={<CustomTooltip />} cursor={{fill: 'transparent'}} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="md:col-span-5 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                      <div className="space-y-2">
+                        {filteredCompanies.map((entry, index) => {
+                           const COLORS = ['#0B6A3E', '#16A34A', '#EAB308', '#074828', '#FACC15', '#059669', '#10B981', '#854D0E', '#64748B'];
+                          const color = entry.company_name === 'Others' ? '#cbd5e1' : COLORS[index % COLORS.length];
+                          const percent = ((entry.count / entry.totalCount) * 100).toFixed(1);
+                          return (
+                            <div 
+                              key={index} 
+                              className="flex items-center justify-between p-2.5 rounded-lg hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-200 cursor-default" 
+                              onMouseEnter={() => setActiveIndex(index)} 
+                              onMouseLeave={() => setActiveIndex(-1)}
+                            >
+                              <div className="flex items-center gap-3 truncate">
+                                <span className="w-3 h-3 rounded-full shrink-0 shadow-sm" style={{ backgroundColor: color }}></span>
+                                <span className="text-sm font-medium text-slate-700 truncate" title={entry.company_name}>{entry.company_name}</span>
+                              </div>
+                              <div className="flex items-center gap-3 shrink-0 ml-2">
+                                <span className="text-sm font-bold text-slate-900">{entry.count}</span>
+                                <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded w-12 text-right">{percent}%</span>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
                   </div>
                 </section>
               )}
@@ -519,6 +721,9 @@ export default function AdminDashboard() {
             'System Overview',
             'Displays core service health, API ping times, database status, and error rate telemetry.'
           )}
+
+          {currentView === 'payments' && renderPaymentsView()}
+
 
       </main>
     </div>

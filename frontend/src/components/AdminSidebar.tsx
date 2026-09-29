@@ -67,12 +67,22 @@ function LogOutIcon({ className }: { className?: string }) {
   );
 }
 
+function CreditCardIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect width="20" height="14" x="2" y="5" rx="2" />
+      <line x1="2" x2="22" y1="10" y2="10" />
+    </svg>
+  );
+}
+
 const ADMIN_LINKS = [
   { to: '/admin', label: 'Dashboard Overview', end: true, icon: LayoutDashboardIcon },
   { to: '/admin/verifications', label: 'Verification Records', icon: FileCheckIcon },
   { to: '/admin/students', label: 'Student Records', icon: GraduationCapIcon },
   { to: '/admin/audit', label: 'Audit / Activity Log', icon: HistoryIcon },
   { to: '/admin/system', label: 'System Overview', icon: ActivityIcon },
+  { to: '/admin/payments', label: 'Payment Records', icon: CreditCardIcon },
 ];
 
 export default function AdminSidebar() {
@@ -86,11 +96,12 @@ export default function AdminSidebar() {
 
   return (
     <aside className="sticky top-0 md:top-16 h-[calc(100vh-4rem)] flex flex-col w-full md:w-64 shrink-0 bg-white border-r border-siet-border z-10">
-      <div className="p-4 border-b border-siet-border bg-siet-silver shrink-0">
-        <h2 className="text-sm font-bold text-siet-navy uppercase tracking-wider">
+      <div className="p-4 border-b border-emerald-100 bg-brand-light shrink-0">
+        <h2 className="text-sm font-bold text-brand-forest uppercase tracking-wider flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-brand-gold" />
           Admin Portal
         </h2>
-        <p className="text-xs text-siet-slate mt-0.5">
+        <p className="text-xs text-slate-500 mt-0.5">
           SIET Verification Service
         </p>
       </div>
@@ -105,8 +116,8 @@ export default function AdminSidebar() {
               clsx(
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors duration-150',
                 isActive
-                  ? 'bg-blue-50 text-blue-700 font-semibold'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 font-medium'
+                  ? 'bg-brand-light text-brand-forest font-bold border-l-4 border-brand-green shadow-xs'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-brand-forest font-medium'
               )
             }
           >

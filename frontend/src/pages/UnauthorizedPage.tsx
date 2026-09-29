@@ -26,7 +26,7 @@ export default function UnauthorizedPage() {
 
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <Link
-            to={role === 'admin' ? '/admin' : ROUTES.COMPANY}
+            to={role === 'admin' ? '/admin' : ROUTES.REQUESTER}
             className="btn-primary"
           >
             Return to Dashboard

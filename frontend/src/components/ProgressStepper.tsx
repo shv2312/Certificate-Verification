@@ -27,11 +27,11 @@ function StepIcon({ status, stepNumber }: { status: WorkflowStep['status']; step
     return (
       <span
         className="flex items-center justify-center w-8 h-8 rounded-full
-                   bg-siet-sky text-white flex-shrink-0"
+                   bg-[#16A34A] text-white flex-shrink-0 shadow-xs"
         aria-hidden="true"
       >
         {/* Checkmark */}
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
         </svg>
       </span>
@@ -42,8 +42,8 @@ function StepIcon({ status, stepNumber }: { status: WorkflowStep['status']; step
     return (
       <span
         className="flex items-center justify-center w-8 h-8 rounded-full
-                   border-2 border-siet-sky bg-white text-siet-sky
-                   font-semibold text-sm flex-shrink-0 animate-step-pulse"
+                   bg-[#0B6A3E] text-white font-bold text-sm flex-shrink-0
+                   ring-4 ring-emerald-100 shadow-xs"
         aria-hidden="true"
       >
         {stepNumber}
@@ -51,11 +51,11 @@ function StepIcon({ status, stepNumber }: { status: WorkflowStep['status']; step
     );
   }
 
-  // upcoming
+  // upcoming / inactive
   return (
     <span
       className="flex items-center justify-center w-8 h-8 rounded-full
-                 border-2 border-siet-border bg-white text-siet-muted
+                 bg-slate-100 border-2 border-slate-300 text-slate-500
                  font-semibold text-sm flex-shrink-0"
       aria-hidden="true"
     >
@@ -87,8 +87,8 @@ export default function ProgressStepper({ steps, className = '' }: ProgressStepp
             {/* Connector Line (behind icon) */}
             {index < steps.length - 1 && (
               <div
-                className={`absolute top-4 left-1/2 w-full h-0.5 transition-colors duration-300 ${
-                  step.status === 'completed' ? 'bg-siet-sky' : 'bg-siet-border'
+                className={`absolute top-4 left-1/2 w-full transition-colors duration-300 ${
+                  step.status === 'completed' ? 'bg-[#16A34A] h-1' : 'bg-slate-200 h-0.5'
                 }`}
                 style={{ zIndex: 0 }}
                 aria-hidden="true"
@@ -101,12 +101,12 @@ export default function ProgressStepper({ steps, className = '' }: ProgressStepp
               
               {/* Step Label */}
               <span
-                className={`text-xs font-medium text-center leading-tight max-w-[90%] px-1 ${
-                  step.status === 'completed'
-                    ? 'text-siet-sky'
-                    : step.status === 'current'
-                    ? 'text-siet-navy font-semibold'
-                    : 'text-siet-muted'
+                className={`text-xs sm:text-sm text-center leading-tight max-w-[95%] px-1 mt-1 transition-colors duration-200 ${
+                  step.status === 'current'
+                    ? 'text-[#0B6A3E] font-bold'
+                    : step.status === 'completed'
+                    ? 'text-[#074828] font-semibold'
+                    : 'text-slate-400 font-medium'
                 }`}
               >
                 {step.label}
@@ -126,13 +126,13 @@ export default function ProgressStepper({ steps, className = '' }: ProgressStepp
               <div className="flex items-center gap-3">
                 <StepIcon status="current" stepNumber={index + 1} />
                 <div>
-                  <p className="text-sm font-semibold text-siet-navy">{step.label}</p>
+                  <p className="text-sm font-bold text-[#0B6A3E]">{step.label}</p>
                   {step.description && (
-                    <p className="text-xs text-siet-slate">{step.description}</p>
+                    <p className="text-xs text-slate-500">{step.description}</p>
                   )}
                 </div>
               </div>
-              <p className="text-xs text-siet-muted mt-1">
+              <p className="text-xs text-slate-500 font-medium mt-1">
                 Step {index + 1} of {steps.length}
               </p>
             </div>
@@ -141,7 +141,7 @@ export default function ProgressStepper({ steps, className = '' }: ProgressStepp
 
         {/* Compact progress bar */}
         <div
-          className="mt-3 h-1.5 bg-siet-silver rounded-full overflow-hidden"
+          className="mt-3 h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200"
           role="progressbar"
           aria-valuenow={steps.filter((s) => s.status === 'completed').length + 1}
           aria-valuemin={1}
@@ -149,7 +149,7 @@ export default function ProgressStepper({ steps, className = '' }: ProgressStepp
           aria-label="Overall verification progress"
         >
           <div
-            className="h-full bg-siet-sky rounded-full transition-all duration-500"
+            className="h-full bg-[#0B6A3E] rounded-full transition-all duration-500"
             style={{
               width: `${
                 ((steps.filter((s) => s.status !== 'upcoming').length) /

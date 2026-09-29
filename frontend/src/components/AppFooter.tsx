@@ -22,42 +22,40 @@ export default function AppFooter() {
   return (
     <footer
       role="contentinfo"
-      className="bg-siet-navy text-white mt-auto"
+      className="bg-[#074828] text-white mt-auto border-t border-emerald-900"
     >
       {/* Main footer content */}
-      <div className="section-container py-10">
+      <div className="section-container py-12">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 lg:gap-16">
 
           {/* Column 1: Institutional Identity */}
-          <div className="space-y-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-blue-300 mb-1">
-                Official Institutional Service
-              </p>
-              <h2 className="text-base font-bold text-white leading-snug">
-                Sri Shakthi Institute of<br />Engineering and Technology
-              </h2>
-            </div>
-            <p className="text-sm text-blue-200 leading-relaxed">
-              Academic Background Verification Portal an official service
-              for verifying candidate credentials Issued by SIET.
+          <div>
+            <p className="text-xs font-bold tracking-wider text-[#FACC15] uppercase mb-4 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#FACC15]" />
+              OFFICIAL INSTITUTIONAL SERVICE
+            </p>
+            <h2 className="text-base font-semibold text-white mb-2 leading-snug">
+              Sri Shakthi Institute of<br />Engineering and Technology
+            </h2>
+            <p className="text-sm text-emerald-100/80 leading-relaxed max-w-sm">
+              Academic Background Verification Portal is an official institutional service
+              for verifying candidate academic credentials issued by SIET.
             </p>
           </div>
 
-          {/* Column 2: Links */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-white uppercase tracking-wide">
-              Quick Links
+          {/* Column 2: Quick Links */}
+          <div>
+            <h3 className="text-xs font-bold tracking-wider text-[#FACC15] uppercase mb-4 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#FACC15]" />
+              QUICK LINKS
             </h3>
-            <ul className="space-y-2" role="list">
+            <ul className="space-y-1" role="list">
               <li>
                 <a
                   href="https://www.siet.ac.in"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-blue-200 hover:text-white transition-colors duration-150
-                             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300
-                             focus-visible:ring-offset-2 focus-visible:ring-offset-siet-navy rounded"
+                  className="text-sm text-emerald-100/90 hover:text-[#FACC15] transition-colors py-1 inline-block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FACC15] rounded"
                 >
                   SIET Official Website ↗
                 </a>
@@ -65,9 +63,7 @@ export default function AppFooter() {
               <li>
                 <Link
                   to={ROUTES.HELP}
-                  className="text-sm text-blue-200 hover:text-white transition-colors duration-150
-                             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300
-                             focus-visible:ring-offset-2 focus-visible:ring-offset-siet-navy rounded"
+                  className="text-sm text-emerald-100/90 hover:text-[#FACC15] transition-colors py-1 inline-block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FACC15] rounded"
                 >
                   Help &amp; Support
                 </Link>
@@ -75,9 +71,7 @@ export default function AppFooter() {
               <li>
                 <Link
                   to={ROUTES.STATUS}
-                  className="text-sm text-blue-200 hover:text-white transition-colors duration-150
-                             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300
-                             focus-visible:ring-offset-2 focus-visible:ring-offset-siet-navy rounded"
+                  className="text-sm text-emerald-100/90 hover:text-[#FACC15] transition-colors py-1 inline-block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FACC15] rounded"
                 >
                   Track Verification
                 </Link>
@@ -86,23 +80,21 @@ export default function AppFooter() {
           </div>
 
           {/* Column 3: Important Notes */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-white uppercase tracking-wide">
-              Important
+          <div>
+            <h3 className="text-xs font-bold tracking-wider text-[#FACC15] uppercase mb-4 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#FACC15]" />
+              IMPORTANT
             </h3>
-            <ul className="space-y-2 text-sm text-blue-200" role="list">
-              <li className="flex items-start gap-2">
-                <span className="mt-0.5 flex-shrink-0" aria-hidden="true">•</span>
+            <ul className="text-xs text-emerald-100/80 leading-relaxed list-disc pl-4 space-y-2" role="list">
+              <li>
                 One payment authorises one candidate verification only.
               </li>
-              <li className="flex items-start gap-2">
-                <span className="mt-0.5 flex-shrink-0" aria-hidden="true">•</span>
-                Verification results are delivered to the registered HR email.
+              <li>
+                Verification results are delivered directly to the registered HR email.
               </li>
-              <li className="flex items-start gap-2">
-                <span className="mt-0.5 flex-shrink-0" aria-hidden="true">•</span>
-                This is an authorised institutional service. Misuse may be
-                subject to legal action.
+              <li>
+                This is an authorised institutional service. Unauthorised misuse is
+                strictly prohibited.
               </li>
             </ul>
           </div>
@@ -111,15 +103,13 @@ export default function AppFooter() {
       </div>
 
       {/* Bottom bar */}
-      <div className="border-t border-blue-800">
-        <div className="section-container py-4 flex flex-col sm:flex-row
-                        items-center justify-between gap-2">
-          <p className="text-xs text-blue-400 text-center sm:text-left">
-            &copy; {CURRENT_YEAR} Sri Shakthi Institute of Engineering and Technology.
-            All rights reserved.
+      <div className="bg-[#042816] text-xs text-emerald-200/70 border-t border-emerald-950 py-4 px-6">
+        <div className="section-container flex flex-col sm:flex-row items-center justify-between gap-2">
+          <p className="text-center sm:text-left">
+            &copy; {CURRENT_YEAR} Sri Shakthi Institute of Engineering and Technology. All rights reserved.
           </p>
-          <p className="text-xs text-blue-500 text-center sm:text-right">
-            Academic Background Verification Portal - Official Service
+          <p className="font-medium text-center sm:text-right">
+            Official Academic Verification Gateway
           </p>
         </div>
       </div>

@@ -56,6 +56,11 @@ class CandidateDetails(BaseModel):
         description="Full name of the candidate as it appears on institutional records.",
         examples=["Arjun Ramaswamy"],
     )
+    dob: str = Field(
+        ...,
+        description="Date of birth in YYYY-MM-DD format.",
+        examples=["1998-05-15"],
+    )
     register_number: str = Field(
         ...,
         min_length=3,
@@ -63,24 +68,40 @@ class CandidateDetails(BaseModel):
         description="Register / roll number assigned by SIET.",
         examples=["710621104001"],
     )
-    course: Optional[str] = Field(
-        None,
+    degree: str = Field(
+        ...,
         min_length=2,
         max_length=100,
-        description="Programme/Course name.",
+        description="Degree/Course Title (e.g. B.E., B.Tech).",
     )
-    branch: Optional[str] = Field(
-        None,
+    specialization: str = Field(
+        ...,
         min_length=2,
         max_length=150,
-        description="Branch/Specialization name.",
+        description="Field of Study/Specialization name.",
     )
-    year_of_passing: Optional[int] = Field(
-        None,
+    year_of_passing: int = Field(
+        ...,
         ge=1990,
         le=2100,
         description="Year of passing.",
         examples=[2025],
+    )
+    certificate_no: str = Field(
+        ...,
+        min_length=2,
+        max_length=100,
+        description="Degree Certificate Number.",
+    )
+    year_of_enrolment: Optional[int] = Field(
+        None,
+        ge=1990,
+        le=2100,
+        description="Year of Enrolment.",
+    )
+    class_obtained: Optional[str] = Field(
+        None,
+        description="Class Obtained (e.g., First Class).",
     )
 
     @field_validator("candidate_name", "register_number", mode="before")

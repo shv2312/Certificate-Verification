@@ -114,15 +114,15 @@ export default function AdminLoginModal({ isOpen, onClose }: AdminLoginModalProp
         style={{ border: '1px solid rgba(0,71,171,0.12)' }}
       >
         {/* Header stripe */}
-        <div className="bg-gradient-to-r from-siet-navy to-siet-sky px-6 py-5">
+        <div className="bg-gradient-to-r from-brand-forest to-brand-green border-b-2 border-brand-gold px-6 py-5">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-bold text-white tracking-tight">Admin Portal</h2>
-              <p className="text-xs text-blue-200 mt-0.5">SIET Verification System</p>
+              <h2 className="text-lg font-extrabold text-white tracking-tight">Admin Portal</h2>
+              <p className="text-xs text-brand-gold font-medium mt-0.5">SIET Verification System</p>
             </div>
             {/* Lock icon */}
-            <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-10 h-10 rounded-full bg-white/10 border border-brand-gold/30 flex items-center justify-center">
+              <svg className="w-5 h-5 text-brand-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                   d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>

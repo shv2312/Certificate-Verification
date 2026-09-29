@@ -5,6 +5,7 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [react()],
   server: {
+    host: true,
     proxy: {
       // PROXY ASSUMPTION: The frontend and backend run on the same local machine
       // during development. If testing from an external device (e.g. mobile phone),
