@@ -133,7 +133,7 @@ export default function RequesterPage() {
   }, [values]);
 
   const [errors, setErrors] = useState<FormErrors>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [submitError, setSubmitError] = useState<string>();
 
   function handleChange(field: keyof FormValues) {
@@ -152,11 +152,11 @@ export default function RequesterPage() {
       return;
     }
 
-    setIsSubmitting(true);
+    setIsLoading(true);
     setSubmitError(undefined);
 
     try {
-      // Exact payload sent to backend matching SendOTPRequest
+      // Trigger actual asynchronous backend API call to send verification OTP
       const response = await registerRequester({
         organization_type: values.organization_type.trim() || null,
         organization_name: values.organization_name.trim(),
@@ -166,23 +166,38 @@ export default function RequesterPage() {
         requester_phone: values.requester_phone || '',
       });
 
+      // If development OTP returned by backend, cache in sessionStorage for UI autofill
+      if (response.devOtp) {
+        sessionStorage.setItem('siet_dev_otp', response.devOtp);
+      }
+
+      // STRICT STATE TRANSITION: Only advance to Step 2 upon successful 200 OK response
       setPartialAuth(response.requestId, values.requester_email.trim());
       navigate(ROUTES.VERIFY_EMAIL);
-    } catch (err) {
+    } catch (err: any) {
+      console.error('[RequesterPage] Verification request failed:', err);
+
+      let errorMessage = 'Failed to send verification email. Please check server connection.';
       if (err instanceof ApiError) {
         if (err.status === 409) {
-          setSubmitError(err.message || 'A verification code was recently sent. Please wait before requesting another.');
+          errorMessage = err.message || 'A verification code was recently sent. Please wait before requesting another.';
         } else if (err.status === 422) {
-          setSubmitError(err.message || 'Validation error: Please check that all submitted fields match required formats.');
+          errorMessage = err.message || 'Validation error: Please check that all submitted fields match required formats.';
+        } else if (err.status === 0 || err.errorCode === 'NETWORK_FAILURE') {
+          errorMessage = 'Failed to send verification email. Please check server connection.';
+        } else if (err.status >= 500) {
+          errorMessage = err.message || 'Failed to send verification email. Please check server connection.';
         } else {
-          setSubmitError(err.message);
+          errorMessage = err.message || 'Failed to send verification email.';
         }
-      } else if (err instanceof Error) {
-        setSubmitError(err.message);
-      } else {
-        setSubmitError('An unexpected error occurred during registration. Please try again.');
+      } else if (err instanceof Error && err.message) {
+        errorMessage = err.message;
       }
-      setIsSubmitting(false);
+
+      // ABORT step transition on failure: stay on Step 1 and display inline error
+      setSubmitError(errorMessage);
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -199,7 +214,30 @@ export default function RequesterPage() {
         aria-label="Requester registration form"
       >
         {submitError && (
-          <StatusMessage type="error" message={submitError} className="mb-4" />
+          <div className="space-y-3 mb-4">
+            <StatusMessage type="error" message={submitError} />
+            {import.meta.env.DEV && (
+              <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-amber-200">
+                <div>
+                  <span className="font-semibold text-amber-300 block">Developer Local Testing Fallback</span>
+                  <span>Backend unavailable? Use test OTP <code className="font-mono bg-amber-900/50 px-1 py-0.5 rounded text-amber-100 font-bold">123456</code> to continue testing UI.</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const devOtp = '123456';
+                    console.log(`%c[DEV MODE] 🔑 Bypassed email block with test OTP: ${devOtp}`, 'color: #10b981; font-weight: bold;');
+                    sessionStorage.setItem('siet_dev_otp', devOtp);
+                    setPartialAuth(`dev_challenge_${Date.now()}`, values.requester_email.trim());
+                    navigate(ROUTES.VERIFY_EMAIL);
+                  }}
+                  className="self-start sm:self-auto px-3 py-1.5 rounded bg-amber-600 hover:bg-amber-500 text-white font-medium transition-colors cursor-pointer whitespace-nowrap shadow-xs"
+                >
+                  Dev Bypass (Use 123456)
+                </button>
+              </div>
+            )}
+          </div>
         )}
 
         <p className="text-xs text-siet-muted">
@@ -303,11 +341,21 @@ export default function RequesterPage() {
         <div className="pt-4 flex flex-col gap-3 border-t border-siet-border">
           <button
             type="submit"
-            className="btn-primary w-full"
-            disabled={isSubmitting}
-            aria-busy={isSubmitting}
+            className="btn-primary w-full flex items-center justify-center gap-2"
+            disabled={isLoading}
+            aria-busy={isLoading}
           >
-            {isSubmitting ? 'Submitting...' : 'Continue to Email Verification'}
+            {isLoading ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Sending verification code...</span>
+              </>
+            ) : (
+              'Continue to Email Verification'
+            )}
           </button>
         </div>
       </form>

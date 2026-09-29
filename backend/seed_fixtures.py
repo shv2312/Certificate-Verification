@@ -58,19 +58,20 @@ for alias, bid in aliases:
 
 # Seed demo students (idempotent via INSERT OR IGNORE on register_number UNIQUE)
 students = [
-    ("713519104001", "John Doe",           "JOHN DOE",           1, 1, 2023, "siet-cbe"),
-    ("713519104002", "Jane Smith",         "JANE SMITH",         1, 2, 2023, "siet-cbe"),
-    ("821621104055", "Ravi Kumar",         "RAVI KUMAR",         1, 3, 2022, "siet-cbe"),
-    ("821621104056", "Priya Ramesh",       "PRIYA RAMESH",       1, 4, 2022, "siet-cbe"),
-    ("713521104100", "Arjun Krishnamurthy","ARJUN KRISHNAMURTHY",1, 5, 2024, "siet-cbe"),
-    ("713521104101", "Divya Lakshmi",      "DIVYA LAKSHMI",      1, 7, 2024, "siet-cbe"),
+    (1, "713519104001", "John Doe",            "JOHN DOE",           1, 1, 2023, "Anna University", "Sri Shakthi Institute of Engineering and Technology", 0, 1, "siet-cbe"),
+    (2, "713519104002", "Jane Smith",          "JANE SMITH",         1, 2, 2023, "Anna University", "Sri Shakthi Institute of Engineering and Technology", 0, 1, "siet-cbe"),
+    (3, "821621104055", "Ravi Kumar",          "RAVI KUMAR",         1, 3, 2022, "Anna University", "Sri Shakthi Institute of Engineering and Technology", 0, 1, "siet-cbe"),
+    (4, "821621104056", "Priya Ramesh",        "PRIYA RAMESH",       1, 4, 2022, "Anna University", "Sri Shakthi Institute of Engineering and Technology", 0, 1, "siet-cbe"),
+    (5, "713521104100", "Arjun Krishnamurthy", "ARJUN KRISHNAMURTHY", 1, 5, 2024, "Anna University", "Sri Shakthi Institute of Engineering and Technology", 0, 1, "siet-cbe"),
+    (6, "713521104101", "Divya Lakshmi",       "DIVYA LAKSHMI",      1, 7, 2024, "Anna University", "Sri Shakthi Institute of Engineering and Technology", 0, 1, "siet-cbe"),
 ]
 for s in students:
     cur.execute("""
         INSERT OR IGNORE INTO students
-          (register_number, full_name, full_name_normalized,
-           programme_id, branch_id, year_of_passing, institution_id)
-        VALUES (?,?,?,?,?,?,?)
+          (id, register_number, full_name, full_name_normalized,
+           programme_id, branch_id, year_of_passing,
+           university_name, institute_name, has_arrear, is_active, institution_id)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
     """, s)
 
 conn.commit()

@@ -101,7 +101,8 @@ def _issue_admin_token(settings: Settings) -> str:
     where payload = "company_name|hr_email|role|issued_at|hr_name|hr_phone"
     """
     issued_at = int(time.time())
-    payload = f"SIET Administration|{settings.ADMIN_USERNAME}@siet.ac.in|ADMIN|{issued_at}||"
+    admin_email = settings.ADMIN_USERNAME if "@" in settings.ADMIN_USERNAME else f"{settings.ADMIN_USERNAME}@siet.ac.in"
+    payload = f"SIET Administration|{admin_email}|ADMIN|{issued_at}||"
     encoded_payload = base64.urlsafe_b64encode(payload.encode()).rstrip(b"=").decode()
     sig = hmac.new(
         settings.APP_SECRET_KEY.encode(),
@@ -153,8 +154,11 @@ async def admin_login(
     # Constant-time delay regardless of outcome
     await asyncio.sleep(0.3)
 
-    # Validate username
-    if not hmac.compare_digest(body.username.lower(), settings.ADMIN_USERNAME.lower()):
+    # Validate username (accepts 'admin', 'admin@siet.ac.in', or configured ADMIN_USERNAME)
+    input_username = body.username.strip().lower()
+    cfg_user = settings.ADMIN_USERNAME.strip().lower()
+    valid_usernames = {cfg_user, f"{cfg_user}@siet.ac.in" if "@" not in cfg_user else cfg_user, "admin", "admin@siet.ac.in"}
+    if input_username not in valid_usernames:
         logger.warning("[Admin] Failed login attempt for username: %s", body.username)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

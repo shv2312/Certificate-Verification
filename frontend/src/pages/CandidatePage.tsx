@@ -7,6 +7,10 @@ import CertificateUploadZone from '../components/CertificateUploadZone';
 import { buildStepStatuses } from '../utils/workflowSteps';
 import { ROUTES } from '../utils/routes';
 import type { CandidateDetails } from '../types/api';
+import { ApiError } from '../types/api';
+import { useAuth } from '../context/AuthContext';
+import { initiateVerification } from '../api/verification';
+import StatusMessage from '../components/StatusMessage';
 
 const CANDIDATE_DRAFT_KEY = 'siet_candidate_draft';
 const steps = buildStepStatuses(2); // Step index 2: Candidate Details
@@ -169,22 +173,45 @@ export default function CandidatePage() {
     }
   }, [formData]);
   
+  const { sessionToken, isAuthenticated } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
   const [errors, setErrors] = useState<FormErrors>({});
 
   function handleChange(field: keyof FormValues) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
       setFormData((prev) => ({ ...prev, [field]: e.target.value }));
       setErrors((prev) => ({ ...prev, [field]: undefined }));
+      setApiError(null);
     };
   }
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    setApiError(null);
+
     const newErrors = validateForm(formData, formData.certificate_url);
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
+
+    // Retrieve active session token
+    const effectiveToken = sessionToken || (() => {
+      try {
+        const raw = sessionStorage.getItem('siet_auth_state');
+        return raw ? JSON.parse(raw).sessionToken : null;
+      } catch {
+        return null;
+      }
+    })();
+
+    if (!effectiveToken && !isAuthenticated) {
+      setApiError('Authentication session not found or expired. Please verify your email first.');
+      return;
+    }
+
+    setIsLoading(true);
 
     // Exact backend CandidateDetails payload structure
     const candidatePayload: CandidateDetails = {
@@ -192,6 +219,7 @@ export default function CandidatePage() {
       dob: formData.dob.trim(),
       register_number: formData.register_number.trim().toUpperCase(),
       degree: formData.degree.trim(),
+      degree_course: formData.degree.trim(),
       specialization: formData.specialization.trim(),
       year_of_passing: parseInt(formData.year_of_passing, 10),
       certificate_no: formData.certificate_no.trim(),
@@ -200,11 +228,72 @@ export default function CandidatePage() {
       certificate_url: formData.certificate_url || null,
     };
 
-    sessionStorage.setItem('candidatePayload', JSON.stringify(candidatePayload));
-    sessionStorage.setItem(CANDIDATE_DRAFT_KEY, JSON.stringify(formData));
+    try {
+      const response = await initiateVerification(
+        {
+          candidate_name: candidatePayload.candidate_name,
+          register_number: candidatePayload.register_number,
+          degree: candidatePayload.degree,
+          degree_course: candidatePayload.degree,
+          specialization: candidatePayload.specialization,
+          year_of_passing: candidatePayload.year_of_passing,
+          dob: candidatePayload.dob,
+          certificate_no: candidatePayload.certificate_no,
+          year_of_enrolment: candidatePayload.year_of_enrolment,
+          class_obtained: candidatePayload.class_obtained,
+          certificate_url: candidatePayload.certificate_url,
+        },
+        effectiveToken || undefined
+      );
 
-    // Navigate to the Payment step
-    navigate(ROUTES.PAYMENT);
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'Failed to initiate verification order.');
+      }
+
+      const {
+        verification_request_id,
+        payment_order_id,
+        display_request_id,
+        amount_paise,
+        gateway_key_id,
+        payment_session_id,
+      } = response.data;
+
+      // Securely store active request and payment draft
+      sessionStorage.setItem('siet_active_request_id', verification_request_id);
+      sessionStorage.setItem('siet_active_display_id', display_request_id);
+      sessionStorage.setItem('siet_payment_order_id', payment_order_id);
+      sessionStorage.setItem(
+        'siet_payment_draft',
+        JSON.stringify({
+          payment_session_id,
+          gateway_order_id: payment_order_id,
+          amount_paise,
+          currency: response.data.currency || 'INR',
+          gateway_key_id,
+          verification_request_id,
+          display_request_id,
+        })
+      );
+      sessionStorage.setItem('candidatePayload', JSON.stringify(candidatePayload));
+      sessionStorage.setItem(CANDIDATE_DRAFT_KEY, JSON.stringify(formData));
+
+      // Secure transition to Step 4 (Secure Payment)
+      navigate(ROUTES.PAYMENT);
+    } catch (err: any) {
+      console.error('Candidate verification initiate error:', err);
+      if (err instanceof ApiError) {
+        if (err.status === 401) {
+          setApiError('Your session has expired or is unauthorized. Please verify your email again.');
+        } else {
+          setApiError(err.message || 'Validation failed. Please verify candidate details.');
+        }
+      } else {
+        setApiError(err.message || 'Failed to initiate verification order. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -219,6 +308,14 @@ export default function CandidatePage() {
       <ProgressStepper steps={steps} className="mb-8" />
 
       <form className="max-w-2xl mx-auto surface-card p-6 space-y-6" onSubmit={handleSubmit} noValidate>
+        {apiError && (
+          <StatusMessage
+            type="error"
+            title="Verification Initialization Error"
+            message={apiError}
+          />
+        )}
+
         <p className="text-xs text-siet-muted">
           Fields marked with <span className="text-siet-error font-semibold">*</span> are mandatory.
         </p>
@@ -400,8 +497,19 @@ export default function CandidatePage() {
         </div>
 
         <div className="pt-2">
-          <button type="submit" className="btn-primary w-full">
-            Proceed to Payment
+          <button
+            type="submit"
+            className="btn-primary w-full flex items-center justify-center gap-2"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <>
+                <span className="inline-block w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <span>Initiating Verification Order...</span>
+              </>
+            ) : (
+              'Continue to Payment'
+            )}
           </button>
         </div>
       </form>

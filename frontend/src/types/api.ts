@@ -92,6 +92,7 @@ export interface SendOTPResponse {
   challenge_id: string;
   masked_email: string;
   resend_allowed_after_seconds: number;
+  dev_otp?: string | null;
 }
 
 /**
@@ -109,6 +110,7 @@ export interface ResendOTPRequest {
 export interface VerifyOTPRequest {
   challenge_id: string; // 10-128 chars
   otp: string;          // 6 digits: ^\d{6}$
+  email?: string;       // optional requester email
 }
 
 /**
@@ -194,12 +196,51 @@ export interface CandidateDetails {
   dob: string;                    // YYYY-MM-DD
   register_number: string;        // 3-30 chars, ^[A-Za-z0-9\-/]+$
   degree: string;                 // 2-100 chars (e.g. B.E., B.Tech)
+  degree_course?: string;         // alias for degree
   specialization: string;         // 2-150 chars (e.g. Computer Science)
   year_of_passing: number;        // integer, 1990-2100
   certificate_no: string;         // 2-100 chars
   year_of_enrolment?: number | null; // optional integer, 1990-2100
   class_obtained?: string | null;    // optional string (e.g., First Class)
   certificate_url?: string | null;   // optional file URL uploaded
+}
+
+/**
+ * POST /api/verification/initiate Request Body
+ * Defined in backend/app/schemas/verification.py: InitiateVerificationRequest
+ */
+export interface InitiateVerificationRequest {
+  candidate_name: string;
+  register_number: string;
+  degree?: string | null;
+  degree_course?: string | null;
+  specialization?: string | null;
+  year_of_passing?: number | null;
+  dob?: string | null;
+  certificate_no?: string | null;
+  year_of_enrolment?: number | null;
+  class_obtained?: string | null;
+  certificate_url?: string | null;
+}
+
+/**
+ * POST /api/verification/initiate Response Data
+ * Defined in backend/app/schemas/verification.py: InitiateVerificationResponse
+ */
+export interface InitiateVerificationResponse {
+  verification_request_id: string;
+  display_request_id: string;
+  payment_order_id: string;
+  payment_session_id: string;
+  gateway_key_id: string;
+  amount_paise: number;
+  currency: string;
+  candidate_summary: {
+    candidate_name: string;
+    register_number: string;
+    degree_course: string;
+    year_of_passing: number;
+  };
 }
 
 /**

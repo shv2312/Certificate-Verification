@@ -17,6 +17,8 @@ import { apiClient } from './client';
 import type {
   APIResponse,
   CandidateDetails,
+  InitiateVerificationRequest,
+  InitiateVerificationResponse,
   BindCandidateRequest,
   BindCandidateResponse,
   ConfirmVerificationRequest,
@@ -31,6 +33,8 @@ import type {
 // Export canonical backend types
 export type {
   CandidateDetails,
+  InitiateVerificationRequest,
+  InitiateVerificationResponse,
   BindCandidateRequest,
   BindCandidateResponse,
   ConfirmVerificationRequest,
@@ -46,6 +50,30 @@ export type BindCandidatePayload = BindCandidateRequest;
 export type VerificationConfirmPayload = ConfirmVerificationRequest;
 export type VerificationResult = VerificationResultResponse;
 export type VerificationHistoryItem = VerificationStatusResponse;
+
+/**
+ * Step 3: Initiate candidate verification and generate payment order ID.
+ * Backend endpoint: POST /api/verification/initiate (or /api/v1/verification/initiate)
+ * Authorization: Bearer <session_token>
+ */
+export async function initiateVerification(
+  payload: InitiateVerificationRequest,
+  token?: string
+): Promise<APIResponse<InitiateVerificationResponse>> {
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  return await apiClient<APIResponse<InitiateVerificationResponse>>(
+    '/api/verification/initiate',
+    {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    }
+  );
+}
 
 /**
  * Step 3: Bind candidate academic details to a paid verification request.

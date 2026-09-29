@@ -24,7 +24,7 @@ export default function EmailVerificationPage() {
 
   const [token, setToken] = useState(searchParams.get('token') || '');
   const [error, setError] = useState<string>();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [resendStatus, setResendStatus] = useState<'idle' | 'loading' | 'success'>('idle');
   const [cooldown, setCooldown] = useState(60);
 
@@ -60,40 +60,54 @@ export default function EmailVerificationPage() {
       return;
     }
 
-    setIsSubmitting(true);
+    setIsLoading(true);
     setError(undefined);
 
     try {
-      // Exact backend payload matching VerifyOTPRequest
+      // Server-side asynchronous API validation call to POST /api/auth/verify-otp
+      // Payload includes: email, 6-digit otp, and challenge_id
       const response = await verifyEmail({
         challenge_id: requestId!,
         otp: cleanToken,
+        email: hrEmail || undefined,
       });
       
       const normalizedRole = response.role?.toLowerCase() === 'admin' ? 'admin' : 'hr';
+      // Save authorization token / session flag in context and sessionStorage
       setRole(normalizedRole, response.token);
 
+      // Clean up dev OTP cache upon verified completion
+      sessionStorage.removeItem('siet_dev_otp');
+
+      // STRICT STATE TRANSITION: Only on 200 OK advance to Step 3 (Candidate Details)
       if (normalizedRole === 'admin') {
         navigate('/admin', { replace: true });
       } else {
         navigate(ROUTES.CANDIDATE, { replace: true });
       }
-    } catch (err) {
+    } catch (err: any) {
+      console.error('[EmailVerificationPage] OTP verification failed:', err);
+
+      let errorMessage = 'Invalid verification code. Please try again.';
       if (err instanceof ApiError) {
-        if (err.status === 409) {
-          setError(err.message || 'The verification code has expired or maximum attempts were exceeded. Please request a new code.');
+        if (err.status === 409 || err.status === 400 || err.status === 401) {
+          errorMessage = err.message || 'Invalid verification code. Please try again.';
         } else if (err.status === 422) {
-          setError('Invalid code format. Please enter the 6-digit code received in your email.');
+          errorMessage = 'Invalid code format. Please enter the 6-digit code received in your email.';
+        } else if (err.status === 0 || err.errorCode === 'NETWORK_FAILURE') {
+          errorMessage = 'Unable to connect to verification server. Please check your connection and try again.';
         } else {
-          setError(err.message);
+          errorMessage = err.message || 'Invalid verification code. Please try again.';
         }
-      } else if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('Verification failed. Please check the code and try again.');
+      } else if (err instanceof Error && err.message) {
+        errorMessage = err.message;
       }
+
+      // STRICT CONSTRAINT: Abort transition, display inline error, and CLEAR input field to allow retry
+      setError(errorMessage);
+      setToken('');
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
     }
   }
 
@@ -102,6 +116,9 @@ export default function EmailVerificationPage() {
     setError(undefined);
     try {
       const response = await resendVerification(requestId!);
+      if (response.devOtp) {
+        sessionStorage.setItem('siet_dev_otp', response.devOtp);
+      }
       setResendStatus('success');
       setCooldown(response.resendAllowedAfterSeconds || 60);
       setTimeout(() => setResendStatus('idle'), 5000);
@@ -120,6 +137,8 @@ export default function EmailVerificationPage() {
       setResendStatus('idle');
     }
   }
+
+  const devOtp = sessionStorage.getItem('siet_dev_otp');
 
   return (
     <WorkflowLayout
@@ -142,6 +161,25 @@ export default function EmailVerificationPage() {
           </p>
         </div>
 
+        {import.meta.env.DEV && devOtp && (
+          <div className="max-w-xs mx-auto mb-5 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex items-center justify-between">
+            <div>
+              <span className="font-semibold block text-amber-900">Developer Testing</span>
+              <span>Code: <code className="font-mono font-bold bg-amber-100 px-1 rounded">{devOtp}</code></span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setToken(devOtp);
+                setError(undefined);
+              }}
+              className="text-amber-900 bg-amber-200/70 hover:bg-amber-200 font-semibold px-2 py-1 rounded text-xs transition-colors"
+            >
+              Auto-fill
+            </button>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} noValidate className="max-w-xs mx-auto space-y-5">
           <FormField id="token" label="6-Digit Verification Code" error={error}>
             <input
@@ -155,7 +193,7 @@ export default function EmailVerificationPage() {
                 setToken(e.target.value.replace(/\D/g, ''));
                 setError(undefined);
               }}
-              disabled={isSubmitting}
+              disabled={isLoading}
               autoComplete="one-time-code"
               aria-required="true"
             />
@@ -163,10 +201,21 @@ export default function EmailVerificationPage() {
 
           <button
             type="submit"
-            className="btn-primary w-full"
-            disabled={isSubmitting || token.length < 6}
+            className="btn-primary w-full flex items-center justify-center gap-2"
+            disabled={isLoading || token.length < 6}
+            aria-busy={isLoading}
           >
-            {isSubmitting ? 'Verifying Code...' : 'Verify Email'}
+            {isLoading ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>Verifying Code...</span>
+              </>
+            ) : (
+              'Verify Email'
+            )}
           </button>
         </form>
 

@@ -90,6 +90,18 @@ class PaymentCheckoutVerifyRequest(BaseModel):
     razorpay_signature: str
 
 
+class PaymentVerifyRequest(BaseModel):
+    """
+    Request sent by frontend to verify payment.
+    Accepts verification_request_id and Razorpay checkout parameters.
+    """
+    verification_request_id: str | None = None
+    payment_session_id: str | None = None
+    razorpay_payment_id: str
+    razorpay_order_id: str
+    razorpay_signature: str
+
+
 # ------------------------------------------------------------------ #
 # GET /api/v1/payment/{payment_session_id}/status                     #
 # ------------------------------------------------------------------ #

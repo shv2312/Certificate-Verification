@@ -147,3 +147,36 @@ async def resend_otp(
         message=f"A new verification code has been sent to {response_data.masked_email}.",
         data=response_data,
     )
+
+
+# ------------------------------------------------------------------ #
+# Auth Alias Router (/api/auth/send-otp, /verify-otp, /resend-otp)   #
+# ------------------------------------------------------------------ #
+auth_router = APIRouter(prefix="/api/auth", tags=["Auth Email Verification Alias"])
+
+@auth_router.post(
+    "/send-otp",
+    response_model=APIResponse[SendOTPResponse],
+    summary="Send email verification OTP (Auth alias)",
+    status_code=200,
+)
+async def send_otp_auth_alias(body: SendOTPRequest, db: AsyncSession = Depends(get_db)) -> APIResponse[SendOTPResponse]:
+    return await send_otp(body, db)
+
+@auth_router.post(
+    "/verify-otp",
+    response_model=APIResponse[VerifyOTPResponse],
+    summary="Verify email OTP (Auth alias)",
+    status_code=200,
+)
+async def verify_otp_auth_alias(body: VerifyOTPRequest, db: AsyncSession = Depends(get_db)) -> APIResponse[VerifyOTPResponse]:
+    return await verify_otp(body, db)
+
+@auth_router.post(
+    "/resend-otp",
+    response_model=APIResponse[SendOTPResponse],
+    summary="Resend email verification OTP (Auth alias)",
+    status_code=200,
+)
+async def resend_otp_auth_alias(body: ResendOTPRequest, db: AsyncSession = Depends(get_db)) -> APIResponse[SendOTPResponse]:
+    return await resend_otp(body, db)

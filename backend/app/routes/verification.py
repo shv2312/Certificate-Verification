@@ -38,6 +38,8 @@ from app.db.session import get_db
 from app.dependencies import verify_session_token, require_role
 from app.schemas.common import APIResponse
 from app.schemas.verification import (
+    InitiateVerificationRequest,
+    InitiateVerificationResponse,
     BindCandidateRequest,
     BindCandidateResponse,
     ConfirmVerificationRequest,
@@ -51,6 +53,37 @@ from app.services.email_service import send_verification_report_email
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/verification", tags=["Verification"])
+
+
+@router.post(
+    "/initiate",
+    response_model=APIResponse[InitiateVerificationResponse],
+    summary="Initiate verification order with candidate details",
+    description=(
+        "Initiates a verification request with the candidate's academic details, "
+        "creates a payment session, and returns the verification request ID and payment order details."
+    ),
+    status_code=200,
+)
+async def initiate_verification(
+    body: InitiateVerificationRequest,
+    session: dict = Depends(verify_session_token),
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse[InitiateVerificationResponse]:
+    """
+    Requires: Authorization: Bearer <session_token>
+    Creates VerificationRequest in PAYMENT_PENDING state and creates PaymentSession.
+    """
+    data = await verification_service.initiate_verification(
+        db=db,
+        request=body,
+        session=session,
+    )
+    return APIResponse(
+        success=True,
+        message="Verification order initiated successfully. Please proceed to payment.",
+        data=data,
+    )
 
 
 @router.post(
@@ -478,5 +511,25 @@ async def get_certificate_file(filename: str):
         raise HTTPException(status_code=404, detail="Certificate file not found.")
 
     return FileResponse(file_path)
+
+
+# ------------------------------------------------------------------ #
+# Verification Alias Router (/api/verification/initiate)             #
+# ------------------------------------------------------------------ #
+alias_router = APIRouter(prefix="/api/verification", tags=["Verification Alias"])
+
+
+@alias_router.post(
+    "/initiate",
+    response_model=APIResponse[InitiateVerificationResponse],
+    summary="Initiate candidate verification order (Alias)",
+    status_code=200,
+)
+async def initiate_verification_alias(
+    body: InitiateVerificationRequest,
+    session: dict = Depends(verify_session_token),
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse[InitiateVerificationResponse]:
+    return await initiate_verification(body=body, session=session, db=db)
 
 

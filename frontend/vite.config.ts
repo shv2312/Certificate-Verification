@@ -12,8 +12,14 @@ export default defineConfig({
       // the backend must bind to 0.0.0.0 and this target must be updated to the
       // backend machine's local IP address.
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'http://127.0.0.1:8000',
         changeOrigin: true,
+        secure: false,
+      },
+      '/uploads': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+        secure: false,
       },
     },
   },

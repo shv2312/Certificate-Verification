@@ -71,6 +71,8 @@ from sqlalchemy import select, update, func
 from app.config import get_settings
 from app.db.models import VerificationRequest, PaymentSession
 from app.schemas.verification import (
+    InitiateVerificationRequest,
+    InitiateVerificationResponse,
     BindCandidateRequest,
     BindCandidateResponse,
     CandidateDetails,
@@ -83,6 +85,86 @@ from app.services.payment_service import RequestStatus, get_session_by_request_i
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
+
+
+async def initiate_verification(
+    db: AsyncSession,
+    request: InitiateVerificationRequest,
+    session: dict,
+) -> InitiateVerificationResponse:
+    """
+    Initiate verification order:
+    1. Generates payment session and gateway order
+    2. Persists verification request in PAYMENT_PENDING state with candidate details
+    3. Returns verification request ID and payment order details
+    """
+    from app.services import payment_service
+    import time
+    import secrets
+
+    company_name = session["company_name"]
+    hr_email = session["hr_email"]
+    hr_name = session.get("hr_name", "")
+    hr_phone = session.get("hr_phone", "")
+
+    # Create payment session
+    payment_res = await payment_service.initiate_payment(
+        db=db,
+        company_name=company_name,
+        hr_email=hr_email,
+        hr_name=hr_name,
+        hr_phone=hr_phone,
+    )
+
+    verification_req_id = secrets.token_urlsafe(32)
+    display_id = await payment_service._generate_display_request_id(db)
+
+    # Serialize candidate payload
+    candidate_dict = request.model_dump()
+    candidate_json = json.dumps(candidate_dict)
+
+    degree_val = request.degree or request.degree_course or "B.E."
+    vr = VerificationRequest(
+        id=verification_req_id,
+        display_request_id=display_id,
+        payment_session_id=payment_res.payment_session_id,
+        status="PAYMENT_PENDING",
+        company_name=company_name,
+        hr_email=hr_email,
+        hr_name=hr_name,
+        hr_phone=hr_phone,
+        hr_submitted_name=request.candidate_name.strip(),
+        hr_submitted_register_number=request.register_number.strip().upper(),
+        hr_submitted_programme=degree_val.strip(),
+        hr_submitted_branch=request.specialization.strip() if request.specialization else "General",
+        hr_submitted_year_of_passing=request.year_of_passing or 2024,
+        candidate_data=candidate_json,
+        certificate_url=request.certificate_url,
+        created_at=int(time.time()),
+    )
+    db.add(vr)
+
+    payment_session = await db.get(PaymentSession, payment_res.payment_session_id)
+    if payment_session:
+        payment_session.verification_request_id = verification_req_id
+
+    await db.flush()
+
+    return InitiateVerificationResponse(
+        verification_request_id=verification_req_id,
+        display_request_id=display_id,
+        payment_order_id=payment_res.gateway_order_id,
+        payment_session_id=payment_res.payment_session_id,
+        gateway_key_id=payment_res.gateway_key_id,
+        amount_paise=payment_res.amount_paise,
+        currency="INR",
+        candidate_summary={
+            "candidate_name": request.candidate_name.strip(),
+            "register_number": request.register_number.strip().upper(),
+            "degree_course": degree_val.strip(),
+            "year_of_passing": request.year_of_passing or 2024,
+        },
+    )
 
 
 # ------------------------------------------------------------------ #

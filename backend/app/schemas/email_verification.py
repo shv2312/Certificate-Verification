@@ -15,10 +15,10 @@ All fields validated server-side regardless of frontend validation.
 from __future__ import annotations
 
 import re
-from typing import Optional
+from typing import Optional, Any
 import phonenumbers
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 
 
 # ------------------------------------------------------------------ #
@@ -78,6 +78,46 @@ class SendOTPRequest(BaseModel):
         examples=["+919876543210"],
     )
 
+    @model_validator(mode="before")
+    @classmethod
+    def populate_aliases_and_defaults(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            # Email mapping
+            if "requester_email" not in data or not data.get("requester_email"):
+                if "email" in data:
+                    data["requester_email"] = data["email"]
+                elif "hr_email" in data:
+                    data["requester_email"] = data["hr_email"]
+
+            # Organization name mapping
+            if "organization_name" not in data or not data.get("organization_name"):
+                if "company_name" in data:
+                    data["organization_name"] = data["company_name"]
+                elif "org_name" in data:
+                    data["organization_name"] = data["org_name"]
+                elif data.get("requester_email"):
+                    domain = str(data["requester_email"]).split("@")[-1].split(".")[0].capitalize()
+                    data["organization_name"] = f"{domain} Organization"
+
+            # Requester name mapping
+            if "requester_name" not in data or not data.get("requester_name"):
+                if "hr_name" in data:
+                    data["requester_name"] = data["hr_name"]
+                elif "name" in data:
+                    data["requester_name"] = data["name"]
+                elif data.get("requester_email"):
+                    data["requester_name"] = str(data["requester_email"]).split("@")[0].capitalize()
+
+            # Phone mapping
+            if "requester_phone" not in data or not data.get("requester_phone"):
+                if "hr_phone" in data:
+                    data["requester_phone"] = data["hr_phone"]
+                elif "phone" in data:
+                    data["requester_phone"] = data["phone"]
+                else:
+                    data["requester_phone"] = "+919876543210"
+        return data
+
     @field_validator("organization_name", "requester_name", mode="before")
     @classmethod
     def clean_text_fields(cls, v: str) -> str:
@@ -97,6 +137,22 @@ class SendOTPRequest(BaseModel):
         except phonenumbers.NumberParseException:
             raise ValueError("Invalid phone number format.")
 
+    @property
+    def company_name(self) -> str:
+        return self.organization_name
+
+    @property
+    def hr_email(self) -> str:
+        return str(self.requester_email)
+
+    @property
+    def hr_name(self) -> str:
+        return self.requester_name
+
+    @property
+    def hr_phone(self) -> str:
+        return self.requester_phone
+
 
 class SendOTPResponse(BaseModel):
     """Response data when OTP has been dispatched."""
@@ -107,6 +163,8 @@ class SendOTPResponse(BaseModel):
     # "OTP sent to hr***@acme.com"
     masked_email: str
     resend_allowed_after_seconds: int
+    # Included only during DEV_MOCK_OTP=true for development/testing convenience
+    dev_otp: Optional[str] = None
 
 
 # ------------------------------------------------------------------ #
@@ -152,6 +210,10 @@ class VerifyOTPRequest(BaseModel):
         max_length=6,
         pattern=r"^\d{6}$",
         description="6-digit OTP received in HR email.",
+    )
+    email: Optional[EmailStr] = Field(
+        None,
+        description="Optional email address associated with the verification challenge.",
     )
 
 

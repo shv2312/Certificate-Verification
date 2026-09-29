@@ -30,9 +30,132 @@ The schema is kept maintainable (no hard-coded enum for every course name).
 from __future__ import annotations
 
 import re
-from typing import Optional
+import secrets
+from typing import Optional, Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+
+# ------------------------------------------------------------------ #
+# POST /api/verification/initiate                                     #
+# ------------------------------------------------------------------ #
+class InitiateVerificationRequest(BaseModel):
+    """
+    Request body for initiating candidate verification order.
+    Captures candidate's academic details before secure payment.
+    """
+    candidate_name: str = Field(
+        ...,
+        min_length=2,
+        max_length=150,
+        description="Full name of the candidate as on certificate.",
+        examples=["Jane Doe"],
+    )
+    register_number: str = Field(
+        ...,
+        min_length=3,
+        max_length=30,
+        description="Register or roll number.",
+        examples=["710621104001"],
+    )
+    degree: Optional[str] = Field(
+        None,
+        min_length=2,
+        max_length=100,
+        description="Degree or course title.",
+        examples=["B.E."],
+    )
+    degree_course: Optional[str] = Field(
+        None,
+        min_length=2,
+        max_length=100,
+        description="Degree or course title (alias).",
+        examples=["B.E."],
+    )
+    specialization: Optional[str] = Field(
+        None,
+        max_length=150,
+        description="Specialization or branch.",
+        examples=["Computer Science and Engineering"],
+    )
+    year_of_passing: Optional[int] = Field(
+        None,
+        ge=1990,
+        le=2100,
+        description="Year of passing.",
+        examples=[2024],
+    )
+    dob: Optional[str] = Field(
+        None,
+        description="Date of birth in YYYY-MM-DD format.",
+        examples=["2000-01-01"],
+    )
+    certificate_no: Optional[str] = Field(
+        None,
+        max_length=100,
+        description="Certificate number.",
+    )
+    year_of_enrolment: Optional[int] = Field(
+        None,
+        ge=1990,
+        le=2100,
+    )
+    class_obtained: Optional[str] = Field(
+        None,
+    )
+    certificate_url: Optional[str] = Field(
+        None,
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_fields(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            # Normalize degree / degree_course
+            if "degree" not in data or not data.get("degree"):
+                if "degree_course" in data:
+                    data["degree"] = data["degree_course"]
+                elif "course" in data:
+                    data["degree"] = data["course"]
+                else:
+                    data["degree"] = "B.E."
+            if "degree_course" not in data or not data.get("degree_course"):
+                data["degree_course"] = data.get("degree")
+
+            if not data.get("dob"):
+                data["dob"] = "2000-01-01"
+            if not data.get("specialization"):
+                data["specialization"] = "General"
+            if not data.get("certificate_no"):
+                data["certificate_no"] = f"CERT-{secrets.token_hex(4).upper()}"
+            if not data.get("year_of_passing"):
+                data["year_of_passing"] = 2024
+        return data
+
+    @field_validator("register_number", mode="after")
+    @classmethod
+    def validate_register_number(cls, v: str) -> str:
+        v = v.strip()
+        if not re.match(r"^[A-Za-z0-9\-/]+$", v):
+            raise ValueError(
+                "Register number must contain only letters, digits, hyphens, or slashes."
+            )
+        return v.upper()
+
+
+class InitiateVerificationResponse(BaseModel):
+    """
+    Response returned when verification order is successfully initiated.
+    Contains verification request ID and payment order details.
+    """
+    verification_request_id: str
+    display_request_id: str
+    payment_order_id: str
+    payment_session_id: str
+    gateway_key_id: str
+    amount_paise: int
+    currency: str = "INR"
+    candidate_summary: dict
 
 
 # ------------------------------------------------------------------ #

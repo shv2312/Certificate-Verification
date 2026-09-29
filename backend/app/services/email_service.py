@@ -234,6 +234,7 @@ async def create_and_send_otp(
         challenge_id=challenge_id,
         masked_email=_mask_email(email_lower),
         resend_allowed_after_seconds=settings.OTP_RESEND_COOLDOWN_SECONDS,
+        dev_otp=otp if settings.DEV_MOCK_OTP else None,
     )
 
 
@@ -291,6 +292,7 @@ async def resend_otp(
         challenge_id=challenge_id,
         masked_email=_mask_email(challenge.email),
         resend_allowed_after_seconds=settings.OTP_RESEND_COOLDOWN_SECONDS,
+        dev_otp=otp if settings.DEV_MOCK_OTP else None,
     )
 
 
