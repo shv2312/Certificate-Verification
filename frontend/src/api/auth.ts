@@ -1,152 +1,158 @@
 /**
- * Auth & Onboarding API integration.
- *
- * ARCHITECTURE NOTE:
- * When `import.meta.env.DEV` is true (development mode), mock implementations
- * are used to simulate backend responses until Shri Hari Vishnu S's FastAPI backend is connected.
- *
- * In production builds (`import.meta.env.DEV` is false), the client strictly executes
- * live API calls via `apiClient` to the FastAPI backend endpoints.
+ * src/api/auth.ts
+ * ===============
+ * Auth & HR Email Verification API client.
+ * Strictly aligned with FastAPI backend endpoints:
+ *   - POST /api/v1/email/send-otp
+ *   - POST /api/v1/email/verify-otp
+ *   - POST /api/v1/email/resend-otp
  */
 
 import { apiClient } from './client';
+import type {
+  APIResponse,
+  SendOTPRequest,
+  SendOTPResponse,
+  VerifyOTPRequest,
+  VerifyOTPResponse,
+  ResendOTPRequest,
+} from '../types/api';
 
-export interface RequesterRegistrationPayload {
-  organizationType: string;
-  organizationName: string;
-  requesterName: string;
-  requesterEmail: string;
-  requesterRole: string;
-  requesterPhone: string;
-}
+export type { SendOTPRequest, SendOTPResponse, VerifyOTPRequest, VerifyOTPResponse, ResendOTPRequest };
+
+// Legacy aliases for backward compatibility if needed across existing pages
+export type RequesterRegistrationPayload = SendOTPRequest;
 
 export interface RequesterRegistrationResponse {
-  requestId: string;
+  requestId: string; // challenge_id
   message: string;
-  resendAllowedAfterSeconds?: number;
+  resendAllowedAfterSeconds: number;
 }
 
 export interface EmailVerificationPayload {
-  requestId: string;
-  token: string; // The code/token entered by the user
+  requestId: string; // challenge_id
+  token: string;     // 6-digit OTP
 }
 
 export interface AuthResponse {
-  role: 'hr' | 'admin';
+  role: 'hr' | 'admin' | string;
   message: string;
-  token?: string; // Auth token returned by backend upon verification
+  token?: string; // session_token
+  verifiedCompany?: string;
+  verifiedEmail?: string;
 }
 
 /**
- * Step 1: Register requester details to start verification.
- * Production endpoint: POST /api/v1/email/send-otp
+ * Step 1: Submit Requester & Organization Details and dispatch verification OTP.
+ * Backend endpoint: POST /api/v1/email/send-otp
  */
-export async function registerRequester(payload: RequesterRegistrationPayload): Promise<RequesterRegistrationResponse> {
+export async function registerRequester(
+  payload: SendOTPRequest
+): Promise<RequesterRegistrationResponse> {
   if (import.meta.env.DEV && import.meta.env.VITE_USE_MOCKS === 'true') {
-    // --- DEVELOPMENT MOCK ONLY ---
     return new Promise((resolve) => {
       setTimeout(() => {
         console.info('[DEV MOCK API] registerRequester called with:', payload);
         resolve({
-          requestId: `req_${Math.random().toString(36).substring(2, 9)}`,
-          message: 'Registration successful. Email sent.',
+          requestId: `challenge_${Math.random().toString(36).substring(2, 9)}`,
+          message: `Verification code sent to ${payload.requester_email}`,
           resendAllowedAfterSeconds: 60,
         });
-      }, 800);
+      }, 500);
     });
   }
 
-  // --- PRODUCTION API PATH ---
-  const response = await apiClient<any>('/api/v1/email/send-otp', {
+  // Exact payload matching backend SendOTPRequest schema
+  const response = await apiClient<APIResponse<SendOTPResponse>>('/api/v1/email/send-otp', {
     method: 'POST',
     body: JSON.stringify({
-      organization_type: payload.organizationType,
-      organization_name: payload.organizationName,
-      requester_name: payload.requesterName,
-      requester_email: payload.requesterEmail,
-      requester_role: payload.requesterRole,
-      requester_phone: payload.requesterPhone,
+      organization_type: payload.organization_type || null,
+      organization_name: payload.organization_name.trim(),
+      requester_name: payload.requester_name.trim(),
+      requester_email: payload.requester_email.trim(),
+      requester_role: payload.requester_role?.trim() || null,
+      requester_phone: payload.requester_phone.trim(),
     }),
   });
 
   return {
-    requestId: response.data?.challenge_id || 'pending-patch-id',
+    requestId: response.data.challenge_id,
     message: response.message,
-    resendAllowedAfterSeconds: response.data?.resend_allowed_after_seconds || 60,
+    resendAllowedAfterSeconds: response.data.resend_allowed_after_seconds,
   };
 }
 
 /**
- * Step 2: Verify HR email using the token sent.
- * Production endpoint: POST /api/v1/email/verify-otp
- *
- * NOTE: The backend determines the role (HR or ADMIN). The frontend must
- * NEVER infer the role from the email address in production.
+ * Step 2: Verify HR email using the 6-digit OTP received.
+ * Backend endpoint: POST /api/v1/email/verify-otp
  */
-export async function verifyEmail(payload: EmailVerificationPayload): Promise<AuthResponse> {
+export async function verifyEmail(
+  payload: EmailVerificationPayload | VerifyOTPRequest
+): Promise<AuthResponse> {
+  const challenge_id = 'challenge_id' in payload ? payload.challenge_id : payload.requestId;
+  const otp = 'otp' in payload ? payload.otp : payload.token;
+
   if (import.meta.env.DEV && import.meta.env.VITE_USE_MOCKS === 'true') {
-    // --- DEVELOPMENT MOCK ONLY ---
     return new Promise((resolve, reject) => {
       setTimeout(() => {
-        console.info('[DEV MOCK API] verifyEmail called with:', payload);
-        
-        if (payload.token === '000000') {
-          reject(new Error("Invalid verification token"));
+        console.info('[DEV MOCK API] verifyEmail called with:', { challenge_id, otp });
+        if (otp === '000000') {
+          reject(new Error('Invalid verification token.'));
           return;
         }
-
-        // Isolated test simulation to allow local UI testing of Admin & HR routes
         const mockEmail = sessionStorage.getItem('mock_hrEmail') || '';
-        const role = mockEmail === 'admin@siet.ac.in' ? 'admin' : 'hr';
-
+        const role = mockEmail.toLowerCase() === 'admin@siet.ac.in' ? 'admin' : 'hr';
         resolve({
           role,
           message: 'Email verified successfully',
           token: 'mock-session-token',
         });
-      }, 1000);
-    });
-  }
-
-  // --- PRODUCTION API PATH ---
-  const response = await apiClient<any>('/api/v1/email/verify-otp', {
-    method: 'POST',
-    body: JSON.stringify({
-      challenge_id: payload.requestId,
-      otp: payload.token,
-    }),
-  });
-
-  return {
-    role: response.data?.role || 'hr',
-    message: response.message,
-    token: response.data?.session_token,
-  };
-}
-
-/**
- * Helper to resend the verification email.
- * Production endpoint: POST /api/v1/email/resend-otp
- */
-export async function resendVerification(requestId: string): Promise<{ message: string, resendAllowedAfterSeconds?: number }> {
-  if (import.meta.env.DEV && import.meta.env.VITE_USE_MOCKS === 'true') {
-    // --- DEVELOPMENT MOCK ONLY ---
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        console.info('[DEV MOCK API] resendVerification called for requestId:', requestId);
-        resolve({ message: 'Verification email resent.', resendAllowedAfterSeconds: 60 });
       }, 600);
     });
   }
 
-  // --- PRODUCTION API PATH ---
-  const response = await apiClient<any>('/api/v1/email/resend-otp', {
+  // Exact payload matching backend VerifyOTPRequest schema
+  const response = await apiClient<APIResponse<VerifyOTPResponse>>('/api/v1/email/verify-otp', {
     method: 'POST',
-    body: JSON.stringify({ challenge_id: requestId }),
+    body: JSON.stringify({
+      challenge_id,
+      otp,
+    }),
   });
 
-  return { 
-    message: response?.message || 'Verification email resent.',
-    resendAllowedAfterSeconds: response?.data?.resend_allowed_after_seconds || 60,
+  return {
+    role: response.data.role.toLowerCase(),
+    message: response.message,
+    token: response.data.session_token,
+    verifiedCompany: response.data.verified_company,
+    verifiedEmail: response.data.verified_email,
+  };
+}
+
+/**
+ * Helper to resend the verification OTP.
+ * Backend endpoint: POST /api/v1/email/resend-otp
+ */
+export async function resendVerification(
+  challengeId: string
+): Promise<{ message: string; resendAllowedAfterSeconds?: number }> {
+  if (import.meta.env.DEV && import.meta.env.VITE_USE_MOCKS === 'true') {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        console.info('[DEV MOCK API] resendVerification for challenge_id:', challengeId);
+        resolve({ message: 'Verification email resent.', resendAllowedAfterSeconds: 60 });
+      }, 500);
+    });
+  }
+
+  // Exact payload matching backend ResendOTPRequest schema
+  const response = await apiClient<APIResponse<SendOTPResponse>>('/api/v1/email/resend-otp', {
+    method: 'POST',
+    body: JSON.stringify({ challenge_id: challengeId }),
+  });
+
+  return {
+    message: response.message,
+    resendAllowedAfterSeconds: response.data?.resend_allowed_after_seconds,
   };
 }

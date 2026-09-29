@@ -1,15 +1,18 @@
 /**
  * RequesterPage — Step 1 of the verification workflow.
  *
- * The requester provides:
- *  - Organization Type & Name
- *  - Requester Name, Role, Email, and Phone
+ * Collects Requester & Organization Details:
+ *  - organization_type (Optional)
+ *  - organization_name (2-200 chars)
+ *  - requester_name (2-255 chars)
+ *  - requester_email (RFC-5321 Email)
+ *  - requester_role (Optional, max 150 chars)
+ *  - requester_phone (E.164 phone string)
  *
- * On form submission, the backend initiates an email verification flow.
+ * Submits exact JSON payload matching FastAPI backend SendOTPRequest.
  */
 
-import { useState, useEffect } from 'react';
-import type { FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import WorkflowLayout from '../components/WorkflowLayout';
 import FormField from '../components/FormField';
@@ -18,65 +21,102 @@ import 'react-phone-number-input/style.css';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import SearchableCountrySelect from '../components/SearchableCountrySelect';
 import { registerRequester } from '../api/auth';
+import { ApiError } from '../types/api';
 import { useAuth } from '../context/AuthContext';
 import { ROUTES } from '../utils/routes';
 
 const REQUESTER_DRAFT_KEY = 'siet_requester_draft';
 
 interface FormValues {
-  organizationType: string;
-  organizationName: string;
-  requesterName: string;
-  requesterEmail: string;
-  requesterRole: string;
-  requesterPhone: string | undefined;
+  organization_type: string;
+  organization_name: string;
+  requester_name: string;
+  requester_email: string;
+  requester_role: string;
+  requester_phone: string | undefined;
 }
 
 const defaultValues: FormValues = {
-  organizationType: '',
-  organizationName: '',
-  requesterName: '',
-  requesterEmail: '',
-  requesterRole: '',
-  requesterPhone: undefined,
+  organization_type: '',
+  organization_name: '',
+  requester_name: '',
+  requester_email: '',
+  requester_role: '',
+  requester_phone: undefined,
 };
 
 interface FormErrors {
-  organizationType?: string;
-  organizationName?: string;
-  requesterName?: string;
-  requesterEmail?: string;
-  requesterRole?: string;
-  requesterPhone?: string;
+  organization_type?: string;
+  organization_name?: string;
+  requester_name?: string;
+  requester_email?: string;
+  requester_role?: string;
+  requester_phone?: string;
 }
 
+/**
+ * Replicates server-side validation rules from SendOTPRequest.
+ */
 function validateForm(values: FormValues): FormErrors {
   const errors: FormErrors = {};
-  if (!values.organizationType.trim()) errors.organizationType = 'Organization type is required.';
-  if (!values.organizationName.trim()) errors.organizationName = 'Organization name is required.';
-  if (!values.requesterName.trim())      errors.requesterName      = 'Requester name is required.';
-  if (!values.requesterEmail.trim()) {
-    errors.requesterEmail = 'Official email address is required.';
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.requesterEmail)) {
-    errors.requesterEmail = 'Please enter a valid email address.';
+
+  const orgName = values.organization_name.trim();
+  if (!orgName) {
+    errors.organization_name = 'Organization name is required.';
+  } else if (orgName.length < 2) {
+    errors.organization_name = 'Organization name must be at least 2 characters.';
+  } else if (orgName.length > 200) {
+    errors.organization_name = 'Organization name cannot exceed 200 characters.';
   }
-  if (!values.requesterPhone) {
-    errors.requesterPhone = 'Phone number is required.';
-  } else if (!isValidPhoneNumber(values.requesterPhone)) {
-    errors.requesterPhone = 'Please enter a valid phone number.';
+
+  const reqName = values.requester_name.trim();
+  if (!reqName) {
+    errors.requester_name = 'Requester full name is required.';
+  } else if (reqName.length < 2) {
+    errors.requester_name = 'Requester name must be at least 2 characters.';
+  } else if (reqName.length > 255) {
+    errors.requester_name = 'Requester name cannot exceed 255 characters.';
   }
+
+  const email = values.requester_email.trim();
+  if (!email) {
+    errors.requester_email = 'Official email address is required.';
+  } else if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(email)) {
+    errors.requester_email = 'Please enter a valid official email address.';
+  }
+
+  if (values.requester_role && values.requester_role.trim().length > 150) {
+    errors.requester_role = 'Role cannot exceed 150 characters.';
+  }
+
+  const phone = values.requester_phone?.trim();
+  if (!phone) {
+    errors.requester_phone = 'Contact phone number is required.';
+  } else if (!isValidPhoneNumber(phone)) {
+    errors.requester_phone = 'Please enter a valid phone number with country code.';
+  }
+
   return errors;
 }
 
 export default function RequesterPage() {
   const navigate = useNavigate();
   const { setPartialAuth } = useAuth();
-  
+
   const [values, setValues] = useState<FormValues>(() => {
     try {
       const cached = sessionStorage.getItem(REQUESTER_DRAFT_KEY);
       if (cached) {
-        return { ...defaultValues, ...JSON.parse(cached) };
+        const parsed = JSON.parse(cached);
+        // Handle migration from legacy camelCase keys if present in storage
+        return {
+          organization_type: parsed.organization_type ?? parsed.organizationType ?? '',
+          organization_name: parsed.organization_name ?? parsed.organizationName ?? '',
+          requester_name: parsed.requester_name ?? parsed.requesterName ?? '',
+          requester_email: parsed.requester_email ?? parsed.requesterEmail ?? '',
+          requester_role: parsed.requester_role ?? parsed.requesterRole ?? '',
+          requester_phone: parsed.requester_phone ?? parsed.requesterPhone ?? undefined,
+        };
       }
     } catch (err) {
       console.error('Failed to load requester draft from sessionStorage:', err);
@@ -92,15 +132,15 @@ export default function RequesterPage() {
     }
   }, [values]);
 
-  const [errors,   setErrors]   = useState<FormErrors>({});
+  const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string>();
 
   function handleChange(field: keyof FormValues) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
       setValues((prev) => ({ ...prev, [field]: e.target.value }));
-      // Clear field error on change
       setErrors((prev) => ({ ...prev, [field]: undefined }));
+      setSubmitError(undefined);
     };
   }
 
@@ -116,18 +156,32 @@ export default function RequesterPage() {
     setSubmitError(undefined);
 
     try {
+      // Exact payload sent to backend matching SendOTPRequest
       const response = await registerRequester({
-        organizationType: values.organizationType,
-        organizationName: values.organizationName,
-        requesterName: values.requesterName,
-        requesterEmail: values.requesterEmail,
-        requesterRole: values.requesterRole,
-        requesterPhone: values.requesterPhone || '',
+        organization_type: values.organization_type.trim() || null,
+        organization_name: values.organization_name.trim(),
+        requester_name: values.requester_name.trim(),
+        requester_email: values.requester_email.trim(),
+        requester_role: values.requester_role.trim() || null,
+        requester_phone: values.requester_phone || '',
       });
-      setPartialAuth(response.requestId, values.requesterEmail);
+
+      setPartialAuth(response.requestId, values.requester_email.trim());
       navigate(ROUTES.VERIFY_EMAIL);
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : 'An error occurred during registration.');
+      if (err instanceof ApiError) {
+        if (err.status === 409) {
+          setSubmitError(err.message || 'A verification code was recently sent. Please wait before requesting another.');
+        } else if (err.status === 422) {
+          setSubmitError(err.message || 'Validation error: Please check that all submitted fields match required formats.');
+        } else {
+          setSubmitError(err.message);
+        }
+      } else if (err instanceof Error) {
+        setSubmitError(err.message);
+      } else {
+        setSubmitError('An unexpected error occurred during registration. Please try again.');
+      }
       setIsSubmitting(false);
     }
   }
@@ -138,7 +192,6 @@ export default function RequesterPage() {
       title="Requester Details" 
       description="Provide your organization and contact information to initiate the verification process."
     >
-      {/* ── Requester details form ── */}
       <form
         className="max-w-2xl mx-auto surface-card p-6 space-y-5"
         onSubmit={handleSubmit}
@@ -149,101 +202,104 @@ export default function RequesterPage() {
           <StatusMessage type="error" message={submitError} className="mb-4" />
         )}
 
-        {/* Mandatory fields note */}
-          <p className="text-xs text-siet-muted">
-            Fields marked with{' '}
-            <span className="text-siet-error font-semibold" aria-hidden="true">*</span>
-            <span className="sr-only">an asterisk</span>
-            {' '}are mandatory.
-          </p>
+        <p className="text-xs text-siet-muted">
+          Fields marked with{' '}
+          <span className="text-siet-error font-semibold" aria-hidden="true">*</span>
+          <span className="sr-only">an asterisk</span>
+          {' '}are mandatory.
+        </p>
 
-          <FormField id="org-type" label="Verification Requested By" required error={errors.organizationType}>
-            <select
-              id="org-type"
-              className="form-input"
-              value={values.organizationType}
-              onChange={handleChange('organizationType')}
-              aria-required="true"
-              aria-invalid={!!errors.organizationType}
-            >
-              <option value="" disabled>Select Organization Type</option>
-              <option value="Private Organization">Private Organization</option>
-              <option value="Government Organization">Government Organization</option>
-            </select>
-          </FormField>
+        <FormField id="org-type" label="Verification Requested By (Optional)" error={errors.organization_type}>
+          <select
+            id="org-type"
+            className="form-input"
+            value={values.organization_type}
+            onChange={handleChange('organization_type')}
+            aria-invalid={!!errors.organization_type}
+          >
+            <option value="">Select Organization Type</option>
+            <option value="Private Organization">Private Organization</option>
+            <option value="Government Organization">Government Organization</option>
+            <option value="Background Screening Agency">Background Screening Agency</option>
+            <option value="Academic Institution">Academic Institution</option>
+          </select>
+        </FormField>
 
-          <FormField id="org-name" label="Organization / Entity Name" required error={errors.organizationName}>
-            <input
-              id="org-name"
-              type="text"
-              className="form-input"
-              placeholder="e.g. Acme Technologies Pvt. Ltd."
-              value={values.organizationName}
-              onChange={handleChange('organizationName')}
-              aria-required="true"
-              aria-invalid={!!errors.organizationName}
-            />
-          </FormField>
+        <FormField id="org-name" label="Organization / Entity Name" required error={errors.organization_name}>
+          <input
+            id="org-name"
+            type="text"
+            className="form-input"
+            placeholder="e.g. Acme Technologies Pvt. Ltd."
+            maxLength={200}
+            value={values.organization_name}
+            onChange={handleChange('organization_name')}
+            aria-required="true"
+            aria-invalid={!!errors.organization_name}
+          />
+        </FormField>
 
-          <FormField id="requester-name" label="Requester Full Name" required error={errors.requesterName}>
-            <input
-              id="requester-name"
-              type="text"
-              className="form-input"
-              placeholder="e.g. Jane Doe"
-              value={values.requesterName}
-              onChange={handleChange('requesterName')}
-              aria-required="true"
-              aria-invalid={!!errors.requesterName}
-            />
-          </FormField>
+        <FormField id="requester-name" label="Requester Full Name" required error={errors.requester_name}>
+          <input
+            id="requester-name"
+            type="text"
+            className="form-input"
+            placeholder="e.g. Jane Doe"
+            maxLength={255}
+            value={values.requester_name}
+            onChange={handleChange('requester_name')}
+            aria-required="true"
+            aria-invalid={!!errors.requester_name}
+          />
+        </FormField>
 
-          <FormField id="requester-email" label="Official Email Address" required error={errors.requesterEmail}>
-            <input
-              id="requester-email"
-              type="email"
-              className="form-input"
-              placeholder="hr@company.com"
-              value={values.requesterEmail}
-              onChange={handleChange('requesterEmail')}
-              aria-required="true"
-              aria-invalid={!!errors.requesterEmail}
-              autoComplete="email"
-            />
-          </FormField>
+        <FormField id="requester-email" label="Official Email Address" required error={errors.requester_email}>
+          <input
+            id="requester-email"
+            type="email"
+            className="form-input"
+            placeholder="hr@company.com"
+            value={values.requester_email}
+            onChange={handleChange('requester_email')}
+            aria-required="true"
+            aria-invalid={!!errors.requester_email}
+            autoComplete="email"
+          />
+        </FormField>
 
-          <FormField id="requester-role" label="Requester Role / Designation" error={errors.requesterRole}>
-            <input
-              id="requester-role"
-              type="text"
-              className="form-input"
-              placeholder="e.g. HR Manager, Background Screener"
-              value={values.requesterRole}
-              onChange={handleChange('requesterRole')}
-              aria-invalid={!!errors.requesterRole}
-            />
-          </FormField>
+        <FormField id="requester-role" label="Requester Role / Designation (Optional)" error={errors.requester_role}>
+          <input
+            id="requester-role"
+            type="text"
+            className="form-input"
+            placeholder="e.g. HR Manager, Background Screener"
+            maxLength={150}
+            value={values.requester_role}
+            onChange={handleChange('requester_role')}
+            aria-invalid={!!errors.requester_role}
+          />
+        </FormField>
 
-          <FormField id="requester-phone" label="Contact Phone Number" required error={errors.requesterPhone}>
-            <PhoneInput
-              id="requester-phone"
-              defaultCountry="IN"
-              international
-              withCountryCallingCode
-              countrySelectComponent={SearchableCountrySelect}
-              placeholder="e.g. 82701 69894"
-              value={values.requesterPhone}
-              onChange={(value) => {
-                setValues((prev) => ({ ...prev, requesterPhone: value }));
-                setErrors((prev) => ({ ...prev, requesterPhone: undefined }));
-              }}
-              aria-required="true"
-              aria-invalid={!!errors.requesterPhone}
-              autoComplete="tel"
-            />
-          </FormField>
+        <FormField id="requester-phone" label="Contact Phone Number" required error={errors.requester_phone}>
+          <PhoneInput
+            id="requester-phone"
+            defaultCountry="IN"
+            international
+            withCountryCallingCode
+            countrySelectComponent={SearchableCountrySelect}
+            placeholder="e.g. +91 98765 43210"
+            value={values.requester_phone}
+            onChange={(value) => {
+              setValues((prev) => ({ ...prev, requester_phone: value }));
+              setErrors((prev) => ({ ...prev, requester_phone: undefined }));
+              setSubmitError(undefined);
+            }}
+            aria-required="true"
+            aria-invalid={!!errors.requester_phone}
+            autoComplete="tel"
+          />
+        </FormField>
 
-        {/* Form actions */}
         <div className="pt-4 flex flex-col gap-3 border-t border-siet-border">
           <button
             type="submit"
@@ -254,7 +310,6 @@ export default function RequesterPage() {
             {isSubmitting ? 'Submitting...' : 'Continue to Email Verification'}
           </button>
         </div>
-
       </form>
     </WorkflowLayout>
   );

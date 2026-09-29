@@ -58,7 +58,7 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------------ #
     # Database (Parthiban's PostgreSQL)                                    #
     # ------------------------------------------------------------------ #
-    DATABASE_URL: str = "postgresql+asyncpg://USER:PASSWORD@localhost:5432/siet_bgv"
+    DATABASE_URL: str = "sqlite+aiosqlite:///./dev_local.db"
     # NOTE: The database layer is Parthiban's responsibility.
     #       Do NOT create a second student schema here.
     #       This URL is consumed by app/db/session.py only.
@@ -94,7 +94,7 @@ class Settings(BaseSettings):
     ADMIN_HMAC_KEY: str = "SIET_ADMIN_HMAC_KEY_2024"
     # HMAC-SHA256(ADMIN_HMAC_KEY, admin_password) hex digest.
     # Regenerate: python -c "import hashlib,hmac; print(hmac.new(b'KEY',b'PASS',hashlib.sha256).hexdigest())"
-    ADMIN_PASSWORD_HASH: str = ""
+    ADMIN_PASSWORD_HASH: str = "912f8b6a862c335dff70b92789faa252ade86c27ec9bdc488d0de2545aa5b8c0"
 
     # ------------------------------------------------------------------ #
     # Payment Gateway                                                      #

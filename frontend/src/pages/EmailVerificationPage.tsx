@@ -1,26 +1,21 @@
 /**
  * EmailVerificationPage — Step 2 of the verification workflow.
  *
- * The HR user must enter the token sent to their official email.
+ * Validates the 6-digit OTP code against:
+ *   POST /api/v1/email/verify-otp
  *
- * On success, the backend (FastAPI) verifies the token and returns the
- * user's role ('hr' or 'admin'). The frontend AuthContext is updated,
- * and the user is routed to the appropriate next step.
- *
- * MOCK NOTE:
- * Awaiting POST /api/v1/email/verify-otp from Shri Hari Vishnu S.
+ * Backend returns:
+ *   session_token, verified_company, verified_email, role ('HR' | 'ADMIN')
  */
 
-import { useState } from 'react';
-import type { FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { useNavigate, useSearchParams, Navigate } from 'react-router-dom';
 import WorkflowLayout from '../components/WorkflowLayout';
 import FormField from '../components/FormField';
-import StatusMessage from '../components/StatusMessage';
 import { useAuth } from '../context/AuthContext';
 import { verifyEmail, resendVerification } from '../api/auth';
+import { ApiError } from '../types/api';
 import { ROUTES } from '../utils/routes';
-import { useEffect } from 'react';
 
 export default function EmailVerificationPage() {
   const navigate = useNavigate();
@@ -31,7 +26,7 @@ export default function EmailVerificationPage() {
   const [error, setError] = useState<string>();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [resendStatus, setResendStatus] = useState<'idle' | 'loading' | 'success'>('idle');
-  const [cooldown, setCooldown] = useState(60); // assume 60s initial cooldown from the first send
+  const [cooldown, setCooldown] = useState(60);
 
   useEffect(() => {
     let timer: number;
@@ -41,25 +36,27 @@ export default function EmailVerificationPage() {
     return () => clearInterval(timer);
   }, [cooldown]);
 
-  // If already fully authenticated, redirect them out of the verification flow
+  // If already fully authenticated, redirect out of verification workflow
   if (isAuthenticated && role) {
     return <Navigate to={role === 'admin' ? '/admin' : ROUTES.CANDIDATE} replace />;
   }
 
-  // If they arrived here without completing Step 1 (no requestId in context), send back
+  // If arrived here without initiating Step 1, redirect back to Requester page
   if (!requestId || !hrEmail) {
     return <Navigate to={ROUTES.REQUESTER} replace />;
   }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!token.trim()) {
-      setError('Please enter the verification code.');
+    const cleanToken = token.trim();
+
+    if (!cleanToken) {
+      setError('Please enter the 6-digit verification code.');
       return;
     }
 
-    if (token.length < 6) {
-      setError('Verification code must be at least 6 characters.');
+    if (!/^\d{6}$/.test(cleanToken)) {
+      setError('Verification code must be exactly 6 digits.');
       return;
     }
 
@@ -67,20 +64,34 @@ export default function EmailVerificationPage() {
     setError(undefined);
 
     try {
-      // Call API (currently mocked)
-      const response = await verifyEmail({ requestId: requestId!, token });
+      // Exact backend payload matching VerifyOTPRequest
+      const response = await verifyEmail({
+        challenge_id: requestId!,
+        otp: cleanToken,
+      });
       
-      // Update global auth state with the trusted role returned by backend
-      setRole(response.role, response.token);
+      const normalizedRole = response.role?.toLowerCase() === 'admin' ? 'admin' : 'hr';
+      setRole(normalizedRole, response.token);
 
-      // Route based on role
-      if (response.role === 'admin') {
+      if (normalizedRole === 'admin') {
         navigate('/admin', { replace: true });
       } else {
         navigate(ROUTES.CANDIDATE, { replace: true });
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Verification failed. Please try again.');
+      if (err instanceof ApiError) {
+        if (err.status === 409) {
+          setError(err.message || 'The verification code has expired or maximum attempts were exceeded. Please request a new code.');
+        } else if (err.status === 422) {
+          setError('Invalid code format. Please enter the 6-digit code received in your email.');
+        } else {
+          setError(err.message);
+        }
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Verification failed. Please check the code and try again.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -93,10 +104,19 @@ export default function EmailVerificationPage() {
       const response = await resendVerification(requestId!);
       setResendStatus('success');
       setCooldown(response.resendAllowedAfterSeconds || 60);
-      // Reset success message after 5 seconds
       setTimeout(() => setResendStatus('idle'), 5000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to resend email.');
+      if (err instanceof ApiError) {
+        if (err.status === 409) {
+          setError(err.message || 'Please wait for the cooldown timer before requesting another code.');
+        } else {
+          setError(err.message);
+        }
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Failed to resend verification code. Please try again.');
+      }
       setResendStatus('idle');
     }
   }
@@ -117,17 +137,17 @@ export default function EmailVerificationPage() {
           </div>
           <h2 className="text-xl font-bold text-brand-forest">Check your inbox</h2>
           <p className="text-sm text-slate-600 mt-2">
-            We've sent a verification code to:<br />
+            We've sent a 6-digit verification code to:<br />
             <strong className="text-brand-forest font-bold">{hrEmail}</strong>
           </p>
         </div>
 
         <form onSubmit={handleSubmit} noValidate className="max-w-xs mx-auto space-y-5">
-          <FormField id="token" label="Verification Code" error={error}>
+          <FormField id="token" label="6-Digit Verification Code" error={error}>
             <input
               id="token"
               type="text"
-              className="form-input text-center text-lg tracking-widest font-mono"
+              className="form-input text-center text-lg tracking-widest font-mono font-bold"
               placeholder="000000"
               maxLength={6}
               value={token}
@@ -146,7 +166,7 @@ export default function EmailVerificationPage() {
             className="btn-primary w-full"
             disabled={isSubmitting || token.length < 6}
           >
-            {isSubmitting ? 'Verifying...' : 'Verify Email'}
+            {isSubmitting ? 'Verifying Code...' : 'Verify Email'}
           </button>
         </form>
 
@@ -178,15 +198,6 @@ export default function EmailVerificationPage() {
           )}
         </div>
       </div>
-
-      {import.meta.env.DEV && import.meta.env.VITE_USE_MOCKS === 'true' && (
-        <StatusMessage
-          type="warning"
-          title="Development Mode"
-          message="API mocked. Enter any 6-digit code EXCEPT '000000' to succeed. If email is 'admin@siet.ac.in' you will become an Admin."
-          className="mt-6"
-        />
-      )}
     </WorkflowLayout>
   );
 }

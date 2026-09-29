@@ -1,6 +1,12 @@
 import sqlite3
+import subprocess
+import sys
 
 def create_db():
+    print("Running SQLAlchemy initialization (init_db.py)...")
+    subprocess.run([sys.executable, "init_db.py"], check=True)
+    
+    print("Running raw SQL initialization for legacy tables...")
     conn = sqlite3.connect('dev_local.db')
     cursor = conn.cursor()
 

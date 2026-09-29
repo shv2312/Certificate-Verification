@@ -1,125 +1,171 @@
+/**
+ * src/api/verification.ts
+ * =======================
+ * Candidate verification API client.
+ * Strictly aligned with FastAPI backend endpoints:
+ *   - POST /api/v1/verification/bind-candidate
+ *   - POST /api/v1/verification/confirm
+ *   - GET  /api/v1/verification/{request_id}/status
+ *   - GET  /api/v1/verification/history
+ *   - GET  /api/v1/verification/{request_id}/report
+ *   - GET  /api/v1/verification/public-status/{request_id}
+ *   - GET  /api/v1/verification/status/{lookup_id}
+ *   - POST /api/v1/verification/upload-certificate
+ */
+
 import { apiClient } from './client';
+import type {
+  APIResponse,
+  CandidateDetails,
+  BindCandidateRequest,
+  BindCandidateResponse,
+  ConfirmVerificationRequest,
+  VerificationResultResponse,
+  VerificationStatusResponse,
+  VerificationHistoryResponse,
+  PublicVerificationStatusResponse,
+  PublicVerificationLookupResponse,
+  CertificateUploadResponse,
+} from '../types/api';
 
-export interface VerificationCandidate {
-  candidate_name: string;
-  dob: string;
-  register_number: string;
-  degree: string;
-  specialization: string;
-  year_of_passing: number;
-  certificate_no: string;
-  certificate_url: string;
-  year_of_enrolment?: number;
-  class_obtained?: string;
-}
+// Export canonical backend types
+export type {
+  CandidateDetails,
+  BindCandidateRequest,
+  BindCandidateResponse,
+  ConfirmVerificationRequest,
+  VerificationResultResponse,
+  VerificationStatusResponse,
+  PublicVerificationStatusResponse,
+  PublicVerificationLookupResponse,
+};
 
-export interface BindCandidatePayload {
-  verification_request_id: string;
-  candidate: VerificationCandidate;
-}
+// Backwards-compatible aliases
+export type VerificationCandidate = CandidateDetails;
+export type BindCandidatePayload = BindCandidateRequest;
+export type VerificationConfirmPayload = ConfirmVerificationRequest;
+export type VerificationResult = VerificationResultResponse;
+export type VerificationHistoryItem = VerificationStatusResponse;
 
-export interface VerificationConfirmPayload {
-  verification_request_id: string;
-}
-
-export interface VerificationResult {
-  verification_request_id: string;
-  display_request_id: string;
-  status: string;
-  candidate_name: string | null;
-  university_name: string | null;
-  institute_name: string | null;
-  course: string | null;
-  branch: string | null;
-  register_number: string | null;
-  year_of_passing: number | null;
-  backlog_status: string | null;
-  period_of_study: string | null;
-  mode_of_education: string | null;
-  message: string;
-}
-
-export async function bindCandidate(payload: BindCandidatePayload): Promise<{ success: boolean; message?: string }> {
-
-  const response = await apiClient<{ message?: string }>('/api/v1/verification/bind-candidate', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
-
-  return { success: true, message: response.message };
-}
-
-export async function confirmVerification(payload: VerificationConfirmPayload): Promise<VerificationResult> {
-
-  const response = await apiClient<{ data: VerificationResult }>('/api/v1/verification/confirm', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
-
+/**
+ * Step 3: Bind candidate academic details to a paid verification request.
+ * Backend endpoint: POST /api/v1/verification/bind-candidate
+ */
+export async function bindCandidate(
+  payload: BindCandidateRequest
+): Promise<BindCandidateResponse> {
+  const response = await apiClient<APIResponse<BindCandidateResponse>>(
+    '/api/v1/verification/bind-candidate',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }
+  );
   return response.data;
 }
 
-export async function getVerificationStatus(requestId: string): Promise<{ status: string }> {
-
-  const response = await apiClient<{ data: { status: string } }>(`/api/v1/verification/${requestId}/status`);
+/**
+ * Step 4: Confirm candidate details and trigger the official verification engine.
+ * Backend endpoint: POST /api/v1/verification/confirm
+ */
+export async function confirmVerification(
+  payload: ConfirmVerificationRequest
+): Promise<VerificationResultResponse> {
+  const response = await apiClient<APIResponse<VerificationResultResponse>>(
+    '/api/v1/verification/confirm',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }
+  );
   return response.data;
 }
 
-export interface VerificationHistoryItem {
-  id: string;
-  display_request_id: string;
-  status: string;
-  created_at: number;
+/**
+ * Polling / lookup for a verification request by authenticated HR owner.
+ * Backend endpoint: GET /api/v1/verification/{request_id}/status
+ */
+export async function getVerificationStatus(
+  requestId: string
+): Promise<VerificationStatusResponse> {
+  const response = await apiClient<APIResponse<VerificationStatusResponse>>(
+    `/api/v1/verification/${encodeURIComponent(requestId)}/status`,
+    { method: 'GET' }
+  );
+  return response.data;
 }
 
-export async function getVerificationHistory(): Promise<VerificationHistoryItem[]> {
-  const response = await apiClient<{ data: { requests: VerificationHistoryItem[] } }>('/api/v1/verification/history');
+/**
+ * Get all verification requests owned by the authenticated HR user.
+ * Backend endpoint: GET /api/v1/verification/history
+ */
+export async function getVerificationHistory(): Promise<VerificationStatusResponse[]> {
+  const response = await apiClient<APIResponse<VerificationHistoryResponse>>(
+    '/api/v1/verification/history',
+    { method: 'GET' }
+  );
   return response.data.requests;
 }
 
 /**
- * Upload a degree/provisional certificate file.
- * Sends a multipart/form-data POST to the backend and returns the stored URL.
+ * Fetch detailed verification outcome report for authenticated HR owner.
+ * Backend endpoint: GET /api/v1/verification/{request_id}/report
+ */
+export async function getVerificationReport(
+  requestId: string
+): Promise<VerificationResultResponse> {
+  const response = await apiClient<APIResponse<VerificationResultResponse>>(
+    `/api/v1/verification/${encodeURIComponent(requestId)}/report`,
+    { method: 'GET' }
+  );
+  return response.data;
+}
+
+/**
+ * Public lookup for verification status with masked PII.
+ * Backend endpoint: GET /api/v1/verification/public-status/{request_id}
+ */
+export async function getPublicVerificationStatus(
+  requestId: string
+): Promise<PublicVerificationStatusResponse> {
+  const response = await apiClient<APIResponse<PublicVerificationStatusResponse>>(
+    `/api/v1/verification/public-status/${encodeURIComponent(requestId)}`,
+    { method: 'GET' }
+  );
+  return response.data;
+}
+
+/**
+ * Public QR credential verification lookup.
+ * Backend endpoint: GET /api/v1/verification/status/{lookup_id}
+ */
+export async function lookupPublicCredential(
+  lookupId: string
+): Promise<PublicVerificationLookupResponse> {
+  return apiClient<PublicVerificationLookupResponse>(
+    `/api/v1/verification/status/${encodeURIComponent(lookupId)}`,
+    { method: 'GET' }
+  );
+}
+
+/**
+ * Upload a degree / provisional certificate file (PDF, JPG, PNG under 5MB).
+ * Backend endpoint: POST /api/v1/verification/upload-certificate
  */
 export async function uploadCertificate(file: File): Promise<string> {
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
-  const url = `${API_BASE_URL}/api/v1/verification/upload-certificate`;
-
   const formData = new FormData();
   formData.append('file', file);
 
-  // Auth header (same pattern as apiClient, but no Content-Type override)
-  const headers = new Headers();
-  const authStateStr = sessionStorage.getItem('siet_auth_state');
-  if (authStateStr) {
-    try {
-      const authState = JSON.parse(authStateStr);
-      if (authState.sessionToken) {
-        headers.set('Authorization', `Bearer ${authState.sessionToken}`);
-      }
-    } catch {
-      // ignore
+  const response = await apiClient<CertificateUploadResponse | { file_url: string }>(
+    '/api/v1/verification/upload-certificate',
+    {
+      method: 'POST',
+      body: formData,
     }
-  }
+  );
 
-  const response = await fetch(url, { method: 'POST', body: formData, headers });
-
-  if (!response.ok) {
-    const text = await response.text().catch(() => '');
-    let detail = `Upload failed (${response.status})`;
-    try {
-      const json = JSON.parse(text);
-      detail = json.detail || json.message || detail;
-    } catch {
-      // ignore
-    }
-    throw new Error(detail);
+  if ('file_url' in response && response.file_url) {
+    return response.file_url;
   }
-
-  const json: any = await response.json();
-  const uploadedUrl = json?.file_url || json?.data?.certificate_url;
-  if (!uploadedUrl) {
-    throw new Error('Server response mismatch: missing certificate URL.');
-  }
-  return uploadedUrl;
+  throw new Error('Server response missing uploaded certificate URL.');
 }

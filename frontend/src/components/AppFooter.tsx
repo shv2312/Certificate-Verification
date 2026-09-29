@@ -15,6 +15,16 @@
 
 import { Link } from 'react-router-dom';
 import { ROUTES } from '../utils/routes';
+import { 
+  ShieldCheck, 
+  Link as LinkIcon, 
+  Mail, 
+  MapPin, 
+  Phone, 
+  Clock, 
+  ArrowRight,
+  GraduationCap
+} from 'lucide-react';
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -22,79 +32,145 @@ export default function AppFooter() {
   return (
     <footer
       role="contentinfo"
-      className="bg-[#074828] text-white mt-auto border-t border-emerald-900"
+      className="bg-[#052b17] text-white mt-auto border-t border-emerald-950 relative overflow-hidden"
     >
-      {/* Main footer content */}
-      <div className="section-container py-12">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12 lg:gap-16">
+      {/* Decorative subtle corner yellow accent */}
+      <div 
+        className="absolute -bottom-10 -right-10 w-44 h-44 bg-yellow-400/90 rotate-45 transform origin-bottom-right pointer-events-none hidden md:block"
+        aria-hidden="true" 
+      />
 
-          {/* Column 1: Institutional Identity */}
-          <div>
-            <p className="text-xs font-bold tracking-wider text-[#FACC15] uppercase mb-4 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#FACC15]" />
-              OFFICIAL INSTITUTIONAL SERVICE
+      {/* Main footer content */}
+      <div className="section-container pt-16 pb-12 relative z-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-10 lg:gap-14 items-start">
+
+          {/* Column 1: Brand & Institutional Identity */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-800 text-yellow-400 flex items-center justify-center border border-emerald-700/60 shadow-xs">
+                <GraduationCap className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white tracking-tight leading-snug">
+                  Academic Verification Portal
+                </h3>
+                <p className="text-xs text-yellow-400 font-medium">
+                  Trusted Credentials. Brighter Futures.
+                </p>
+              </div>
+            </div>
+
+            <p className="text-sm text-emerald-100/75 leading-relaxed pr-4">
+              Official Academic Background Verification Portal for Sri Shakthi Institute of Engineering and Technology (SIET), serving students, institutions, and employers.
             </p>
-            <h2 className="text-base font-semibold text-white mb-2 leading-snug">
-              Sri Shakthi Institute of<br />Engineering and Technology
-            </h2>
-            <p className="text-sm text-emerald-100/80 leading-relaxed max-w-sm">
-              Academic Background Verification Portal is an official institutional service
-              for verifying candidate academic credentials issued by SIET.
-            </p>
+
+            <div className="pt-2 flex items-center gap-2 text-xs font-semibold text-emerald-300">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
+                Secure
+              </span>
+              <span className="text-emerald-600">•</span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
+                Reliable
+              </span>
+              <span className="text-emerald-600">•</span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
+                Official
+              </span>
+            </div>
           </div>
 
           {/* Column 2: Quick Links */}
-          <div>
-            <h3 className="text-xs font-bold tracking-wider text-[#FACC15] uppercase mb-4 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#FACC15]" />
-              QUICK LINKS
-            </h3>
-            <ul className="space-y-1" role="list">
+          <div className="space-y-4">
+            <h4 className="text-sm font-bold tracking-wider text-yellow-400 uppercase flex items-center gap-2">
+              <LinkIcon className="w-4 h-4 text-yellow-400" />
+              Quick Links
+            </h4>
+
+            <ul className="space-y-2.5 text-sm" role="list">
+              <li>
+                <Link
+                  to={ROUTES.HOME}
+                  className="text-emerald-100/80 hover:text-yellow-400 transition-colors inline-flex items-center gap-2 group"
+                >
+                  <span>Home</span>
+                  <ArrowRight className="w-3.5 h-3.5 text-emerald-500 group-hover:text-yellow-400 group-hover:translate-x-0.5 transition-all" />
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to={ROUTES.REQUESTER}
+                  className="text-emerald-100/80 hover:text-yellow-400 transition-colors inline-flex items-center gap-2 group"
+                >
+                  <span>Verify</span>
+                  <ArrowRight className="w-3.5 h-3.5 text-emerald-500 group-hover:text-yellow-400 group-hover:translate-x-0.5 transition-all" />
+                </Link>
+              </li>
               <li>
                 <a
-                  href="https://www.siet.ac.in"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-emerald-100/90 hover:text-[#FACC15] transition-colors py-1 inline-block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FACC15] rounded"
+                  href="/#how-it-works"
+                  className="text-emerald-100/80 hover:text-yellow-400 transition-colors inline-flex items-center gap-2 group"
                 >
-                  SIET Official Website ↗
+                  <span>About</span>
+                  <ArrowRight className="w-3.5 h-3.5 text-emerald-500 group-hover:text-yellow-400 group-hover:translate-x-0.5 transition-all" />
                 </a>
               </li>
               <li>
                 <Link
                   to={ROUTES.HELP}
-                  className="text-sm text-emerald-100/90 hover:text-[#FACC15] transition-colors py-1 inline-block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FACC15] rounded"
+                  className="text-emerald-100/80 hover:text-yellow-400 transition-colors inline-flex items-center gap-2 group"
                 >
-                  Help &amp; Support
+                  <span>Help</span>
+                  <ArrowRight className="w-3.5 h-3.5 text-emerald-500 group-hover:text-yellow-400 group-hover:translate-x-0.5 transition-all" />
                 </Link>
               </li>
               <li>
                 <Link
-                  to={ROUTES.STATUS}
-                  className="text-sm text-emerald-100/90 hover:text-[#FACC15] transition-colors py-1 inline-block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FACC15] rounded"
+                  to={ROUTES.ADMIN}
+                  className="text-emerald-100/80 hover:text-yellow-400 transition-colors inline-flex items-center gap-2 group"
                 >
-                  Track Verification
+                  <span>Admin Portal</span>
+                  <ArrowRight className="w-3.5 h-3.5 text-emerald-500 group-hover:text-yellow-400 group-hover:translate-x-0.5 transition-all" />
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* Column 3: Important Notes */}
-          <div>
-            <h3 className="text-xs font-bold tracking-wider text-[#FACC15] uppercase mb-4 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#FACC15]" />
-              IMPORTANT
-            </h3>
-            <ul className="text-xs text-emerald-100/80 leading-relaxed list-disc pl-4 space-y-2" role="list">
-              <li>
-                One payment authorises one candidate verification only.
+          {/* Column 3: Contact Us */}
+          <div className="space-y-4">
+            <h4 className="text-sm font-bold tracking-wider text-yellow-400 uppercase flex items-center gap-2">
+              <Mail className="w-4 h-4 text-yellow-400" />
+              Contact Us
+            </h4>
+
+            <ul className="space-y-2.5 text-sm text-emerald-100/80" role="list">
+              <li className="flex items-start gap-2.5">
+                <Mail className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                <a 
+                  href="mailto:support@siet.ac.in" 
+                  className="hover:text-yellow-400 transition-colors"
+                >
+                  support@siet.ac.in
+                </a>
               </li>
-              <li>
-                Verification results are delivered directly to the registered HR email.
+              <li className="flex items-start gap-2.5">
+                <MapPin className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                <span>Sri Shakthi Nagar, Coimbatore, Tamil Nadu, India</span>
               </li>
-              <li>
-                This is an authorised institutional service. Unauthorised misuse is
-                strictly prohibited.
+              <li className="flex items-center gap-2.5">
+                <Phone className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                <a 
+                  href="tel:+919876543210" 
+                  className="hover:text-yellow-400 transition-colors font-mono text-xs sm:text-sm"
+                >
+                  +91 98765 43210
+                </a>
+              </li>
+              <li className="flex items-center gap-2.5">
+                <Clock className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                <span className="text-xs sm:text-sm">Mon – Fri, 9:00 AM – 6:00 PM</span>
               </li>
             </ul>
           </div>
@@ -102,15 +178,16 @@ export default function AppFooter() {
         </div>
       </div>
 
-      {/* Bottom bar */}
-      <div className="bg-[#042816] text-xs text-emerald-200/70 border-t border-emerald-950 py-4 px-6">
-        <div className="section-container flex flex-col sm:flex-row items-center justify-between gap-2">
+      {/* Bottom copyright and official service bar */}
+      <div className="bg-[#031d0f] text-xs text-emerald-300/70 border-t border-emerald-900/60 py-4 px-4 sm:px-6">
+        <div className="section-container flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-center sm:text-left">
             &copy; {CURRENT_YEAR} Sri Shakthi Institute of Engineering and Technology. All rights reserved.
           </p>
-          <p className="font-medium text-center sm:text-right">
-            Official Academic Verification Gateway
-          </p>
+          <div className="flex items-center gap-1.5 text-emerald-300 font-medium">
+            <ShieldCheck className="w-4 h-4 text-yellow-400" />
+            <span>Official Academic Verification Service</span>
+          </div>
         </div>
       </div>
     </footer>

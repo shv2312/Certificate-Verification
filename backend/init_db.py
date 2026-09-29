@@ -1,4 +1,4 @@
-﻿import asyncio
+import asyncio
 import os
 from app.config import get_settings
 from app.db.session import engine, Base
@@ -71,6 +71,17 @@ async def init():
                 is_active=True
             )
             session.add(inst)
+            
+        # Seed default admin account
+        from app.db.models import AdminAccount
+        admin_result = await session.execute(select(AdminAccount).where(AdminAccount.email == "admin@siet.ac.in"))
+        admin = admin_result.scalar_one_or_none()
+        if not admin:
+            admin = AdminAccount(
+                email="admin@siet.ac.in",
+                is_active=True
+            )
+            session.add(admin)
             
         # Link existing demo student records to 'siet-cbe'
         await session.execute(

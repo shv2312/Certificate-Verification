@@ -5,6 +5,7 @@ import ProgressStepper from '../components/ProgressStepper';
 import StatusMessage from '../components/StatusMessage';
 import { buildStepStatuses } from '../utils/workflowSteps';
 import { confirmVerification } from '../api/verification';
+import { ApiError } from '../types/api';
 import { ROUTES } from '../utils/routes';
 
 const steps = buildStepStatuses(4); // Verification step
@@ -13,7 +14,6 @@ export default function ConfirmPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const verificationRequestId = location.state?.verification_request_id || sessionStorage.getItem('siet_active_request_id');
-  const mockRegisterNumber = location.state?._mock_register_number;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string>();
@@ -28,18 +28,34 @@ export default function ConfirmPage() {
     setSubmitError(undefined);
 
     try {
+      // Exact payload matching backend ConfirmVerificationRequest
       const result = await confirmVerification({ 
         verification_request_id: verificationRequestId,
-        ...(mockRegisterNumber ? { _mock_register_number: mockRegisterNumber } : {})
       });
+
       try {
         sessionStorage.setItem('siet_verification_result', JSON.stringify(result));
-      } catch (e) {
-        console.error('Failed to store verification result in sessionStorage', e);
+      } catch (storageErr) {
+        console.error('Failed to store verification result in sessionStorage:', storageErr);
       }
+
       navigate(ROUTES.RESULT, { state: { result } });
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : 'Failed to confirm verification.');
+      if (err instanceof ApiError) {
+        if (err.status === 400) {
+          setSubmitError(err.message || 'The verification request is not in a confirmable state.');
+        } else if (err.status === 403) {
+          setSubmitError('Access denied: You do not own this verification request.');
+        } else if (err.status === 503) {
+          setSubmitError(err.message || 'Institutional verification service is currently busy. Please retry in a few moments.');
+        } else {
+          setSubmitError(err.message);
+        }
+      } else if (err instanceof Error) {
+        setSubmitError(err.message);
+      } else {
+        setSubmitError('Failed to confirm and verify candidate. Please try again.');
+      }
       setIsSubmitting(false);
     }
   }
@@ -61,13 +77,13 @@ export default function ConfirmPage() {
         <StatusMessage
           type="warning"
           title="Important Notice"
-          message="By clicking confirm, you agree to submit these details for institutional verification. One payment permits only one candidate verification."
+          message="By clicking confirm, you agree to submit these candidate details for authoritative institutional verification. One payment authorises only one candidate verification."
           className="mb-4"
         />
 
         <div className="pt-2">
-          <button type="submit" className="btn-primary" disabled={isSubmitting}>
-            {isSubmitting ? 'Processing...' : 'Confirm and Verify'}
+          <button type="submit" className="btn-primary w-full" disabled={isSubmitting}>
+            {isSubmitting ? 'Verifying against Institutional Records...' : 'Confirm and Verify'}
           </button>
         </div>
       </form>

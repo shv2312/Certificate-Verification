@@ -14,24 +14,16 @@ import { useSearchParams } from 'react-router-dom';
 import PageContainer from '../components/PageContainer';
 import FormField from '../components/FormField';
 
-interface PublicVerificationData {
-  display_request_id: string;
-  institution_id: string;
-  status: string;
-  admin_decision?: string | null;
-  verified_at?: string | number | null;
-  candidate_name_masked?: string | null;
-  is_verified: boolean;
-  academic_year?: number | null;
-  course_name?: string | null;
-}
+import type { PublicVerificationLookupResponse } from '../types/api';
+import { lookupPublicCredential } from '../api/verification';
+import { ApiError } from '../types/api';
 
 export default function StatusPage() {
   const [searchParams] = useSearchParams();
   const urlId = searchParams.get('id') || '';
 
   const [requestId, setRequestId] = useState(urlId);
-  const [statusData, setStatusData] = useState<PublicVerificationData | null>(null);
+  const [statusData, setStatusData] = useState<PublicVerificationLookupResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | undefined>();
 
@@ -48,25 +40,20 @@ export default function StatusPage() {
     setStatusData(null);
 
     try {
-      const url = `/api/v1/verification/status/${encodeURIComponent(lookupId)}`;
-      const resp = await fetch(url, {
-        method: 'GET',
-        headers: { Accept: 'application/json' },
-      });
-
-      const json = await resp.json();
-
-      if (!resp.ok) {
-        const msg =
-          typeof json.detail === 'string'
-            ? json.detail
-            : json.message || 'Verification record not found. Please check the ID.';
-        throw new Error(msg);
-      }
-
-      setStatusData(json);
+      const data = await lookupPublicCredential(lookupId);
+      setStatusData(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred during verification lookup.');
+      if (err instanceof ApiError) {
+        if (err.status === 404) {
+          setError('No verification record found for this ID. Please double-check the Request ID or scan.');
+        } else {
+          setError(err.message);
+        }
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An error occurred during verification lookup.');
+      }
       setStatusData(null);
     } finally {
       setIsLoading(false);
@@ -84,7 +71,7 @@ export default function StatusPage() {
   }
 
   // Render Status Badge
-  function renderStatusBadge(data: PublicVerificationData) {
+  function renderStatusBadge(data: PublicVerificationLookupResponse) {
     if (data.is_verified) {
       return (
         <div className="flex items-center gap-3 p-4 rounded-xl mb-6 bg-emerald-50 border border-emerald-200 text-emerald-800">

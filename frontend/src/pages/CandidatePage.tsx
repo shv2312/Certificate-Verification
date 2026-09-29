@@ -6,6 +6,7 @@ import ProgressStepper from '../components/ProgressStepper';
 import CertificateUploadZone from '../components/CertificateUploadZone';
 import { buildStepStatuses } from '../utils/workflowSteps';
 import { ROUTES } from '../utils/routes';
+import type { CandidateDetails } from '../types/api';
 
 const CANDIDATE_DRAFT_KEY = 'siet_candidate_draft';
 const steps = buildStepStatuses(2); // Step index 2: Candidate Details
@@ -53,27 +54,97 @@ interface FormErrors {
   specialization?: string;
   year_of_passing?: string;
   certificate_no?: string;
+  year_of_enrolment?: string;
   certificate?: string;
 }
 
+/**
+ * Replicates server-side CandidateDetails schema validation logic.
+ */
 function validateForm(
   values: FormValues,
   certificateUrl: string,
 ): FormErrors {
   const errors: FormErrors = {};
-  if (!values.candidate_name.trim()) errors.candidate_name = 'Candidate name is required.';
-  if (!values.dob.trim()) errors.dob = 'Date of birth is required.';
-  if (!values.register_number.trim()) errors.register_number = 'Register number is required.';
-  if (!values.degree.trim()) errors.degree = 'Degree / Course title is required.';
-  if (!values.specialization.trim()) errors.specialization = 'Specialization is required.';
-  if (!values.year_of_passing.trim()) errors.year_of_passing = 'Year of passing is required.';
-  if (!values.certificate_no.trim()) errors.certificate_no = 'Certificate number is required.';
-  if (!certificateUrl) errors.certificate = 'Please upload the degree / provisional certificate.';
+
+  const name = values.candidate_name.trim();
+  if (!name) {
+    errors.candidate_name = 'Candidate name is required.';
+  } else if (name.length < 2) {
+    errors.candidate_name = 'Candidate name must be at least 2 characters.';
+  } else if (name.length > 150) {
+    errors.candidate_name = 'Candidate name cannot exceed 150 characters.';
+  }
+
+  const dob = values.dob.trim();
+  if (!dob) {
+    errors.dob = 'Date of birth is required.';
+  } else if (!/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
+    errors.dob = 'Date of birth must be in YYYY-MM-DD format.';
+  } else {
+    const parsedDate = new Date(dob);
+    if (isNaN(parsedDate.getTime()) || parsedDate > new Date()) {
+      errors.dob = 'Please enter a valid past date of birth.';
+    }
+  }
+
+  const regNum = values.register_number.trim();
+  if (!regNum) {
+    errors.register_number = 'Register / Roll number is required.';
+  } else if (regNum.length < 3) {
+    errors.register_number = 'Register number must be at least 3 characters.';
+  } else if (regNum.length > 30) {
+    errors.register_number = 'Register number cannot exceed 30 characters.';
+  } else if (!/^[A-Za-z0-9\-/]+$/.test(regNum)) {
+    errors.register_number = 'Register number must contain only letters, digits, hyphens, or slashes.';
+  }
+
+  const degree = values.degree.trim();
+  if (!degree) {
+    errors.degree = 'Degree / Course title is required.';
+  } else if (degree.length < 2 || degree.length > 100) {
+    errors.degree = 'Degree must be between 2 and 100 characters.';
+  }
+
+  const spec = values.specialization.trim();
+  if (!spec) {
+    errors.specialization = 'Field of study / specialization is required.';
+  } else if (spec.length < 2 || spec.length > 150) {
+    errors.specialization = 'Specialization must be between 2 and 150 characters.';
+  }
+
+  const yop = parseInt(values.year_of_passing, 10);
+  if (!values.year_of_passing.trim() || isNaN(yop)) {
+    errors.year_of_passing = 'Year of passing is required.';
+  } else if (yop < 1990 || yop > 2100) {
+    errors.year_of_passing = 'Year of passing must be between 1990 and 2100.';
+  }
+
+  const certNo = values.certificate_no.trim();
+  if (!certNo) {
+    errors.certificate_no = 'Certificate number is required.';
+  } else if (certNo.length < 2 || certNo.length > 100) {
+    errors.certificate_no = 'Certificate number must be between 2 and 100 characters.';
+  }
+
+  if (values.year_of_enrolment.trim()) {
+    const yoe = parseInt(values.year_of_enrolment, 10);
+    if (isNaN(yoe) || yoe < 1990 || yoe > 2100) {
+      errors.year_of_enrolment = 'Year of enrolment must be between 1990 and 2100.';
+    } else if (!isNaN(yop) && yoe > yop) {
+      errors.year_of_enrolment = 'Year of enrolment cannot be after year of passing.';
+    }
+  }
+
+  if (!certificateUrl) {
+    errors.certificate = 'Please upload the degree / provisional certificate.';
+  }
+
   return errors;
 }
 
 const DEGREES = ['B.E.', 'B.Tech', 'M.E.', 'MBA', 'MCA', 'B.Sc.', 'M.Sc.', 'Ph.D'];
-const RECENT_YEARS = Array.from({ length: 30 }, (_, i) => new Date().getFullYear() - i);
+const RECENT_YEARS = Array.from({ length: 35 }, (_, i) => new Date().getFullYear() - i);
 
 export default function CandidatePage() {
   const navigate = useNavigate();
@@ -115,23 +186,24 @@ export default function CandidatePage() {
       return;
     }
 
-    // Save candidate payload to session storage before payment
-    const candidatePayload = {
-      candidate_name: formData.candidate_name,
-      dob: formData.dob,
-      register_number: formData.register_number,
-      degree: formData.degree,
-      specialization: formData.specialization,
+    // Exact backend CandidateDetails payload structure
+    const candidatePayload: CandidateDetails = {
+      candidate_name: formData.candidate_name.trim(),
+      dob: formData.dob.trim(),
+      register_number: formData.register_number.trim().toUpperCase(),
+      degree: formData.degree.trim(),
+      specialization: formData.specialization.trim(),
       year_of_passing: parseInt(formData.year_of_passing, 10),
-      certificate_no: formData.certificate_no,
-      year_of_enrolment: formData.year_of_enrolment ? parseInt(formData.year_of_enrolment, 10) : undefined,
-      class_obtained: formData.class_obtained || undefined,
-      certificate_url: formData.certificate_url,
+      certificate_no: formData.certificate_no.trim(),
+      year_of_enrolment: formData.year_of_enrolment.trim() ? parseInt(formData.year_of_enrolment, 10) : null,
+      class_obtained: formData.class_obtained.trim() || null,
+      certificate_url: formData.certificate_url || null,
     };
+
     sessionStorage.setItem('candidatePayload', JSON.stringify(candidatePayload));
     sessionStorage.setItem(CANDIDATE_DRAFT_KEY, JSON.stringify(formData));
 
-    // Navigate directly to the Payment page
+    // Navigate to the Payment step
     navigate(ROUTES.PAYMENT);
   }
 
@@ -159,8 +231,11 @@ export default function CandidatePage() {
               type="text"
               className="form-input"
               placeholder="Full name as on certificate"
+              maxLength={150}
               value={formData.candidate_name}
               onChange={handleChange('candidate_name')}
+              aria-required="true"
+              aria-invalid={!!errors.candidate_name}
             />
           </FormField>
 
@@ -171,6 +246,8 @@ export default function CandidatePage() {
               className="form-input"
               value={formData.dob}
               onChange={handleChange('dob')}
+              aria-required="true"
+              aria-invalid={!!errors.dob}
             />
           </FormField>
 
@@ -178,11 +255,17 @@ export default function CandidatePage() {
             <input
               id="register-number"
               type="text"
-              className="form-input"
+              className="form-input uppercase"
               placeholder="e.g. 710621104001"
+              maxLength={30}
               value={formData.register_number}
               onChange={handleChange('register_number')}
+              aria-required="true"
+              aria-invalid={!!errors.register_number}
             />
+            <span className="text-xs text-slate-500 mt-1 block">
+              Letters, numbers, hyphens, and slashes only (3-30 chars).
+            </span>
           </FormField>
           
           <FormField id="degree" label="Degree / Course Title" required error={errors.degree}>
@@ -191,6 +274,8 @@ export default function CandidatePage() {
               className="form-input"
               value={formData.degree}
               onChange={handleChange('degree')}
+              aria-required="true"
+              aria-invalid={!!errors.degree}
             >
               <option value="" disabled>Select Degree</option>
               {DEGREES.map(deg => <option key={deg} value={deg}>{deg}</option>)}
@@ -203,8 +288,11 @@ export default function CandidatePage() {
               type="text"
               className="form-input"
               placeholder="e.g. Computer Science and Engineering"
+              maxLength={150}
               value={formData.specialization}
               onChange={handleChange('specialization')}
+              aria-required="true"
+              aria-invalid={!!errors.specialization}
             />
           </FormField>
 
@@ -214,9 +302,11 @@ export default function CandidatePage() {
               className="form-input"
               value={formData.year_of_passing}
               onChange={handleChange('year_of_passing')}
+              aria-required="true"
+              aria-invalid={!!errors.year_of_passing}
             >
               <option value="" disabled>Select Year</option>
-              {RECENT_YEARS.map(yr => <option key={yr} value={yr}>{yr}</option>)}
+              {RECENT_YEARS.map(yr => <option key={yr} value={String(yr)}>{yr}</option>)}
             </select>
           </FormField>
 
@@ -226,14 +316,17 @@ export default function CandidatePage() {
               type="text"
               className="form-input"
               placeholder="e.g. CERT-123456"
+              maxLength={100}
               value={formData.certificate_no}
               onChange={handleChange('certificate_no')}
+              aria-required="true"
+              aria-invalid={!!errors.certificate_no}
             />
           </FormField>
 
           {/* Optional fields */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormField id="year-of-enrolment" label="Year of Enrolment (Optional)">
+            <FormField id="year-of-enrolment" label="Year of Enrolment (Optional)" error={errors.year_of_enrolment}>
               <select
                 id="year-of-enrolment"
                 className="form-input"
@@ -241,7 +334,7 @@ export default function CandidatePage() {
                 onChange={handleChange('year_of_enrolment')}
               >
                 <option value="">Select Year</option>
-                {RECENT_YEARS.map(yr => <option key={yr} value={yr}>{yr}</option>)}
+                {RECENT_YEARS.map(yr => <option key={yr} value={String(yr)}>{yr}</option>)}
               </select>
             </FormField>
 

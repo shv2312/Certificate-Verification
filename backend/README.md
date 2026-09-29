@@ -21,9 +21,12 @@ pip install -r requirements.txt
 
 # 3. Configure environment
 cp .env.example .env
-# Edit .env with your local values
+# Edit .env with your local values if needed (SQLite is default)
 
-# 4. Run development server
+# 4. Initialize Database
+python create_dev_local.py
+
+# 5. Run development server
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 

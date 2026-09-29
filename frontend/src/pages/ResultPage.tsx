@@ -4,7 +4,7 @@ import PageContainer from '../components/PageContainer';
 import ProgressStepper from '../components/ProgressStepper';
 import { buildStepStatuses } from '../utils/workflowSteps';
 import { ROUTES } from '../utils/routes';
-import type { VerificationResult } from '../api/verification';
+import type { VerificationResultResponse } from '../types/api';
 
 const steps = buildStepStatuses(5); // Result step
 
@@ -12,7 +12,7 @@ export default function ResultPage() {
   const location = useLocation();
   const navigate = useNavigate();
   
-  const result = (location.state?.result as VerificationResult) || (() => {
+  const result = (location.state?.result as VerificationResultResponse) || (() => {
     try {
       const cached = sessionStorage.getItem('siet_verification_result');
       return cached ? JSON.parse(cached) : null;
@@ -37,15 +37,18 @@ export default function ResultPage() {
   const isVerified = result.status === 'VERIFIED';
   const isNameMismatch = result.status === 'NAME_MISMATCH';
   const isNotFound = result.status === 'NOT_FOUND';
-  // Fallback for everything else (UNABLE TO VERIFY or ERROR)
   const isError = !isVerified && !isNameMismatch && !isNotFound;
+
+  const downloadPdfUrl = result.verification_request_id
+    ? `/api/v1/verification/${encodeURIComponent(result.verification_request_id)}/download-pdf`
+    : null;
 
   return (
     <PageContainer>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-siet-navy mb-1">Verification Result</h1>
         <p className="text-siet-slate text-sm">
-          Final outcome of the verification request.
+          Final official outcome of the academic verification request.
         </p>
       </div>
 
@@ -74,43 +77,43 @@ export default function ResultPage() {
         <div className="p-6">
           {isVerified && (
             <>
-              <h3 className="text-lg font-bold text-siet-navy mb-4">Academic Details</h3>
+              <h3 className="text-lg font-bold text-siet-navy mb-4">Official Academic Details</h3>
               <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-6">
                 <div>
                   <dt className="text-xs text-siet-muted font-medium uppercase tracking-wider mb-1">Candidate Name</dt>
-                  <dd className="text-sm text-siet-navy font-semibold">{result.candidate_name}</dd>
+                  <dd className="text-sm text-siet-navy font-semibold">{result.candidate_name || 'N/A'}</dd>
                 </div>
                 <div>
                   <dt className="text-xs text-siet-muted font-medium uppercase tracking-wider mb-1">Register Number</dt>
-                  <dd className="text-sm text-siet-navy font-semibold">{result.register_number}</dd>
+                  <dd className="text-sm text-siet-navy font-semibold">{result.register_number || 'N/A'}</dd>
                 </div>
                 <div className="sm:col-span-2">
                   <dt className="text-xs text-siet-muted font-medium uppercase tracking-wider mb-1">Course & Branch</dt>
-                  <dd className="text-sm text-siet-navy font-semibold">{result.course} - {result.branch}</dd>
+                  <dd className="text-sm text-siet-navy font-semibold">{result.course} {result.branch ? `- ${result.branch}` : ''}</dd>
                 </div>
                 <div>
                   <dt className="text-xs text-siet-muted font-medium uppercase tracking-wider mb-1">Period of Study</dt>
-                  <dd className="text-sm text-siet-navy font-semibold">{result.period_of_study}</dd>
+                  <dd className="text-sm text-siet-navy font-semibold">{result.period_of_study || 'N/A'}</dd>
                 </div>
                 <div>
                   <dt className="text-xs text-siet-muted font-medium uppercase tracking-wider mb-1">Year of Passing</dt>
-                  <dd className="text-sm text-siet-navy font-semibold">{result.year_of_passing}</dd>
+                  <dd className="text-sm text-siet-navy font-semibold">{result.year_of_passing || 'N/A'}</dd>
                 </div>
                 <div>
                   <dt className="text-xs text-siet-muted font-medium uppercase tracking-wider mb-1">Mode of Education</dt>
-                  <dd className="text-sm text-siet-navy font-semibold">{result.mode_of_education}</dd>
+                  <dd className="text-sm text-siet-navy font-semibold">{result.mode_of_education || 'Regular (Full-time)'}</dd>
                 </div>
                 <div>
                   <dt className="text-xs text-siet-muted font-medium uppercase tracking-wider mb-1">Backlog Status</dt>
-                  <dd className="text-sm text-siet-navy font-semibold">{result.backlog_status}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-siet-muted font-medium uppercase tracking-wider mb-1">Verification Time</dt>
-                  <dd className="text-sm text-siet-navy font-semibold">{new Date().toLocaleString()}</dd>
+                  <dd className="text-sm text-siet-navy font-semibold">{result.backlog_status || 'None'}</dd>
                 </div>
                 <div>
                   <dt className="text-xs text-siet-muted font-medium uppercase tracking-wider mb-1">Institution</dt>
-                  <dd className="text-sm text-siet-navy font-semibold">{result.university_name}</dd>
+                  <dd className="text-sm text-siet-navy font-semibold">{result.institute_name || result.university_name || 'Sri Shakthi Institute of Engineering and Technology'}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-siet-muted font-medium uppercase tracking-wider mb-1">Affiliated University</dt>
+                  <dd className="text-sm text-siet-navy font-semibold">{result.university_name || 'Anna University'}</dd>
                 </div>
               </dl>
               <div className="mt-8 pt-4 border-t border-siet-border">
@@ -148,7 +151,7 @@ export default function ResultPage() {
           {isError && (
             <div className="bg-red-50 p-4 rounded text-center border border-red-200">
               <p className="text-sm font-medium text-siet-error">
-                Service is temporarily unavailable.
+                {result.message || 'Service is temporarily unavailable.'}
               </p>
               <p className="text-xs text-red-700 mt-2">
                 Please retry your request later or contact support if the issue persists.
@@ -159,16 +162,31 @@ export default function ResultPage() {
 
         {/* ── Actions ── */}
         <div className="p-6 bg-slate-50 border-t border-siet-border flex flex-col sm:flex-row items-center justify-between gap-4">
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="btn-secondary w-full sm:w-auto flex items-center justify-center gap-2"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-            </svg>
-            Print Verification Report
-          </button>
+          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="btn-secondary flex-1 sm:flex-initial flex items-center justify-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              </svg>
+              Print Report
+            </button>
+
+            {isVerified && downloadPdfUrl && (
+              <a
+                href={downloadPdfUrl}
+                download
+                className="btn-secondary flex-1 sm:flex-initial flex items-center justify-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Download PDF
+              </a>
+            )}
+          </div>
 
           <button
             type="button"

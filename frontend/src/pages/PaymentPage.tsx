@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import WorkflowLayout from '../components/WorkflowLayout';
 import StatusMessage from '../components/StatusMessage';
 import { ROUTES } from '../utils/routes';
-import { initiatePayment, verifyPayment } from '../api/payment';
-import type { PaymentInitiateResponse } from '../api/payment';
+import { initiatePayment, verifyPayment, devConfirmPayment } from '../api/payment';
+import type { PaymentInitiateResponse, CandidateDetails } from '../types/api';
+import { ApiError } from '../types/api';
 import { bindCandidate } from '../api/verification';
 import { useAuth } from '../context/AuthContext';
 
@@ -38,7 +39,7 @@ export default function PaymentPage() {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<'IDLE' | 'INITIATING' | 'PAYING' | 'VERIFYING' | 'SUCCESS'>('IDLE');
   
-  const [orderDetails, setOrderDetails] = useState<PaymentInitiateResponse['data'] | null>(() => {
+  const [orderDetails, setOrderDetails] = useState<PaymentInitiateResponse | null>(() => {
     try {
       const cached = sessionStorage.getItem(PAYMENT_DRAFT_KEY);
       return cached ? JSON.parse(cached) : null;
@@ -57,7 +58,7 @@ export default function PaymentPage() {
     }
   }, [orderDetails]);
 
-  const candidatePayload = (() => {
+  const candidatePayload: CandidateDetails | null = (() => {
     try {
       const candidateStr = sessionStorage.getItem('candidatePayload');
       if (candidateStr) return JSON.parse(candidateStr);
@@ -70,11 +71,11 @@ export default function PaymentPage() {
           register_number: draft.register_number,
           degree: draft.degree,
           specialization: draft.specialization,
-          year_of_passing: draft.year_of_passing ? parseInt(draft.year_of_passing, 10) : undefined,
+          year_of_passing: draft.year_of_passing ? parseInt(draft.year_of_passing, 10) : 0,
           certificate_no: draft.certificate_no,
-          year_of_enrolment: draft.year_of_enrolment ? parseInt(draft.year_of_enrolment, 10) : undefined,
-          class_obtained: draft.class_obtained || undefined,
-          certificate_url: draft.certificate_url,
+          year_of_enrolment: draft.year_of_enrolment ? parseInt(draft.year_of_enrolment, 10) : null,
+          class_obtained: draft.class_obtained || null,
+          certificate_url: draft.certificate_url || null,
         };
       }
     } catch (e) {
@@ -91,16 +92,10 @@ export default function PaymentPage() {
     setLoading(true);
 
     try {
-      // 1. Load Razorpay script
-      const isLoaded = await loadRazorpayScript();
-      if (!isLoaded) {
-        throw new Error('Failed to load Razorpay SDK. Please check your connection.');
-      }
-
-      // 2. Obtain order from backend
+      // 1. Obtain order from backend
       const initiateRes = await initiatePayment();
       if (!initiateRes.success || !initiateRes.data) {
-        throw new Error(initiateRes.message || 'Failed to initiate payment.');
+        throw new Error(initiateRes.message || 'Failed to initiate payment session.');
       }
       
       const { gateway_order_id, gateway_key_id, amount_paise, currency, description, payment_session_id } = initiateRes.data;
@@ -110,34 +105,30 @@ export default function PaymentPage() {
         throw new Error('Payment gateway configuration is missing from the server.');
       }
 
-      // 3. Handle Mock Mode Bypass
+      // 2. Handle Dev Mock Mode Bypass
       if (gateway_key_id === 'DEV_KEY_ID_NOT_REAL') {
         setStatus('VERIFYING');
         setLoading(true);
-        // We use the dev endpoint to confirm
-        const res = await fetch(`/api/v1/payment/dev/confirm/${payment_session_id}`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${JSON.parse(sessionStorage.getItem('siet_auth_state') || '{}').sessionToken}`
-          }
-        });
-        const data = await res.json();
-        if (!res.ok || !data.success) {
-           throw new Error(data.message || 'Mock payment failed');
-        }
         
-        const verificationRequestId = data.data?.verification_request_id;
+        const devRes = await devConfirmPayment(payment_session_id);
+        if (!devRes.success || !devRes.data) {
+          throw new Error(devRes.message || 'Mock payment simulation failed.');
+        }
+
+        const verificationRequestId = devRes.data.verification_request_id;
         if (verificationRequestId) {
           sessionStorage.setItem('siet_active_request_id', verificationRequestId);
         }
+
         if (verificationRequestId && candidatePayload) {
           try {
             await bindCandidate({
               verification_request_id: verificationRequestId,
               candidate: candidatePayload,
             });
-          } catch (_bindErr) {
-            throw new Error('Payment succeeded, but failed to bind candidate. Please contact support.');
+          } catch (bindErr) {
+            const msg = bindErr instanceof ApiError ? bindErr.message : 'Payment succeeded, but candidate binding failed.';
+            throw new Error(`${msg} Please contact support.`);
           }
         }
         
@@ -150,7 +141,13 @@ export default function PaymentPage() {
         return;
       }
 
-      // 4. Configure real Razorpay
+      // 3. Load Razorpay script for live checkout
+      const isLoaded = await loadRazorpayScript();
+      if (!isLoaded) {
+        throw new Error('Failed to load Razorpay Checkout SDK. Please verify your connection.');
+      }
+
+      // 4. Configure real Razorpay checkout options
       const options = {
         key: gateway_key_id,
         amount: amount_paise.toString(),
@@ -168,8 +165,9 @@ export default function PaymentPage() {
               response.razorpay_order_id,
               response.razorpay_signature
             );
-            if (verifyRes.success) {
-              const verificationRequestId = verifyRes.data?.verification_request_id;
+
+            if (verifyRes.success && verifyRes.data) {
+              const verificationRequestId = verifyRes.data.verification_request_id;
               if (verificationRequestId) {
                 sessionStorage.setItem('siet_active_request_id', verificationRequestId);
               }
@@ -180,8 +178,9 @@ export default function PaymentPage() {
                     verification_request_id: verificationRequestId,
                     candidate: candidatePayload,
                   });
-                } catch (_bindErr) {
-                  throw new Error('Payment succeeded, but failed to bind candidate. Please contact support.');
+                } catch (bindErr) {
+                  const msg = bindErr instanceof ApiError ? bindErr.message : 'Candidate binding failed.';
+                  throw new Error(`Payment verified, but candidate binding failed: ${msg}`);
                 }
               }
 
@@ -210,7 +209,7 @@ export default function PaymentPage() {
           ondismiss: function () {
             setStatus('IDLE');
             setLoading(false);
-            setError('Payment checkout was cancelled.');
+            setError('Payment checkout was cancelled by the user.');
           }
         }
       };
@@ -219,14 +218,28 @@ export default function PaymentPage() {
       const rzp = new window.Razorpay(options);
       
       rzp.on('payment.failed', function (response: any) {
-        setError(`Payment failed: ${response.error.description}`);
+        setError(`Payment failed: ${response?.error?.description || 'Transaction declined'}`);
         setStatus('IDLE');
         setLoading(false);
       });
 
       rzp.open();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred.');
+      if (err instanceof ApiError) {
+        if (err.status === 401) {
+          setError('Your session has expired. Please verify your official email again before payment.');
+        } else if (err.status === 403) {
+          setError('Access denied. A verified HR email session is required to initiate payment.');
+        } else if (err.status === 409) {
+          setError(err.message || 'Payment conflict: Session already processed or expired.');
+        } else {
+          setError(err.message);
+        }
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unexpected error occurred during payment processing.');
+      }
       setStatus('IDLE');
       setLoading(false);
     }
@@ -247,7 +260,7 @@ export default function PaymentPage() {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              Verifying payment...
+              Verifying payment with institution...
             </div>
           </div>
         )}
@@ -258,7 +271,7 @@ export default function PaymentPage() {
               <svg className="h-10 w-10 text-brand-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
-              Payment verified successfully. Redirecting...
+              Payment verified successfully. Redirecting to confirmation...
             </div>
           </div>
         )}
@@ -275,24 +288,24 @@ export default function PaymentPage() {
             <span className="text-sm font-semibold text-brand-forest sm:col-span-2">Razorpay (Standard Checkout)</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-y-1 gap-x-4 border-b border-slate-200 pb-4">
-            <span className="text-sm font-medium text-slate-500">Mode:</span>
+            <span className="text-sm font-medium text-slate-500">Gateway Status:</span>
             <span className="sm:col-span-2">
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold text-amber-900 bg-yellow-50 border border-brand-gold">
-                TEST MODE
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold text-emerald-900 bg-emerald-50 border border-emerald-300">
+                ACTIVE
               </span>
             </span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-y-1 gap-x-4 border-b border-slate-200 pb-4">
             <span className="text-sm font-medium text-slate-500">Amount:</span>
             <span className="text-base font-bold text-brand-forest sm:col-span-2">
-              {orderDetails ? `${orderDetails.currency} ${(orderDetails.amount_paise / 100).toFixed(2)}` : 'INR 100.00'}
+              {orderDetails ? `${orderDetails.currency} ${(orderDetails.amount_paise / 100).toFixed(2)}` : 'INR 1,500.00'}
             </span>
           </div>
         </div>
 
         {isLocked && (
           <div className="bg-brand-light border border-emerald-200 p-5 rounded-xl flex flex-col items-center justify-center text-center gap-3">
-            <p className="text-brand-forest font-bold">Verify your email to continue with payment.</p>
+            <p className="text-brand-forest font-bold">Verify your official email to unlock payment.</p>
             <button
               type="button"
               className="btn-primary py-2 px-5 text-sm"
@@ -306,7 +319,7 @@ export default function PaymentPage() {
         {error && !isLocked && (
           <StatusMessage
             type="error"
-            title="Payment Error"
+            title="Payment Notice"
             message={error}
           />
         )}
