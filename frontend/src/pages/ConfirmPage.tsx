@@ -12,14 +12,14 @@ const steps = buildStepStatuses(4); // Verification step
 export default function ConfirmPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const verificationRequestId = location.state?.verification_request_id;
+  const verificationRequestId = location.state?.verification_request_id || sessionStorage.getItem('siet_active_request_id');
   const mockRegisterNumber = location.state?._mock_register_number;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string>();
 
   if (!verificationRequestId) {
-    return <Navigate to={ROUTES.COMPANY} replace />;
+    return <Navigate to={ROUTES.REQUESTER} replace />;
   }
 
   async function handleConfirm(e: FormEvent) {
@@ -32,6 +32,11 @@ export default function ConfirmPage() {
         verification_request_id: verificationRequestId,
         ...(mockRegisterNumber ? { _mock_register_number: mockRegisterNumber } : {})
       });
+      try {
+        sessionStorage.setItem('siet_verification_result', JSON.stringify(result));
+      } catch (e) {
+        console.error('Failed to store verification result in sessionStorage', e);
+      }
       navigate(ROUTES.RESULT, { state: { result } });
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Failed to confirm verification.');

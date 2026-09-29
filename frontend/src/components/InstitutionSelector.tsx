@@ -98,7 +98,7 @@ export default function InstitutionSelector({
         <div
           className={`flex items-center gap-2 rounded border bg-white transition-colors duration-150 ${
             open || value
-              ? 'border-siet-sky ring-1 ring-siet-sky'
+              ? 'border-brand-green ring-1 ring-brand-green'
               : error
               ? 'border-siet-error'
               : 'border-siet-border'
@@ -170,14 +170,14 @@ export default function InstitutionSelector({
                   aria-selected={value?.id === inst.id}
                   className={`flex items-start gap-3 px-4 py-3 cursor-pointer text-sm transition-colors duration-100 ${
                     value?.id === inst.id
-                      ? 'bg-blue-50 text-siet-sky font-medium'
+                      ? 'bg-brand-light text-brand-green font-semibold'
                       : 'text-siet-slate hover:bg-gray-50'
                   }`}
                   onMouseDown={() => handleSelect(inst)}
                 >
                   <span className="mt-0.5">
                     {value?.id === inst.id ? (
-                      <svg className="w-4 h-4 text-siet-sky" fill="currentColor" viewBox="0 0 20 20">
+                      <svg className="w-4 h-4 text-brand-green" fill="currentColor" viewBox="0 0 20 20">
                         <path
                           fillRule="evenodd"
                           d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"

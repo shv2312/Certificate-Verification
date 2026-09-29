@@ -95,6 +95,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState(initialState);
     sessionStorage.removeItem(SESSION_KEY);
     sessionStorage.removeItem('mock_hrEmail');
+    sessionStorage.removeItem('siet_requester_draft');
+    sessionStorage.removeItem('siet_candidate_draft');
+    sessionStorage.removeItem('candidatePayload');
+    sessionStorage.removeItem('siet_payment_draft');
+    sessionStorage.removeItem('siet_active_request_id');
+    sessionStorage.removeItem('siet_verification_result');
   };
 
   return (

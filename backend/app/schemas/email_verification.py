@@ -43,39 +43,51 @@ class SendOTPRequest(BaseModel):
                     use them; domain restriction is a business policy
                     decision to be confirmed with SIET management.
     """
-    company_name: str = Field(
+    organization_type: Optional[str] = Field(
+        None,
+        description="Type of the organization (e.g., Private, Government).",
+    )
+    organization_name: str = Field(
         ...,
         min_length=2,
         max_length=200,
-        description="Legal/registered name of the requesting company.",
+        description="Legal/registered name of the requesting organization.",
         examples=["Acme Technologies Pvt. Ltd."],
     )
-    hr_email: EmailStr = Field(
+    requester_email: EmailStr = Field(
         ...,
-        description="Official HR email address that will receive the OTP.",
+        description="Official email address that will receive the OTP.",
         examples=["hr@acmetechnologies.com"],
     )
-    hr_name: str = Field(
+    requester_name: str = Field(
         ...,
         min_length=2,
         max_length=255,
-        description="Full name of the HR representative.",
+        description="Full name of the requester.",
         examples=["John Doe"],
     )
-    hr_phone: str = Field(
+    requester_role: Optional[str] = Field(
+        None,
+        max_length=150,
+        description="Role or designation of the requester.",
+        examples=["HR Manager"],
+    )
+    requester_phone: str = Field(
         ...,
-        description="Contact phone number of the HR representative.",
+        description="Contact phone number of the requester.",
         examples=["+919876543210"],
     )
 
-    @field_validator("company_name", "hr_name", mode="before")
+    @field_validator("organization_name", "requester_name", mode="before")
     @classmethod
     def clean_text_fields(cls, v: str) -> str:
         return _clean_text(v)
 
-    @field_validator("hr_phone")
+    @field_validator("requester_phone", mode="before")
     @classmethod
     def validate_phone(cls, v: str) -> str:
+        # Strip non-numeric characters except '+'
+        v = re.sub(r'[^\d+]', '', v)
         try:
             # Default to IN (+91) if no country code provided
             parsed = phonenumbers.parse(v, "IN")

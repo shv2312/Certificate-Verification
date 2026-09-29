@@ -7,19 +7,30 @@ export default {
   theme: {
     extend: {
       colors: {
-        // SIET brand palette — deep institutional navy + professional accents
+        // SIET Official Brand Tokens — Deep Forest Green, Emerald Green, Clean White, Academic Gold/Yellow
+        brand: {
+          forest:  '#074828',   // Deep green headers/footers
+          green:   '#0B6A3E',   // Primary buttons, active states
+          emerald: '#16A34A',   // Success pills, active tabs
+          light:   '#ECFDF5',   // Soft green tint for subtle backgrounds
+          gold:    '#FACC15',   // Yellow accent borders & active indicators
+          amber:   '#EAB308',   // Warm crest yellow
+        },
         siet: {
-          navy:    '#0B1F3A',   // Deep institutional navy (primary brand)
-          blue:    '#1A3A6B',   // Header / section headings
-          sky:     '#2563EB',   // Interactive / CTA
-          sky600:  '#1D4ED8',   // CTA hover
-          silver:  '#E8ECF1',   // Light background panels
-          slate:   '#475569',   // Body text
-          muted:   '#94A3B8',   // Placeholder / muted text
-          border:  '#CBD5E1',   // Dividers & borders
-          success: '#15803D',   // Verified / success
+          navy:    '#074828',   // Deep institutional forest green (replaces navy)
+          blue:    '#0B6A3E',   // Primary institutional green (replaces blue)
+          sky:     '#0B6A3E',   // Primary CTA green (replaces blue-600)
+          sky600:  '#074828',   // CTA hover deep green
+          emerald: '#16A34A',   // Vibrant emerald green
+          light:   '#ECFDF5',   // Soft green tint
+          gold:    '#FACC15',   // Academic Golden Yellow
+          amber:   '#EAB308',   // Warm crest yellow
+          silver:  '#F0FDF4',   // Light green-tinted off-white panel
+          slate:   '#334155',   // Slate body text
+          muted:   '#64748B',   // Placeholder / muted text
+          border:  '#E2E8F0',   // Dividers & borders
+          success: '#16A34A',   // Verified / success emerald
           error:   '#B91C1C',   // Failure / mandatory indicator
-          amber:   '#B45309',   // Warning / pending
         },
       },
       fontFamily: {
@@ -30,9 +41,9 @@ export default {
         '2xs': ['0.625rem', { lineHeight: '0.875rem' }],
       },
       boxShadow: {
-        'card':   '0 1px 3px 0 rgba(11, 31, 58, 0.08), 0 1px 2px -1px rgba(11, 31, 58, 0.06)',
-        'card-md':'0 4px 12px 0 rgba(11, 31, 58, 0.10), 0 2px 4px -2px rgba(11, 31, 58, 0.06)',
-        'header': '0 1px 0 0 rgba(11, 31, 58, 0.10)',
+        'card':   '0 1px 3px 0 rgba(7, 72, 40, 0.08), 0 1px 2px -1px rgba(7, 72, 40, 0.06)',
+        'card-md':'0 4px 12px 0 rgba(7, 72, 40, 0.12), 0 2px 4px -2px rgba(7, 72, 40, 0.08)',
+        'header': '0 2px 4px 0 rgba(7, 72, 40, 0.06)',
       },
       borderRadius: {
         'sm2': '0.25rem',

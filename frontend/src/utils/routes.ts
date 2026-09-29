@@ -7,7 +7,7 @@
 
 export const ROUTES = {
   HOME:          '/',
-  COMPANY:       '/company',
+  REQUESTER:     '/requester',
   VERIFY_EMAIL:  '/verify-email',
   PAYMENT:       '/payment',
   CANDIDATE:     '/candidate',

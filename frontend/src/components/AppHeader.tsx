@@ -30,7 +30,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { label: 'Home',   to: ROUTES.HOME },
-  { label: 'Verify', to: ROUTES.COMPANY },
+  { label: 'Verify', to: ROUTES.REQUESTER },
   { label: 'Status', to: ROUTES.STATUS },
   { label: 'Help',   to: ROUTES.HELP },
 ];
@@ -86,6 +86,12 @@ export default function AppHeader() {
 
   function handleAdminLogout() {
     localStorage.removeItem('siet_admin_token');
+    sessionStorage.removeItem('siet_requester_draft');
+    sessionStorage.removeItem('siet_candidate_draft');
+    sessionStorage.removeItem('candidatePayload');
+    sessionStorage.removeItem('siet_payment_draft');
+    sessionStorage.removeItem('siet_active_request_id');
+    sessionStorage.removeItem('siet_verification_result');
     window.dispatchEvent(new Event('siet:admin-logout'));
     navigate(ROUTES.HOME);
   }
@@ -94,32 +100,40 @@ export default function AppHeader() {
     <>
       <header
         role="banner"
-        className={`sticky top-0 z-40 bg-white border-b border-siet-border transition-shadow duration-200 ${
-          scrolled ? 'shadow-header' : ''
+        className={`sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200/80 transition-shadow duration-200 ${
+          scrolled ? 'shadow-sm' : ''
         }`}
       >
         <div className="section-container">
           <div className="flex items-center justify-between h-16 gap-4">
 
-            {/* ── Left: Institutional Identity ── */}
+            {/* ── Left: Brand Identity with Crest ── */}
             <Link
               to={ROUTES.HOME}
-              className="flex flex-col leading-tight focus-visible:outline-none
-                         focus-visible:ring-2 focus-visible:ring-siet-sky rounded"
+              className="flex items-center gap-3 focus-visible:outline-none
+                         focus-visible:ring-2 focus-visible:ring-[#0B6A3E] rounded group"
               aria-label="SIET Academic Verification Portal – Home"
             >
-              <span className="text-xs font-medium text-siet-sky uppercase tracking-widest">
-                Sri Shakthi Institute of Engineering and Technology
-              </span>
-              <span className="text-sm font-semibold text-siet-navy">
-                Academic Background Verification Portal
-              </span>
+              <img
+                src={sietLogo}
+                alt="Official SIET Crest"
+                className="h-10 w-auto object-contain flex-shrink-0"
+              />
+              <div className="flex flex-col leading-tight">
+                <span className="font-mono text-2xs uppercase tracking-widest text-[#0B6A3E] font-semibold flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  SIET Institutional Portal
+                </span>
+                <span className="text-base sm:text-lg font-bold text-[#074828] tracking-tight group-hover:text-[#0B6A3E] transition-colors">
+                  Academic Verification
+                </span>
+              </div>
             </Link>
 
             {/* ── Centre: Desktop Navigation ── */}
             <nav
               aria-label="Main navigation"
-              className="hidden md:flex items-center gap-1"
+              className="hidden md:flex items-center gap-6"
             >
               {NAV_ITEMS.map((item) => (
                 <NavLink
@@ -129,13 +143,13 @@ export default function AppHeader() {
                   aria-label={item.label}
                   className={({ isActive }) =>
                     [
-                      'px-3 py-2 rounded text-sm font-medium transition-colors duration-150',
-                      'focus-visible:ring-2 focus-visible:ring-siet-sky focus-visible:outline-none',
+                      'text-sm transition-colors relative py-1',
+                      'focus-visible:ring-2 focus-visible:ring-[#0B6A3E] focus-visible:outline-none rounded',
                       item.isPlaceholder
-                        ? 'text-siet-muted cursor-default pointer-events-none'
+                        ? 'text-slate-400 cursor-default pointer-events-none'
                         : isActive
-                        ? 'text-siet-sky bg-blue-50'
-                        : 'text-siet-slate hover:text-siet-navy hover:bg-siet-silver',
+                        ? 'text-[#0B6A3E] font-semibold after:absolute after:bottom-[-20px] after:left-0 after:right-0 after:h-[2px] after:bg-[#0B6A3E]'
+                        : 'text-slate-600 hover:text-[#0B6A3E] font-medium',
                     ].join(' ')
                   }
                 >
@@ -144,7 +158,7 @@ export default function AppHeader() {
               ))}
             </nav>
 
-            {/* ── Right: Admin controls + Logo + Mobile Menu ── */}
+            {/* ── Right: Admin controls + Mobile Menu ── */}
             <div className="flex items-center gap-2 sm:gap-3">
 
               {/* Admin Dashboard button (logged-in state) */}
@@ -154,11 +168,11 @@ export default function AppHeader() {
                     id="admin-dashboard-btn"
                     type="button"
                     onClick={() => navigate('/admin')}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
-                               bg-siet-navy text-white hover:bg-blue-900 transition-colors duration-150"
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-mono font-medium
+                               bg-[#074828] text-white hover:bg-[#0B6A3E] border border-amber-400/40 transition-colors shadow-xs"
                     title="Go to Admin Dashboard"
                   >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3.5 h-3.5 text-[#FACC15]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                         d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm0 8a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zm12 0a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
                     </svg>
@@ -168,14 +182,10 @@ export default function AppHeader() {
                     id="admin-logout-btn"
                     type="button"
                     onClick={handleAdminLogout}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium
-                               text-siet-error border border-red-200 hover:bg-red-50 transition-colors duration-150"
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-mono font-medium
+                               text-red-700 border border-red-200 hover:bg-red-50 transition-colors"
                     title="Sign out of admin"
                   >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
                     Sign Out
                   </button>
                 </div>
@@ -185,33 +195,24 @@ export default function AppHeader() {
                   id="admin-login-btn"
                   type="button"
                   onClick={handleAdminButtonClick}
-                  className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
-                             text-siet-navy border border-siet-border hover:bg-siet-silver
-                             hover:border-siet-slate transition-colors duration-150"
+                  className="hidden md:inline-flex items-center gap-1.5 border border-slate-200 hover:border-[#0B6A3E] text-slate-700 hover:text-[#0B6A3E] text-xs font-mono font-medium px-3.5 py-1.5 rounded-full transition-all"
                   aria-label="Admin Login"
                   title="Admin Portal Login"
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                       d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  Admin
+                  Admin Portal
                 </button>
               )}
-
-              {/* SIET Logo — top-right institutional identity */}
-              <img
-                src={sietLogo}
-                alt="Official SIET Logo"
-                className="hidden sm:block h-11 w-auto object-contain"
-              />
 
               {/* Mobile hamburger */}
               <button
                 type="button"
-                className="md:hidden p-2 rounded text-siet-slate
-                           hover:bg-siet-silver hover:text-siet-navy
-                           focus-visible:ring-2 focus-visible:ring-siet-sky
+                className="md:hidden p-2 rounded-lg text-slate-700
+                           hover:bg-brand-light hover:text-brand-forest
+                           focus-visible:ring-2 focus-visible:ring-brand-green
                            transition-colors duration-150"
                 aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
                 aria-expanded={menuOpen}
@@ -237,7 +238,7 @@ export default function AppHeader() {
           <nav
             id="mobile-menu"
             aria-label="Mobile navigation"
-            className="md:hidden border-t border-siet-border bg-white animate-fade-in"
+            className="md:hidden border-t border-slate-200 bg-white animate-fade-in"
           >
             <ul className="section-container py-2 flex flex-col gap-0.5" role="list">
               {NAV_ITEMS.map((item) => (
@@ -247,12 +248,12 @@ export default function AppHeader() {
                     end
                     className={({ isActive }) =>
                       [
-                        'block px-3 py-2.5 rounded text-sm font-medium transition-colors duration-150',
+                        'block px-3 py-2.5 rounded-lg text-sm font-semibold transition-colors duration-150',
                         item.isPlaceholder
-                          ? 'text-siet-muted pointer-events-none'
+                          ? 'text-slate-400 pointer-events-none'
                           : isActive
-                          ? 'text-siet-sky bg-blue-50'
-                          : 'text-siet-slate hover:text-siet-navy hover:bg-siet-silver',
+                          ? 'text-brand-forest bg-brand-light border-l-4 border-brand-gold'
+                          : 'text-slate-600 hover:text-brand-forest hover:bg-brand-light/50',
                       ].join(' ')
                     }
                     aria-label={item.label}
@@ -263,22 +264,22 @@ export default function AppHeader() {
               ))}
 
               {/* Mobile Admin section */}
-              <li className="pt-2 border-t border-siet-border mt-1">
+              <li className="pt-2 border-t border-slate-200 mt-1">
                 {isAdmin ? (
                   <div className="flex flex-col gap-1">
                     <button
                       type="button"
                       onClick={() => { navigate('/admin'); setMenuOpen(false); }}
-                      className="block w-full text-left px-3 py-2.5 rounded text-sm font-semibold
-                                 text-siet-navy bg-blue-50 hover:bg-blue-100 transition-colors"
+                      className="block w-full text-left px-3 py-2.5 rounded-lg text-sm font-bold
+                                 text-brand-forest bg-brand-light hover:bg-emerald-100 transition-colors"
                     >
                       Admin Dashboard
                     </button>
                     <button
                       type="button"
                       onClick={handleAdminLogout}
-                      className="block w-full text-left px-3 py-2.5 rounded text-sm font-medium
-                                 text-siet-error hover:bg-red-50 transition-colors"
+                      className="block w-full text-left px-3 py-2.5 rounded-lg text-sm font-semibold
+                                 text-red-700 hover:bg-red-50 transition-colors"
                     >
                       Sign Out (Admin)
                     </button>
@@ -287,8 +288,8 @@ export default function AppHeader() {
                   <button
                     type="button"
                     onClick={() => { setAdminModalOpen(true); setMenuOpen(false); }}
-                    className="block w-full text-left px-3 py-2.5 rounded text-sm font-medium
-                               text-siet-slate hover:text-siet-navy hover:bg-siet-silver transition-colors"
+                    className="block w-full text-left px-3 py-2.5 rounded-lg text-sm font-semibold
+                               text-slate-700 hover:text-brand-forest hover:bg-brand-light transition-colors"
                   >
                     Admin Login
                   </button>

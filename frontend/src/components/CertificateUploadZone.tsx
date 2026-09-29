@@ -20,13 +20,21 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
+export interface CertificateFileMeta {
+  name: string;
+  size?: number;
+  type?: string;
+}
+
 interface CertificateUploadZoneProps {
-  /** Called with the remote URL after a successful upload */
-  onUpload: (url: string) => void;
+  /** Called with the remote URL and metadata after a successful upload */
+  onUpload: (url: string, meta?: CertificateFileMeta) => void;
   /** Called when the file is removed */
   onRemove: () => void;
   /** Current uploaded URL (controlled externally) */
   certificateUrl?: string;
+  /** Preserved metadata for uploaded certificate (survives reloads) */
+  certificateMeta?: CertificateFileMeta | null;
   error?: string;
 }
 
@@ -39,6 +47,7 @@ export default function CertificateUploadZone({
   onUpload,
   onRemove,
   certificateUrl,
+  certificateMeta,
   error,
 }: CertificateUploadZoneProps) {
   const inputId = useId();
@@ -84,7 +93,11 @@ export default function CertificateUploadZone({
         const url = await uploadCertificate(file);
         clearInterval(progressInterval);
         setUploadProgress(100);
-        onUpload(url);
+        onUpload(url, {
+          name: file.name,
+          size: file.size,
+          type: file.type,
+        });
       } catch (err) {
         clearInterval(progressInterval);
         setUploadError(err instanceof Error ? err.message : 'Upload failed. Please try again.');
@@ -127,8 +140,14 @@ export default function CertificateUploadZone({
     onRemove();
   }
 
-  const hasFile = !!fileState;
-  const hasUploadedUrl = !!certificateUrl;
+  const hasUploadedUrl = Boolean(certificateUrl);
+  const hasFile = Boolean(fileState || hasUploadedUrl);
+
+  const displayName = fileState?.file.name || certificateMeta?.name || (hasUploadedUrl ? 'Degree_Certificate_Document' : '');
+  const displaySize = fileState?.file.size ?? certificateMeta?.size;
+  const displayType = fileState?.file.type || certificateMeta?.type || '';
+  const isImage = displayType.startsWith('image/') || (certificateUrl ? /\.(png|jpe?g|webp)$/i.test(certificateUrl) : false);
+  const displayPreviewUrl = fileState?.previewUrl || (isImage && certificateUrl ? certificateUrl : undefined);
 
   return (
     <div className="space-y-2">
@@ -148,20 +167,20 @@ export default function CertificateUploadZone({
           onDrop={handleDrop}
           onClick={() => inputRef.current?.click()}
           onKeyDown={(e) => e.key === 'Enter' && inputRef.current?.click()}
-          className={`relative flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-10 cursor-pointer transition-all duration-200 select-none
+          className={`relative flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-10 cursor-pointer transition-all duration-200 select-none
             ${
               isDragging
-                ? 'border-siet-sky bg-blue-50 scale-[1.01]'
+                ? 'border-brand-green bg-brand-light scale-[1.01]'
                 : error || uploadError
-                ? 'border-siet-error bg-red-50'
-                : 'border-siet-border bg-gray-50/60 hover:border-siet-sky hover:bg-blue-50/30'
+                ? 'border-red-500 bg-red-50'
+                : 'border-slate-300 bg-slate-50/60 hover:border-brand-green hover:bg-brand-light/30'
             }
           `}
         >
           {/* Upload icon */}
           <div
             className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${
-              isDragging ? 'bg-blue-100 text-siet-sky' : 'bg-siet-silver text-siet-muted'
+              isDragging ? 'bg-emerald-100 text-brand-green' : 'bg-brand-light text-brand-green'
             }`}
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -175,16 +194,16 @@ export default function CertificateUploadZone({
           </div>
 
           <div className="text-center">
-            <p className="text-sm font-semibold text-siet-navy">
+            <p className="text-sm font-bold text-brand-forest">
               {isDragging ? 'Drop your file here' : 'Drag & drop your certificate'}
             </p>
-            <p className="text-xs text-siet-muted mt-1">
+            <p className="text-xs text-slate-500 mt-1">
               or{' '}
-              <span className="text-siet-sky font-medium underline underline-offset-2">browse files</span>
+              <span className="text-brand-green font-semibold underline underline-offset-2">browse files</span>
             </p>
           </div>
 
-          <p className="text-2xs text-siet-muted">PDF, PNG, JPG — max 5 MB</p>
+          <p className="text-2xs text-slate-400">PDF, PNG, JPG — max 5 MB</p>
 
           <input
             ref={inputRef}
@@ -199,19 +218,19 @@ export default function CertificateUploadZone({
       )}
 
       {/* ── File Preview Card (shown after file is selected) ── */}
-      {hasFile && fileState && (
-        <div className="surface-card overflow-hidden animate-fade-in">
+      {hasFile && (
+        <div className="surface-card overflow-hidden animate-fade-in border border-emerald-200">
           <div className="flex items-start gap-4 p-4">
             {/* Thumbnail / PDF icon */}
-            <div className="w-16 h-16 shrink-0 rounded overflow-hidden border border-siet-border bg-siet-silver flex items-center justify-center">
-              {fileState.previewUrl ? (
+            <div className="w-16 h-16 shrink-0 rounded-lg overflow-hidden border border-slate-200 bg-brand-light flex items-center justify-center">
+              {displayPreviewUrl ? (
                 <img
-                  src={fileState.previewUrl}
+                  src={displayPreviewUrl}
                   alt="Certificate preview"
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <svg className="w-8 h-8 text-red-400" fill="currentColor" viewBox="0 0 24 24">
+                <svg className="w-8 h-8 text-red-500" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 1.5L18.5 9H13V3.5zM8 13h8v1.5H8V13zm0 3h5v1.5H8V16zm0-6h4v1.5H8V10z" />
                 </svg>
               )}
@@ -219,19 +238,21 @@ export default function CertificateUploadZone({
 
             {/* File info */}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-siet-navy truncate">{fileState.file.name}</p>
-              <p className="text-xs text-siet-muted mt-0.5">{formatBytes(fileState.file.size)}</p>
+              <p className="text-sm font-bold text-brand-forest truncate">{displayName}</p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {displaySize ? formatBytes(displaySize) : (displayType || 'Uploaded Document')}
+              </p>
 
               {/* Upload progress */}
               {isUploading && (
                 <div className="mt-2">
-                  <div className="h-1.5 bg-siet-silver rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-emerald-100 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-siet-sky rounded-full transition-all duration-300 ease-out"
+                      className="h-full bg-brand-green rounded-full transition-all duration-300 ease-out"
                       style={{ width: `${uploadProgress}%` }}
                     />
                   </div>
-                  <p className="text-2xs text-siet-muted mt-1">Uploading… {uploadProgress}%</p>
+                  <p className="text-2xs text-slate-500 mt-1">Uploading… {uploadProgress}%</p>
                 </div>
               )}
 

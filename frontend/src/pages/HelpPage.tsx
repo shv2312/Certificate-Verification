@@ -53,16 +53,16 @@ export default function HelpPage() {
           ))}
         </div>
 
-        <div className="mt-12 surface-card p-8 text-center bg-blue-50 border border-blue-100">
-          <h2 className="text-xl font-bold text-siet-navy mb-3">Still need assistance?</h2>
-          <p className="text-siet-slate mb-6">
+        <div className="mt-12 surface-card p-8 text-center bg-brand-light border border-emerald-200">
+          <h2 className="text-xl font-bold text-brand-forest mb-3">Still need assistance?</h2>
+          <p className="text-slate-600 mb-6">
             If you encounter technical issues or have questions not covered above, please contact the SIET administration.
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <Link to={ROUTES.STATUS} className="btn-primary">
               Track a Request
             </Link>
-            <Link to={ROUTES.COMPANY} className="btn-secondary">
+            <Link to={ROUTES.REQUESTER} className="btn-secondary">
               Start New Verification
             </Link>
           </div>

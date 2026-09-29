@@ -12,9 +12,9 @@ import type { WorkflowStep } from '../types';
 
 export const WORKFLOW_STEPS: WorkflowStep[] = [
   {
-    id:          'company',
-    label:       'Company Details',
-    description: 'Provide company and HR information',
+    id:          'requester',
+    label:       'Requester Details',
+    description: 'Provide organization and contact information',
     status:      'upcoming',
   },
   {
@@ -24,26 +24,26 @@ export const WORKFLOW_STEPS: WorkflowStep[] = [
     status:      'upcoming',
   },
   {
-    id:          'payment',
-    label:       'Payment',
-    description: 'Secure payment for verification service',
-    status:      'upcoming',
-  },
-  {
     id:          'candidate',
     label:       'Candidate Details',
     description: 'Enter candidate academic information',
     status:      'upcoming',
   },
   {
+    id:          'payment',
+    label:       'Secure Payment',
+    description: 'Secure payment for verification service',
+    status:      'upcoming',
+  },
+  {
     id:          'verification',
-    label:       'Verification',
+    label:       'Institutional Verification',
     description: 'Processing against institutional records',
     status:      'upcoming',
   },
   {
     id:          'result',
-    label:       'Result',
+    label:       'Official Report',
     description: 'Verification outcome and report',
     status:      'upcoming',
   },

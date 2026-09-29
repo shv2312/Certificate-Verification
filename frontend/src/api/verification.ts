@@ -2,7 +2,15 @@ import { apiClient } from './client';
 
 export interface VerificationCandidate {
   candidate_name: string;
+  dob: string;
   register_number: string;
+  degree: string;
+  specialization: string;
+  year_of_passing: number;
+  certificate_no: string;
+  certificate_url: string;
+  year_of_enrolment?: number;
+  class_obtained?: string;
 }
 
 export interface BindCandidatePayload {
@@ -108,6 +116,10 @@ export async function uploadCertificate(file: File): Promise<string> {
     throw new Error(detail);
   }
 
-  const json: { data: { certificate_url: string } } = await response.json();
-  return json.data.certificate_url;
+  const json: any = await response.json();
+  const uploadedUrl = json?.file_url || json?.data?.certificate_url;
+  if (!uploadedUrl) {
+    throw new Error('Server response mismatch: missing certificate URL.');
+  }
+  return uploadedUrl;
 }

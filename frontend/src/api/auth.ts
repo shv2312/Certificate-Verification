@@ -11,14 +11,16 @@
 
 import { apiClient } from './client';
 
-export interface CompanyRegistrationPayload {
-  companyName: string;
-  hrName: string;
-  hrEmail: string;
-  hrPhone: string;
+export interface RequesterRegistrationPayload {
+  organizationType: string;
+  organizationName: string;
+  requesterName: string;
+  requesterEmail: string;
+  requesterRole: string;
+  requesterPhone: string;
 }
 
-export interface CompanyRegistrationResponse {
+export interface RequesterRegistrationResponse {
   requestId: string;
   message: string;
   resendAllowedAfterSeconds?: number;
@@ -36,15 +38,15 @@ export interface AuthResponse {
 }
 
 /**
- * Step 1: Register company & HR details to start verification.
+ * Step 1: Register requester details to start verification.
  * Production endpoint: POST /api/v1/email/send-otp
  */
-export async function registerCompany(payload: CompanyRegistrationPayload): Promise<CompanyRegistrationResponse> {
+export async function registerRequester(payload: RequesterRegistrationPayload): Promise<RequesterRegistrationResponse> {
   if (import.meta.env.DEV && import.meta.env.VITE_USE_MOCKS === 'true') {
     // --- DEVELOPMENT MOCK ONLY ---
     return new Promise((resolve) => {
       setTimeout(() => {
-        console.info('[DEV MOCK API] registerCompany called with:', payload);
+        console.info('[DEV MOCK API] registerRequester called with:', payload);
         resolve({
           requestId: `req_${Math.random().toString(36).substring(2, 9)}`,
           message: 'Registration successful. Email sent.',
@@ -58,15 +60,16 @@ export async function registerCompany(payload: CompanyRegistrationPayload): Prom
   const response = await apiClient<any>('/api/v1/email/send-otp', {
     method: 'POST',
     body: JSON.stringify({
-      company_name: payload.companyName,
-      hr_email: payload.hrEmail,
-      hr_name: payload.hrName,
-      hr_phone: payload.hrPhone,
+      organization_type: payload.organizationType,
+      organization_name: payload.organizationName,
+      requester_name: payload.requesterName,
+      requester_email: payload.requesterEmail,
+      requester_role: payload.requesterRole,
+      requester_phone: payload.requesterPhone,
     }),
   });
 
   return {
-    // Note: If challenge_id is missing, default to empty string as per Sprint 1 patch note.
     requestId: response.data?.challenge_id || 'pending-patch-id',
     message: response.message,
     resendAllowedAfterSeconds: response.data?.resend_allowed_after_seconds || 60,

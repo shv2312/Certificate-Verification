@@ -59,10 +59,10 @@ async def send_otp(body: SendOTPRequest, db: AsyncSession = Depends(get_db)) -> 
     """
     response_data = await email_service.create_and_send_otp(
         db=db,
-        company_name=body.company_name,
-        hr_email=str(body.hr_email),
-        hr_name=body.hr_name,
-        hr_phone=body.hr_phone,
+        company_name=body.organization_name,
+        hr_email=str(body.requester_email),
+        hr_name=body.requester_name,
+        hr_phone=body.requester_phone,
     )
     return APIResponse(
         success=True,
