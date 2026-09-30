@@ -80,7 +80,7 @@ export interface SendOTPRequest {
   organization_name: string; // 2-200 chars
   requester_email: string;   // RFC-5321 email
   requester_name: string;    // 2-255 chars
-  requester_role?: string | null; // max 150 chars
+  requester_role: string;    // 2-150 chars (Required)
   requester_phone: string;   // E.164 phone format e.g. +919876543210
 }
 
@@ -164,6 +164,18 @@ export interface PaymentInitiateResponse {
  * Defined in backend/app/schemas/payment.py: PaymentCheckoutVerifyRequest
  */
 export interface PaymentCheckoutVerifyRequest {
+  razorpay_payment_id: string;
+  razorpay_order_id: string;
+  razorpay_signature: string;
+}
+
+/**
+ * POST /api/v1/payment/verify Request Body
+ * Defined in backend/app/schemas/payment.py: PaymentVerifyRequest
+ */
+export interface PaymentVerifyRequest {
+  verification_request_id?: string | null;
+  payment_session_id?: string | null;
   razorpay_payment_id: string;
   razorpay_order_id: string;
   razorpay_signature: string;

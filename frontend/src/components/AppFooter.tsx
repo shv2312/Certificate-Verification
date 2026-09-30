@@ -118,13 +118,14 @@ export default function AppFooter() {
                 </a>
               </li>
               <li>
-                <Link
-                  to={ROUTES.HELP}
-                  className="text-emerald-100/80 hover:text-yellow-400 transition-colors inline-flex items-center gap-2 group"
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new Event('siet:open-faq-modal'))}
+                  className="text-emerald-100/80 hover:text-yellow-400 transition-colors inline-flex items-center gap-2 group text-left"
                 >
-                  <span>Help</span>
+                  <span>Help & FAQs</span>
                   <ArrowRight className="w-3.5 h-3.5 text-emerald-500 group-hover:text-yellow-400 group-hover:translate-x-0.5 transition-all" />
-                </Link>
+                </button>
               </li>
               <li>
                 <Link

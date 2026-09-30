@@ -302,29 +302,37 @@ async def verify_checkout_signature(
         raise ValueError(f"Payment session not found: {payment_session_id}")
 
     if session.status == "PAYMENT_PENDING":
-        verification_request_id = secrets.token_urlsafe(24)
-        display_id = await _generate_display_request_id(db)
+        # Check if a VerificationRequest was already created during candidate initiation
+        stmt = select(VerificationRequest).where(VerificationRequest.payment_session_id == payment_session_id)
+        vr_res = await db.execute(stmt)
+        v_req = vr_res.scalar_one_or_none()
+
+        if v_req:
+            v_req.status = "PAID_UNUSED"
+            verification_request_id = v_req.id
+            display_id = v_req.display_request_id
+        else:
+            verification_request_id = secrets.token_urlsafe(24)
+            display_id = await _generate_display_request_id(db)
+            v_req = VerificationRequest(
+                id=verification_request_id,
+                display_request_id=display_id,
+                status="PAID_UNUSED",
+                company_name=company_name,
+                hr_email=hr_email,
+                hr_name=hr_name,
+                hr_phone=hr_phone,
+                created_at=int(time.time()),
+                payment_session_id=payment_session_id
+            )
+            db.add(v_req)
 
         session.status = "PAID_UNUSED"
         session.verification_request_id = verification_request_id
-
-        v_req = VerificationRequest(
-            id=verification_request_id,
-            display_request_id=display_id,
-            status="PAID_UNUSED",
-            company_name=company_name,
-            hr_email=hr_email,
-            hr_name=hr_name,
-            hr_phone=hr_phone,
-            created_at=int(time.time()),
-            payment_session_id=payment_session_id
-        )
-        db.add(v_req)
         await db.flush()
-        logger.info(f"Checkout verified. Created Request {display_id}")
+        logger.info(f"Checkout verified. Request {display_id} is now PAID_UNUSED.")
     else:
         logger.info(f"Checkout verified but session already processed (Status: {session.status}).")
-        # Fetch existing VerificationRequest display_id
         if session.verification_request_id:
             v_req = await db.get(VerificationRequest, session.verification_request_id)
             display_id = v_req.display_request_id if v_req else None
@@ -350,29 +358,50 @@ async def confirm_payment_mock(db: AsyncSession, payment_session_id: str, compan
     if not session:
         raise ValueError(f"Payment session not found: {payment_session_id}")
 
+    if session.status == "PAID_UNUSED":
+        display_id = None
+        if session.verification_request_id:
+            v_req = await db.get(VerificationRequest, session.verification_request_id)
+            display_id = v_req.display_request_id if v_req else None
+        return PaymentStatusResponse(
+            payment_session_id=payment_session_id,
+            status="PAID_UNUSED",
+            verification_request_id=session.verification_request_id,
+            display_request_id=display_id,
+        )
+
     if session.status != "PAYMENT_PENDING":
         raise ValueError(
             f"Payment session is in state '{session.status}', cannot confirm again."
         )
 
-    verification_request_id = secrets.token_urlsafe(24)
-    display_id = await _generate_display_request_id(db)
+    # Check if a VerificationRequest was already created during candidate initiation
+    stmt = select(VerificationRequest).where(VerificationRequest.payment_session_id == payment_session_id)
+    vr_res = await db.execute(stmt)
+    v_req = vr_res.scalar_one_or_none()
+
+    if v_req:
+        v_req.status = "PAID_UNUSED"
+        verification_request_id = v_req.id
+        display_id = v_req.display_request_id
+    else:
+        verification_request_id = secrets.token_urlsafe(24)
+        display_id = await _generate_display_request_id(db)
+        v_req = VerificationRequest(
+            id=verification_request_id,
+            display_request_id=display_id,
+            status="PAID_UNUSED",
+            company_name=company_name,
+            hr_email=hr_email,
+            hr_name=hr_name,
+            hr_phone=hr_phone,
+            created_at=int(time.time()),
+            payment_session_id=payment_session_id
+        )
+        db.add(v_req)
 
     session.status = "PAID_UNUSED"
     session.verification_request_id = verification_request_id
-    
-    v_req = VerificationRequest(
-        id=verification_request_id,
-        display_request_id=display_id,
-        status="PAID_UNUSED",
-        company_name=company_name,
-        hr_email=hr_email,
-        hr_name=hr_name,
-        hr_phone=hr_phone,
-        created_at=int(time.time()),
-        payment_session_id=payment_session_id
-    )
-    db.add(v_req)
     await db.flush()
 
     logger.warning(

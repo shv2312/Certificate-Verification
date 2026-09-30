@@ -38,7 +38,6 @@ import { AuthProvider } from './context/AuthContext';
 import { ROUTES } from './utils/routes';
 
 import StatusPage from './pages/StatusPage';
-import HelpPage from './pages/HelpPage';
 
 // ── 404 Not Found Page ───────────────────────────────────────────────────────
 function NotFoundPage() {
@@ -56,6 +55,8 @@ function NotFoundPage() {
   );
 }
 
+import HelpFloatingButton from './components/HelpFloatingButton';
+
 // ── Root App ─────────────────────────────────────────────────────────────────
 export default function App() {
   return (
@@ -69,7 +70,6 @@ export default function App() {
             <Route path={ROUTES.REQUESTER} element={<RequesterPage />} />
             <Route path={ROUTES.VERIFY_EMAIL} element={<EmailVerificationPage />} />
             <Route path="/unauthorized" element={<UnauthorizedPage />} />
-            <Route path={ROUTES.HELP} element={<HelpPage />} />
             <Route path={ROUTES.STATUS} element={<StatusPage />} />
             <Route path={ROUTES.PAYMENT} element={<PaymentPage />} />
 
@@ -91,6 +91,7 @@ export default function App() {
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
           <AppFooter />
+          <HelpFloatingButton />
         </div>
       </BrowserRouter>
     </AuthProvider>

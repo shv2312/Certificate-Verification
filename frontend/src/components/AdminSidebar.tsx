@@ -5,9 +5,9 @@
  * only the structural foundation requested in Sprint 2.
  */
 
-import { NavLink, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { NavLink } from 'react-router-dom';
 import { clsx } from 'clsx';
+
 function LayoutDashboardIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -57,16 +57,6 @@ function ActivityIcon({ className }: { className?: string }) {
   );
 }
 
-function LogOutIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-      <polyline points="16 17 21 12 16 7" />
-      <line x1="21" x2="9" y1="12" y2="12" />
-    </svg>
-  );
-}
-
 function CreditCardIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -86,14 +76,6 @@ const ADMIN_LINKS = [
 ];
 
 export default function AdminSidebar() {
-  const { clearAuth } = useAuth();
-  const navigate = useNavigate();
-
-  const handleSignOut = () => {
-    clearAuth();
-    navigate('/');
-  };
-
   return (
     <aside className="sticky top-0 md:top-16 h-[calc(100vh-4rem)] flex flex-col w-full md:w-64 shrink-0 bg-white border-r border-siet-border z-10">
       <div className="p-4 border-b border-emerald-100 bg-brand-light shrink-0">
@@ -126,16 +108,6 @@ export default function AdminSidebar() {
           </NavLink>
         ))}
       </nav>
-
-      <div className="p-4 border-t border-siet-border shrink-0 bg-white">
-        <button
-          onClick={handleSignOut}
-          className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors"
-        >
-          <LogOutIcon className="w-4 h-4" />
-          Sign Out
-        </button>
-      </div>
     </aside>
   );
 }

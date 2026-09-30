@@ -58,7 +58,7 @@ export async function registerRequester(
     organization_name: payload.organization_name.trim(),
     requester_name: payload.requester_name.trim(),
     requester_email: payload.requester_email.trim(),
-    requester_role: payload.requester_role?.trim() || null,
+    requester_role: payload.requester_role.trim(),
     requester_phone: payload.requester_phone.trim(),
   };
 

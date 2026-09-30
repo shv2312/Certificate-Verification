@@ -74,6 +74,60 @@ export default function ConfirmPage() {
       <form className="max-w-2xl mx-auto surface-card p-6 space-y-5" onSubmit={handleConfirm}>
         {submitError && <StatusMessage type="error" message={submitError} className="mb-4" />}
 
+        {/* Payment Confirmation Banner */}
+        <div className="bg-emerald-50 border border-emerald-300 p-4 rounded-xl flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center flex-shrink-0">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-xs font-bold text-emerald-900 uppercase tracking-wider">Payment Verified</p>
+              <p className="text-xs text-emerald-700">One-time verification fee captured. Institutional records unlocked.</p>
+            </div>
+          </div>
+          <span className="text-xs font-mono font-semibold text-emerald-900 bg-white px-2.5 py-1 rounded border border-emerald-200">
+            {sessionStorage.getItem('siet_active_display_id') || 'PAID'}
+          </span>
+        </div>
+
+        {/* Candidate Details Summary */}
+        {(() => {
+          try {
+            const raw = sessionStorage.getItem('candidatePayload') || sessionStorage.getItem('siet_candidate_draft');
+            const candidate = raw ? JSON.parse(raw) : null;
+            if (!candidate) return null;
+            return (
+              <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-2.5 text-sm">
+                <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                  Candidate Verification Record
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <span className="text-xs text-slate-500 block">Candidate Name</span>
+                    <span className="font-semibold text-siet-navy">{candidate.candidate_name}</span>
+                  </div>
+                  <div>
+                    <span className="text-xs text-slate-500 block">Register Number</span>
+                    <span className="font-mono font-semibold text-siet-navy">{candidate.register_number}</span>
+                  </div>
+                  <div>
+                    <span className="text-xs text-slate-500 block">Degree / Course</span>
+                    <span className="text-slate-800">{candidate.degree || candidate.degree_course}</span>
+                  </div>
+                  <div>
+                    <span className="text-xs text-slate-500 block">Year of Passing</span>
+                    <span className="text-slate-800">{candidate.year_of_passing}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          } catch {
+            return null;
+          }
+        })()}
+
         <StatusMessage
           type="warning"
           title="Important Notice"

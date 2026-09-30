@@ -24,9 +24,11 @@ SECURITY:
 import logging
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings, get_settings
+from app.db.models import VerificationRequest, PaymentSession
 from app.db.session import get_db
 from app.dependencies import verify_session_token, require_role
 from app.schemas.common import APIResponse
@@ -36,6 +38,7 @@ from app.schemas.payment import (
     PaymentStatusResponse,
     PaymentWebhookResponse,
     PaymentCheckoutVerifyRequest,
+    PaymentVerifyRequest,
 )
 from app.services import payment_service
 
@@ -144,6 +147,91 @@ async def verify_checkout(
     )
 
 
+@router.post(
+    "/verify",
+    response_model=APIResponse[PaymentStatusResponse],
+    summary="Verify payment transaction",
+    description="Called by the frontend to securely verify payment (supports real Razorpay and dev simulation).",
+)
+async def verify_payment(
+    body: PaymentVerifyRequest,
+    session: dict = Depends(require_role(["HR"])),
+    settings: Settings = Depends(get_settings),
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse[PaymentStatusResponse]:
+    """
+    Requires: Authorization: Bearer <session_token>
+    Accepts verification_request_id and Razorpay checkout parameters.
+    """
+    if settings.DEV_MOCK_PAYMENT:
+        # In mock payment mode, confirm payment session directly
+        payment_session_id = body.payment_session_id
+        if not payment_session_id and body.verification_request_id:
+            vr = await db.get(VerificationRequest, body.verification_request_id)
+            if vr and vr.payment_session_id:
+                payment_session_id = vr.payment_session_id
+        if not payment_session_id and body.razorpay_order_id:
+            stmt = select(PaymentSession).where(PaymentSession.gateway_order_id == body.razorpay_order_id)
+            res = await db.execute(stmt)
+            ps = res.scalar_one_or_none()
+            if ps:
+                payment_session_id = ps.id
+
+        if not payment_session_id:
+            # Fallback check on verification request
+            if body.verification_request_id:
+                vr = await db.get(VerificationRequest, body.verification_request_id)
+                if vr:
+                    if vr.status == "PAYMENT_PENDING":
+                        vr.status = "PAID_UNUSED"
+                        await db.flush()
+                    return APIResponse(
+                        success=True,
+                        message="Payment verified successfully (DEV mode).",
+                        data=PaymentStatusResponse(
+                            payment_session_id=vr.payment_session_id or "dev_session",
+                            status="PAID_UNUSED",
+                            verification_request_id=vr.id,
+                            display_request_id=vr.display_request_id,
+                        ),
+                    )
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"success": False, "message": "Could not identify payment session to verify."},
+            )
+
+        data = await payment_service.confirm_payment_mock(
+            db=db,
+            payment_session_id=payment_session_id,
+            company_name=session["company_name"],
+            hr_email=session["hr_email"],
+            hr_name=session.get("hr_name", ""),
+            hr_phone=session.get("hr_phone", ""),
+        )
+        return APIResponse(
+            success=True,
+            message="Payment verified successfully.",
+            data=data,
+        )
+
+    # Production / real Razorpay mode
+    data = await payment_service.verify_checkout_signature(
+        db=db,
+        razorpay_payment_id=body.razorpay_payment_id,
+        razorpay_order_id=body.razorpay_order_id,
+        razorpay_signature=body.razorpay_signature,
+        company_name=session["company_name"],
+        hr_email=session["hr_email"],
+        hr_name=session.get("hr_name", ""),
+        hr_phone=session.get("hr_phone", ""),
+    )
+    return APIResponse(
+        success=True,
+        message="Payment verified successfully.",
+        data=data,
+    )
+
+
 @router.get(
     "/{payment_session_id}/status",
     response_model=APIResponse[PaymentStatusResponse],
@@ -217,3 +305,29 @@ async def dev_confirm_payment(
         ),
         data=data,
     )
+
+
+# ------------------------------------------------------------------ #
+# Payment Alias Router (/api/payment/verify)                         #
+# ------------------------------------------------------------------ #
+alias_router = APIRouter(prefix="/api/payment", tags=["Payment Alias"])
+
+
+@alias_router.post(
+    "/verify",
+    response_model=APIResponse[PaymentStatusResponse],
+    summary="Verify payment transaction (Alias)",
+    description="Alias endpoint for frontend payment verification.",
+)
+async def verify_payment_alias(
+    body: PaymentVerifyRequest,
+    session: dict = Depends(require_role(["HR"])),
+    settings: Settings = Depends(get_settings),
+    db: AsyncSession = Depends(get_db),
+) -> APIResponse[PaymentStatusResponse]:
+    """
+    Alias for /api/v1/payment/verify
+    Requires: Authorization: Bearer <session_token>
+    """
+    return await verify_payment(body=body, session=session, settings=settings, db=db)
+

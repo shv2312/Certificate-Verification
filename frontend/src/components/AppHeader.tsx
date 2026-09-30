@@ -21,6 +21,7 @@ import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Lock } from 'lucide-react';
 import { ROUTES } from '../utils/routes';
 import AdminLoginModal from './AdminLoginModal';
+import FAQModal from './FAQModal';
 
 interface NavItem {
   label: string;
@@ -31,14 +32,13 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: 'Home',   to: ROUTES.HOME },
   { label: 'Verify', to: ROUTES.REQUESTER },
-  { label: 'About',  to: '/#how-it-works' },
-  { label: 'Help',   to: ROUTES.HELP },
 ];
 
 export default function AppHeader() {
   const [menuOpen,       setMenuOpen]       = useState(false);
   const [scrolled,       setScrolled]       = useState(false);
   const [adminModalOpen, setAdminModalOpen] = useState(false);
+  const [faqModalOpen,   setFaqModalOpen]   = useState(false);
 
   const location = useLocation();
   const navigate  = useNavigate();
@@ -62,6 +62,13 @@ export default function AppHeader() {
     const openModal = () => setAdminModalOpen(true);
     window.addEventListener('siet:open-admin-login', openModal);
     return () => window.removeEventListener('siet:open-admin-login', openModal);
+  }, []);
+
+  // Listen for custom event to open FAQ modal
+  useEffect(() => {
+    const openFaq = () => setFaqModalOpen(true);
+    window.addEventListener('siet:open-faq-modal', openFaq);
+    return () => window.removeEventListener('siet:open-faq-modal', openFaq);
   }, []);
 
   // Close mobile menu on route change
@@ -95,6 +102,8 @@ export default function AppHeader() {
     window.dispatchEvent(new Event('siet:admin-logout'));
     navigate(ROUTES.HOME);
   }
+
+  const isAdminRoute = location.pathname.startsWith('/admin');
 
   return (
     <>
@@ -130,109 +139,96 @@ export default function AppHeader() {
               </div>
             </Link>
 
-            {/* ── Centre: Desktop Navigation (Centered) ── */}
-            <nav
-              aria-label="Main navigation"
-              className="hidden lg:flex items-center gap-8 justify-center flex-1"
-            >
-              <NavLink
-                to={ROUTES.HOME}
-                end
-                className={({ isActive }) =>
-                  [
-                    'text-sm font-semibold transition-all py-1 border-b-2',
-                    isActive
-                      ? 'text-[#0B6A3E] border-[#0B6A3E]'
-                      : 'text-slate-600 hover:text-[#0B6A3E] border-transparent hover:border-slate-300',
-                  ].join(' ')
-                }
+            {/* ── Centre: Desktop Navigation (Centered - Hidden on Admin routes) ── */}
+            {!isAdminRoute && (
+              <nav
+                aria-label="Main navigation"
+                className="hidden lg:flex items-center gap-8 justify-center flex-1"
               >
-                Home
-              </NavLink>
-              <NavLink
-                to={ROUTES.REQUESTER}
-                className={({ isActive }) =>
-                  [
-                    'text-sm font-semibold transition-all py-1 border-b-2',
-                    isActive
-                      ? 'text-[#0B6A3E] border-[#0B6A3E]'
-                      : 'text-slate-600 hover:text-[#0B6A3E] border-transparent hover:border-slate-300',
-                  ].join(' ')
-                }
-              >
-                Verify
-              </NavLink>
-              <a
-                href="/#how-it-works"
-                className="text-sm font-semibold text-slate-600 hover:text-[#0B6A3E] transition-all py-1 border-b-2 border-transparent hover:border-slate-300"
-              >
-                About
-              </a>
-              <NavLink
-                to={ROUTES.HELP}
-                className={({ isActive }) =>
-                  [
-                    'text-sm font-semibold transition-all py-1 border-b-2',
-                    isActive
-                      ? 'text-[#0B6A3E] border-[#0B6A3E]'
-                      : 'text-slate-600 hover:text-[#0B6A3E] border-transparent hover:border-slate-300',
-                  ].join(' ')
-                }
-              >
-                Help
-              </NavLink>
-            </nav>
+                <NavLink
+                  to={ROUTES.HOME}
+                  end
+                  className={({ isActive }) =>
+                    [
+                      'text-sm font-semibold transition-all py-1 border-b-2',
+                      isActive
+                        ? 'text-[#0B6A3E] border-[#0B6A3E]'
+                        : 'text-slate-600 hover:text-[#0B6A3E] border-transparent hover:border-slate-300',
+                    ].join(' ')
+                  }
+                >
+                  Home
+                </NavLink>
+                <NavLink
+                  to={ROUTES.REQUESTER}
+                  className={({ isActive }) =>
+                    [
+                      'text-sm font-semibold transition-all py-1 border-b-2',
+                      isActive
+                        ? 'text-[#0B6A3E] border-[#0B6A3E]'
+                        : 'text-slate-600 hover:text-[#0B6A3E] border-transparent hover:border-slate-300',
+                    ].join(' ')
+                  }
+                >
+                  Verify
+                </NavLink>
+              </nav>
+            )}
 
-            {/* ── Right: Yellow Pill Admin Portal button ── */}
+            {/* ── Right: Admin Portal button / Sign Out button ── */}
             <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-              {/* Yellow pill-shaped "Admin Portal" button */}
-              <button
-                id="admin-portal-header-btn"
-                type="button"
-                onClick={handleAdminButtonClick}
-                className="hidden sm:inline-flex items-center gap-2 bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-bold px-5 py-2 rounded-full shadow-xs hover:shadow-md transition-all active:scale-[0.98] text-xs sm:text-sm"
-                title="Access Administrative Portal"
-              >
-                <Lock className="w-4 h-4 text-slate-950" />
-                <span>Admin Portal</span>
-              </button>
+              {/* Yellow pill-shaped "Admin Portal" button (hidden on Admin routes) */}
+              {!isAdminRoute && (
+                <button
+                  id="admin-portal-header-btn"
+                  type="button"
+                  onClick={handleAdminButtonClick}
+                  className="hidden sm:inline-flex items-center gap-2 bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-bold px-5 py-2 rounded-full shadow-xs hover:shadow-md transition-all active:scale-[0.98] text-xs sm:text-sm"
+                  title="Access Administrative Portal"
+                >
+                  <Lock className="w-4 h-4 text-slate-950" />
+                  <span>Admin Portal</span>
+                </button>
+              )}
 
-              {/* Admin Sign Out button (when logged-in) */}
-              {isAdmin && (
+              {/* Admin Sign Out button (shown when logged-in or on admin route) */}
+              {(isAdmin || isAdminRoute) && (
                 <button
                   id="admin-logout-btn"
                   type="button"
                   onClick={handleAdminLogout}
-                  className="hidden md:inline-flex px-3 py-1.5 rounded-full text-xs font-semibold
-                             text-red-700 hover:bg-red-50 border border-red-200 transition-colors"
+                  className="inline-flex items-center px-4 py-2 rounded-full text-xs sm:text-sm font-semibold
+                             text-red-700 hover:bg-red-50 border border-red-200 transition-colors shadow-xs"
                   title="Sign out of admin"
                 >
                   Sign Out
                 </button>
               )}
 
-              {/* Mobile hamburger */}
-              <button
-                type="button"
-                className="md:hidden p-2 rounded-lg text-slate-700
-                           hover:bg-brand-light hover:text-brand-forest
-                           focus-visible:ring-2 focus-visible:ring-brand-green
-                           transition-colors duration-150"
-                aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
-                aria-expanded={menuOpen}
-                aria-controls="mobile-menu"
-                onClick={() => setMenuOpen((prev) => !prev)}
-              >
-                {menuOpen ? (
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                ) : (
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                  </svg>
-                )}
-              </button>
+              {/* Mobile hamburger (only on public routes) */}
+              {!isAdminRoute && (
+                <button
+                  type="button"
+                  className="md:hidden p-2 rounded-lg text-slate-700
+                             hover:bg-brand-light hover:text-brand-forest
+                             focus-visible:ring-2 focus-visible:ring-brand-green
+                             transition-colors duration-150"
+                  aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+                  aria-expanded={menuOpen}
+                  aria-controls="mobile-menu"
+                  onClick={() => setMenuOpen((prev) => !prev)}
+                >
+                  {menuOpen ? (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                  )}
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -304,6 +300,12 @@ export default function AppHeader() {
       <AdminLoginModal
         isOpen={adminModalOpen}
         onClose={() => setAdminModalOpen(false)}
+      />
+
+      {/* Interactive FAQ Decision Tree Modal */}
+      <FAQModal
+        isOpen={faqModalOpen}
+        onClose={() => setFaqModalOpen(false)}
       />
     </>
   );

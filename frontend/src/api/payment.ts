@@ -14,10 +14,16 @@ import type {
   APIResponse,
   PaymentInitiateResponse,
   PaymentCheckoutVerifyRequest,
+  PaymentVerifyRequest,
   PaymentStatusResponse,
 } from '../types/api';
 
-export type { PaymentInitiateResponse, PaymentCheckoutVerifyRequest, PaymentStatusResponse };
+export type {
+  PaymentInitiateResponse,
+  PaymentCheckoutVerifyRequest,
+  PaymentVerifyRequest,
+  PaymentStatusResponse,
+};
 
 /**
  * Initiates a payment session.
@@ -31,24 +37,55 @@ export async function initiatePayment(): Promise<APIResponse<PaymentInitiateResp
   });
 }
 
+export interface VerifyPaymentParams {
+  verification_request_id?: string | null;
+  payment_session_id?: string | null;
+  razorpay_payment_id: string;
+  razorpay_order_id: string;
+  razorpay_signature: string;
+}
+
 /**
- * Submits the Razorpay checkout signature for server-side verification.
+ * Submits the Razorpay payment response and verification request ID for server-side verification.
+ * Backend endpoint: POST /api/v1/payment/verify
  * Requires: Authorization: Bearer <session_token>
  */
 export async function verifyPayment(
-  _paymentSessionId: string,
-  razorpayPaymentId: string,
-  razorpayOrderId: string,
-  razorpaySignature: string
+  paramsOrSessionId: VerifyPaymentParams | string,
+  razorpayPaymentId?: string,
+  razorpayOrderId?: string,
+  razorpaySignature?: string,
+  verificationRequestId?: string | null,
+  token?: string
 ): Promise<APIResponse<PaymentStatusResponse>> {
-  const payload: PaymentCheckoutVerifyRequest = {
-    razorpay_payment_id: razorpayPaymentId,
-    razorpay_order_id: razorpayOrderId,
-    razorpay_signature: razorpaySignature,
-  };
+  let payload: PaymentVerifyRequest;
 
-  return apiClient<APIResponse<PaymentStatusResponse>>('/api/v1/payment/verify-checkout', {
+  if (typeof paramsOrSessionId === 'object') {
+    payload = {
+      verification_request_id: paramsOrSessionId.verification_request_id || null,
+      payment_session_id: paramsOrSessionId.payment_session_id || null,
+      razorpay_payment_id: paramsOrSessionId.razorpay_payment_id,
+      razorpay_order_id: paramsOrSessionId.razorpay_order_id,
+      razorpay_signature: paramsOrSessionId.razorpay_signature,
+    };
+  } else {
+    payload = {
+      verification_request_id: verificationRequestId || null,
+      payment_session_id: paramsOrSessionId,
+      razorpay_payment_id: razorpayPaymentId || '',
+      razorpay_order_id: razorpayOrderId || '',
+      razorpay_signature: razorpaySignature || '',
+    };
+  }
+
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  return apiClient<APIResponse<PaymentStatusResponse>>('/api/v1/payment/verify', {
     method: 'POST',
+    headers,
     body: JSON.stringify(payload),
   });
 }

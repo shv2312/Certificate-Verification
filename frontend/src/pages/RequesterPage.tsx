@@ -6,7 +6,7 @@
  *  - organization_name (2-200 chars)
  *  - requester_name (2-255 chars)
  *  - requester_email (RFC-5321 Email)
- *  - requester_role (Optional, max 150 chars)
+ *  - requester_role (Required, 2-150 chars)
  *  - requester_phone (E.164 phone string)
  *
  * Submits exact JSON payload matching FastAPI backend SendOTPRequest.
@@ -85,8 +85,13 @@ function validateForm(values: FormValues): FormErrors {
     errors.requester_email = 'Please enter a valid official email address.';
   }
 
-  if (values.requester_role && values.requester_role.trim().length > 150) {
-    errors.requester_role = 'Role cannot exceed 150 characters.';
+  const role = values.requester_role.trim();
+  if (!role) {
+    errors.requester_role = 'Requester role is required.';
+  } else if (role.length < 2) {
+    errors.requester_role = 'Requester role must be at least 2 characters.';
+  } else if (role.length > 150) {
+    errors.requester_role = 'Requester role cannot exceed 150 characters.';
   }
 
   const phone = values.requester_phone?.trim();
@@ -162,7 +167,7 @@ export default function RequesterPage() {
         organization_name: values.organization_name.trim(),
         requester_name: values.requester_name.trim(),
         requester_email: values.requester_email.trim(),
-        requester_role: values.requester_role.trim() || null,
+        requester_role: values.requester_role.trim(),
         requester_phone: values.requester_phone || '',
       });
 
@@ -305,7 +310,7 @@ export default function RequesterPage() {
           />
         </FormField>
 
-        <FormField id="requester-role" label="Requester Role / Designation (Optional)" error={errors.requester_role}>
+        <FormField id="requester-role" label="Requester Role / Designation" required error={errors.requester_role}>
           <input
             id="requester-role"
             type="text"
@@ -314,6 +319,7 @@ export default function RequesterPage() {
             maxLength={150}
             value={values.requester_role}
             onChange={handleChange('requester_role')}
+            aria-required="true"
             aria-invalid={!!errors.requester_role}
           />
         </FormField>

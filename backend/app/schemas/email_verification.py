@@ -66,8 +66,9 @@ class SendOTPRequest(BaseModel):
         description="Full name of the requester.",
         examples=["John Doe"],
     )
-    requester_role: Optional[str] = Field(
-        None,
+    requester_role: str = Field(
+        ...,
+        min_length=2,
         max_length=150,
         description="Role or designation of the requester.",
         examples=["HR Manager"],
@@ -108,6 +109,15 @@ class SendOTPRequest(BaseModel):
                 elif data.get("requester_email"):
                     data["requester_name"] = str(data["requester_email"]).split("@")[0].capitalize()
 
+            # Requester role mapping
+            if "requester_role" not in data or not data.get("requester_role"):
+                if "designation" in data and data["designation"]:
+                    data["requester_role"] = data["designation"]
+                elif "role" in data and data["role"]:
+                    data["requester_role"] = data["role"]
+                elif "hr_role" in data and data["hr_role"]:
+                    data["requester_role"] = data["hr_role"]
+
             # Phone mapping
             if "requester_phone" not in data or not data.get("requester_phone"):
                 if "hr_phone" in data:
@@ -118,10 +128,12 @@ class SendOTPRequest(BaseModel):
                     data["requester_phone"] = "+919876543210"
         return data
 
-    @field_validator("organization_name", "requester_name", mode="before")
+    @field_validator("organization_name", "requester_name", "requester_role", mode="before")
     @classmethod
     def clean_text_fields(cls, v: str) -> str:
-        return _clean_text(v)
+        if isinstance(v, str):
+            v = _clean_text(v)
+        return v
 
     @field_validator("requester_phone", mode="before")
     @classmethod
@@ -148,6 +160,10 @@ class SendOTPRequest(BaseModel):
     @property
     def hr_name(self) -> str:
         return self.requester_name
+
+    @property
+    def hr_role(self) -> str:
+        return self.requester_role
 
     @property
     def hr_phone(self) -> str:
