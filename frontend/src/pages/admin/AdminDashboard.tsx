@@ -17,6 +17,9 @@ import { useLocation } from 'react-router-dom';
 import AdminSidebar from '../../components/AdminSidebar';
 import { apiClient } from '../../api/client';
 import { PieChart, Pie, Cell, ResponsiveContainer, Sector, Tooltip } from 'recharts';
+import AdminStudentsView from '../../components/admin/AdminStudentsView';
+import AdminAuditQueueView from '../../components/admin/AdminAuditQueueView';
+import AdminSystemOverviewView from '../../components/admin/AdminSystemOverviewView';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -289,17 +292,6 @@ export default function AdminDashboard() {
   const avgFee = totalPaidTransactions > 0 ? (paymentRows.reduce((sum, p) => sum + (p.amount * 0.02), 0) / paymentRows.length) : 0; // assuming 2% avg fee
 
 
-  const renderPlaceholder = (title: string, desc: string) => (
-    <div className="surface-card p-16 text-center flex flex-col items-center justify-center animate-slide-up">
-      <div className="w-20 h-20 bg-brand-light text-brand-green rounded-2xl flex items-center justify-center mb-6 shadow-inner border border-emerald-100">
-        <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-        </svg>
-      </div>
-      <h2 className="text-2xl font-bold text-siet-navy mb-3">{title}</h2>
-      <p className="text-siet-slate max-w-md mx-auto">{desc}</p>
-    </div>
-  );
 
   const renderVerificationTable = () => (
     <section className="animate-slide-up">
@@ -707,20 +699,11 @@ export default function AdminDashboard() {
 
           {currentView === 'verifications' && renderVerificationTable()}
 
-          {currentView === 'students' && renderPlaceholder(
-            'Student Records',
-            'This view will display all students in the database loaded from the batch Excel import. The API endpoint for this is currently pending.'
-          )}
+          {currentView === 'students' && <AdminStudentsView />}
 
-          {currentView === 'audit' && renderPlaceholder(
-            'Audit / Activity Log',
-            'Detailed historical logs for verification attempts, state changes, and admin activities will appear here.'
-          )}
+          {currentView === 'audit' && <AdminAuditQueueView />}
 
-          {currentView === 'system' && renderPlaceholder(
-            'System Overview',
-            'Displays core service health, API ping times, database status, and error rate telemetry.'
-          )}
+          {currentView === 'system' && <AdminSystemOverviewView />}
 
           {currentView === 'payments' && renderPaymentsView()}
 

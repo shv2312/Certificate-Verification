@@ -38,6 +38,9 @@ class APIResponse(BaseModel, Generic[T]):
         )
     """
     success: bool = True
+    status: Optional[str] = "success"
+    request_id: Optional[str] = None
+    current_state: Optional[str] = None
     message: str
     data: Optional[T] = None
 

@@ -65,11 +65,12 @@ import json
 import logging
 from typing import Optional
 
+from difflib import SequenceMatcher
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func
 
 from app.config import get_settings
-from app.db.models import VerificationRequest, PaymentSession
+from app.db.models import VerificationRequest, PaymentSession, Student
 from app.schemas.verification import (
     InitiateVerificationRequest,
     InitiateVerificationResponse,
@@ -318,96 +319,128 @@ async def confirm_and_verify(
 
     if vr.hr_email.lower() != session_email.lower():
         raise PermissionError("You are not authorized to access this verification request.")
-
-    if vr.status != RequestStatus.CANDIDATE_BOUND:
+    if vr.status not in (
+        RequestStatus.PAID_UNUSED,
+        RequestStatus.CANDIDATE_BOUND,
+        "PAID_UNUSED",
+        "CANDIDATE_BOUND",
+    ):
         raise ValueError(
             f"Verification request is in state '{vr.status}'. "
-            "Expected CANDIDATE_BOUND. Cannot re-verify."
+            "Expected PAID_UNUSED or CANDIDATE_BOUND. Cannot re-verify."
         )
 
-    # Transition to IN_PROGRESS
-    vr.status = RequestStatus.VERIFICATION_IN_PROGRESS
-    
+    # Bind candidate fields if passed in request or found in candidate_data
+    if request.candidate_name:
+        vr.hr_submitted_name = request.candidate_name.strip()
+    if request.register_number:
+        vr.hr_submitted_register_number = request.register_number.strip().upper()
+    if request.programme or request.degree:
+        vr.hr_submitted_programme = (request.programme or request.degree).strip()
+    if request.branch or request.specialization:
+        vr.hr_submitted_branch = (request.branch or request.specialization).strip()
+    if request.year_of_passing:
+        vr.hr_submitted_year_of_passing = int(request.year_of_passing)
+
+    if vr.candidate_data:
+        try:
+            cdata = json.loads(vr.candidate_data)
+            if not vr.hr_submitted_name and cdata.get("candidate_name"):
+                vr.hr_submitted_name = cdata["candidate_name"].strip()
+            if not vr.hr_submitted_register_number and cdata.get("register_number"):
+                vr.hr_submitted_register_number = cdata["register_number"].strip().upper()
+            if not vr.hr_submitted_programme and (cdata.get("degree") or cdata.get("degree_course")):
+                vr.hr_submitted_programme = (cdata.get("degree") or cdata.get("degree_course")).strip()
+            if not vr.hr_submitted_branch and cdata.get("specialization"):
+                vr.hr_submitted_branch = cdata["specialization"].strip()
+            if not vr.hr_submitted_year_of_passing and cdata.get("year_of_passing"):
+                vr.hr_submitted_year_of_passing = int(cdata["year_of_passing"])
+        except Exception:
+            pass
+
     stmt_pay = select(PaymentSession).where(PaymentSession.verification_request_id == request.verification_request_id)
     result = await db.execute(stmt_pay)
     payment_session = result.scalar_one_or_none()
-    
-    if payment_session:
-        payment_session.status = RequestStatus.VERIFICATION_IN_PROGRESS
 
-    await db.flush()
+    # Calculate fuzzy match score against official records in SQLite (dev_local.db)
+    reg_num = (vr.hr_submitted_register_number or "").strip().upper()
+    submitted_name = (vr.hr_submitted_name or "").strip()
+    submitted_prog = vr.hr_submitted_programme or ""
+    submitted_branch = vr.hr_submitted_branch or ""
+    submitted_year = vr.hr_submitted_year_of_passing
 
-    # Parse Candidate Details
-    candidate_obj = None
-    if vr.candidate_data:
-        candidate_obj = CandidateDetails.model_validate_json(vr.candidate_data)
+    stmt_stu = select(Student).where(func.upper(Student.register_number) == reg_num)
+    res_stu = await db.execute(stmt_stu)
+    student = res_stu.scalar_one_or_none()
 
-    # Call Parthiban's verification engine
-    try:
-        engine_result = await _call_verification_engine(db, candidate_obj)
-    except NotImplementedError as exc:
-        # Reset status so the request is not stuck – but payment is still consumed
-        vr.status = RequestStatus.ERROR
-        if payment_session:
-            payment_session.status = RequestStatus.COMPLETED
-        await db.flush()
-        raise  # Re-raise so the route layer can return 503
-    except Exception as exc:
-        logger.exception("Verification engine execution failed")
-        
-        # Check if the error is related to missing tables (e.g. SQLite operational error)
-        # or if the candidate is simply not found in the DB.
-        # Since we want to return a graceful NOT_FOUND if it's an operational failure
-        # that mimics "not found", we can either check the error string or just default
-        # to a graceful error verdict so it doesn't 500.
-        engine_result = {"status": RequestStatus.ERROR}
-        if "no such table" in str(exc).lower() or "not found" in str(exc).lower():
-            engine_result = {"status": RequestStatus.NOT_FOUND}
+    if student:
+        name_ratio = SequenceMatcher(None, submitted_name.lower(), student.full_name.lower()).ratio()
+        year_match = 1.0 if (submitted_year and student.year_of_passing == submitted_year) else 0.0
+        match_score = round((name_ratio * 0.75 + year_match * 0.25) * 100, 2)
+        mismatch_probability = round(max(0.0, 100.0 - match_score), 2)
+        comparison_data = {
+            "record_found": True,
+            "matched_student_id": student.id,
+            "official_register_number": student.register_number,
+            "official_name": student.full_name,
+            "official_year_of_passing": student.year_of_passing,
+            "official_institute": student.institute_name,
+            "official_university": student.university_name,
+            "submitted_name": submitted_name,
+            "submitted_register_number": reg_num,
+            "submitted_year_of_passing": submitted_year,
+            "submitted_programme": submitted_prog,
+            "submitted_branch": submitted_branch,
+            "name_similarity_ratio": round(name_ratio, 4),
+            "year_match": bool(year_match),
+        }
+    else:
+        match_score = 0.0
+        mismatch_probability = 100.0
+        comparison_data = {
+            "record_found": False,
+            "submitted_register_number": reg_num,
+            "submitted_name": submitted_name,
+            "submitted_year_of_passing": submitted_year,
+            "submitted_programme": submitted_prog,
+            "submitted_branch": submitted_branch,
+        }
 
-    # Update final status
-    final_status = engine_result.get("status", RequestStatus.ERROR)
-    vr.status = final_status
-    vr.verification_result = json.dumps(engine_result)
+    verification_payload = {
+        "status": "PENDING_ADMIN_REVIEW",
+        "match_score": match_score,
+        "mismatch_probability": mismatch_probability,
+        "comparison_data": comparison_data,
+    }
+
+    vr.status = "PENDING_ADMIN_REVIEW"
+    vr.admin_decision = "PENDING_REVIEW"
+    vr.verification_result = json.dumps(verification_payload)
     if payment_session:
         payment_session.status = RequestStatus.COMPLETED
 
     await db.flush()
 
-    if final_status == RequestStatus.VERIFIED:
-        return VerificationResultResponse(
-            verification_request_id=vr.id,
-            display_request_id=vr.display_request_id,
-            status=RequestStatus.VERIFIED,
-            candidate_name=engine_result.get("candidate_name"),
-            university_name=engine_result.get("university_name"),
-            institute_name=engine_result.get("institute_name"),
-            course=engine_result.get("course"),
-            branch=engine_result.get("branch"),
-            register_number=engine_result.get("register_number"),
-            year_of_passing=engine_result.get("year_of_passing"),
-            backlog_status=engine_result.get("backlog_status"),
-            period_of_study=engine_result.get("period_of_study"),
-            mode_of_education=engine_result.get("mode_of_education"),
-            message="Verification successful. The official report has been sent to your verified email address.",
-            verification_reference_url=(
-                f"{settings.VERIFICATION_BASE_URL}/verify/{vr.id}"
-                if hasattr(settings, 'VERIFICATION_BASE_URL') else None
-            ),
-        )
-    else:
-        # NAME_MISMATCH or NOT_FOUND – neutral message, no DB values leaked
-        message = "The submitted candidate details could not be verified against the official institutional records."
-        if final_status == RequestStatus.NOT_FOUND:
-             message = "No official record was found for the submitted register number."
-        elif final_status == RequestStatus.NAME_MISMATCH:
-             message = "The submitted candidate name does not match the official record."
-
-        return VerificationResultResponse(
-            verification_request_id=vr.id,
-            display_request_id=vr.display_request_id,
-            status=final_status,
-            message=message,
-        )
+    return VerificationResultResponse(
+        verification_request_id=vr.id,
+        display_request_id=vr.display_request_id,
+        status="PENDING_ADMIN_REVIEW",
+        current_state="PENDING_ADMIN_REVIEW",
+        request_id=vr.display_request_id,
+        candidate_name=submitted_name,
+        register_number=reg_num,
+        course=submitted_prog,
+        branch=submitted_branch,
+        year_of_passing=submitted_year,
+        match_score=match_score,
+        mismatch_probability=mismatch_probability,
+        comparison_data=comparison_data,
+        message="Verification request submitted for official institutional review.",
+        verification_reference_url=(
+            f"{settings.VERIFICATION_BASE_URL}/verify/{vr.id}"
+            if hasattr(settings, "VERIFICATION_BASE_URL") else None
+        ),
+    )
 
 
 async def get_verification_status(

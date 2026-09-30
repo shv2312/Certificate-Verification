@@ -278,47 +278,32 @@ class BindCandidateResponse(BaseModel):
 # ------------------------------------------------------------------ #
 class ConfirmVerificationRequest(BaseModel):
     """
-    HR confirms they have reviewed the candidate details and wishes
-    to proceed.  After this call the verification request transitions
-    to VERIFICATION_IN_PROGRESS and then synchronously (or async) to
-    VERIFIED | NOT_VERIFIED.
-
-    HARD RULE: Once confirmed, the payment is consumed.  Even if the
-    verification result is NOT_VERIFIED, a new payment is required to
-    verify another candidate.
+    HR confirms candidate details and submits for institutional review.
+    Accepts requests in PAID_UNUSED or CANDIDATE_BOUND state.
     """
     verification_request_id: str = Field(
         ...,
-        description="The request that is in CANDIDATE_BOUND state.",
+        description="The verification request ID.",
     )
+    candidate_name: Optional[str] = None
+    register_number: Optional[str] = None
+    programme: Optional[str] = None
+    degree: Optional[str] = None
+    branch: Optional[str] = None
+    specialization: Optional[str] = None
+    year_of_passing: Optional[int] = None
 
 
 class VerificationResultResponse(BaseModel):
     """
-    Result of the verification attempt.
-
-    SUCCESS case:
-        status = "VERIFIED"
-        Data fields below are populated from Parthiban's authoritative DB.
-        Only approved fields are returned (data minimization).
-        The full report is also sent to the verified HR email.
-
-    FAILURE cases:
-        status = "NAME_MISMATCH" | "NOT_FOUND" | "ERROR"
-        message = neutral failure message
-        All academic_data fields are None.
-        No internal DB values are leaked.
-
-    IMPORTANT: Do NOT add a field that reveals WHAT mismatched.
-    See prompt section 27 for rationale.
+    Result of the verification confirmation or review submission.
     """
     verification_request_id: str
     display_request_id: str
-    status: str   # VERIFIED | NAME_MISMATCH | NOT_FOUND | ERROR
+    status: str   # PENDING_ADMIN_REVIEW | VERIFIED | NAME_MISMATCH | NOT_FOUND | ERROR
+    current_state: Optional[str] = None
+    request_id: Optional[str] = None
 
-    # Populated only when status == VERIFIED.
-    # All values originate from Parthiban's institutional DB.
-    # NEVER fabricate or default these values.
     candidate_name: Optional[str] = None
     university_name: Optional[str] = None
     institute_name: Optional[str] = None
@@ -330,11 +315,13 @@ class VerificationResultResponse(BaseModel):
     period_of_study: Optional[str] = None
     mode_of_education: Optional[str] = None
 
+    match_score: Optional[float] = None
+    mismatch_probability: Optional[float] = None
+    comparison_data: Optional[dict] = None
+
     # Human-readable outcome message
     message: str
 
-    # Populated on VERIFIED: e.g. a URL pointing to a secure status page
-    # (NOT a direct embed of student data in a QR code).
     verification_reference_url: Optional[str] = None
 
 

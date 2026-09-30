@@ -119,6 +119,42 @@ export default function PaymentPage() {
 
   const isDevMode = gatewayKeyId === 'DEV_KEY_ID_NOT_REAL' || gatewayKeyId.startsWith('DEV_');
 
+  const requesterEmail = (() => {
+    try {
+      const auth = sessionStorage.getItem('siet_auth_state');
+      if (auth) {
+        const parsed = JSON.parse(auth);
+        return parsed.hrEmail || parsed.email || '';
+      }
+      const draft = sessionStorage.getItem('siet_requester_draft');
+      if (draft) {
+        const parsed = JSON.parse(draft);
+        return parsed.requester_email || parsed.hr_email || '';
+      }
+    } catch {
+      // fallback
+    }
+    return '';
+  })();
+
+  const requesterPhone = (() => {
+    try {
+      const auth = sessionStorage.getItem('siet_auth_state');
+      if (auth) {
+        const parsed = JSON.parse(auth);
+        return parsed.hrPhone || parsed.phone || '';
+      }
+      const draft = sessionStorage.getItem('siet_requester_draft');
+      if (draft) {
+        const parsed = JSON.parse(draft);
+        return parsed.requester_phone || parsed.hr_phone || '';
+      }
+    } catch {
+      // fallback
+    }
+    return '';
+  })();
+
   /**
    * Verified Payment Handler
    * Strictly calls backend POST /api/v1/payment/verify and waits for 200 OK
@@ -202,32 +238,6 @@ export default function PaymentPage() {
     }
   };
 
-  /**
-   * Simulated Test Payment Flow (for Pure Dev / Test Mode)
-   */
-  const handleSimulatedPayment = async () => {
-    if (isBlocked) {
-      setError('Cannot proceed with payment: Order details or session token missing.');
-      return;
-    }
-
-    setError(null);
-    setIsProcessing(true);
-    setStatus('PAYING');
-
-    try {
-      const mockPaymentId = `pay_mock_${Date.now()}`;
-      const mockOrderId = paymentOrderId || `order_mock_${Date.now()}`;
-      const mockSignature = `sig_mock_${Date.now()}`;
-
-      await handleVerifySuccess(mockPaymentId, mockOrderId, mockSignature);
-    } catch (err: any) {
-      console.error('Simulated payment error:', err);
-      setStatus('IDLE');
-      setIsProcessing(false);
-      setError(err instanceof Error ? err.message : 'Failed to simulate payment.');
-    }
-  };
 
   /**
    * Razorpay Checkout Flow
@@ -242,26 +252,25 @@ export default function PaymentPage() {
     setIsProcessing(true);
 
     try {
-      // If dev key is configured, fallback directly to simulated flow
-      if (isDevMode) {
-        await handleSimulatedPayment();
-        return;
-      }
-
       // Load Razorpay script
       const isLoaded = await loadRazorpayScript();
       if (!isLoaded) {
         throw new Error(
-          'Failed to load Razorpay Checkout SDK. Please check your network connection or use Test Mode payment.'
+          'Failed to load Razorpay Checkout SDK. Please check your network connection.'
         );
       }
 
+      const activeKey =
+        !gatewayKeyId || gatewayKeyId === 'DEV_KEY_ID_NOT_REAL' || gatewayKeyId.startsWith('DEV_')
+          ? 'rzp_test_TcyWQQJpDQHSqf'
+          : gatewayKeyId;
+
       const options = {
-        key: gatewayKeyId,
+        key: activeKey,
         amount: amountPaise.toString(),
         currency: currency || 'INR',
-        name: 'SIET Academic Verification',
-        description: 'Candidate Background Verification Fee',
+        name: 'Sri Shakthi Institute of Engineering and Technology',
+        description: 'Academic Background Verification Fee',
         order_id: paymentOrderId,
         handler: async function (response: any) {
           await handleVerifySuccess(
@@ -271,16 +280,17 @@ export default function PaymentPage() {
           );
         },
         prefill: {
+          email: requesterEmail,
+          contact: requesterPhone,
           name: candidatePayload?.candidate_name
             ? `Verification for ${candidatePayload.candidate_name}`
             : 'HR Representative',
         },
         theme: {
-          color: '#074828', // siet-brand-forest
+          color: '#0B6A3E',
         },
         modal: {
           ondismiss: function () {
-            // User explicitly closed modal without completing payment
             setIsProcessing(false);
             setStatus('IDLE');
             setError('Payment checkout was closed before completion. Please click Pay to try again.');
@@ -483,42 +493,15 @@ export default function PaymentPage() {
         </div>
 
         {/* Checkout Actions */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-          {!isDevMode && (
-            <button
-              type="button"
-              className="btn-primary w-full sm:w-auto px-8 py-3 font-semibold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              onClick={handleCheckout}
-              disabled={isProcessing || isBlocked || status === 'SUCCESS'}
-            >
-              {isProcessing ? 'Processing Checkout...' : 'Pay with Razorpay'}
-            </button>
-          )}
-
-          {/* Test Mode / Dev Payment Button */}
-          {isDevMode && (
-            <button
-              type="button"
-              className="btn-primary w-full sm:w-auto px-8 py-3 font-semibold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              onClick={handleSimulatedPayment}
-              disabled={isProcessing || isBlocked || status === 'SUCCESS'}
-            >
-              {isProcessing ? 'Verifying Test Payment...' : 'Pay Now (Test Mode)'}
-            </button>
-          )}
-
-          {/* Dev Mode secondary test trigger if live key is configured */}
-          {!isDevMode && (
-            <button
-              type="button"
-              className="btn-secondary w-full sm:w-auto px-4 py-3 text-xs font-medium"
-              onClick={handleSimulatedPayment}
-              disabled={isProcessing || isBlocked || status === 'SUCCESS'}
-              title="Simulates payment verification response without opening gateway widget"
-            >
-              Simulate Dev Payment
-            </button>
-          )}
+        <div className="flex justify-center items-center w-full mt-6">
+          <button
+            type="button"
+            className="bg-[#0B6A3E] hover:bg-[#095230] text-white font-semibold py-3 px-8 rounded-lg shadow-md hover:shadow-lg transition-all text-base w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={handleCheckout}
+            disabled={isProcessing || isBlocked || status === 'SUCCESS'}
+          >
+            {isProcessing ? 'Processing Checkout...' : 'Pay with Razorpay'}
+          </button>
         </div>
       </div>
     </WorkflowLayout>

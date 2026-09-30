@@ -109,13 +109,13 @@ export default function AppFooter() {
                 </Link>
               </li>
               <li>
-                <a
-                  href="/#how-it-works"
+                <Link
+                  to={ROUTES.STATUS}
                   className="text-emerald-100/80 hover:text-yellow-400 transition-colors inline-flex items-center gap-2 group"
                 >
-                  <span>About</span>
+                  <span>Track Status</span>
                   <ArrowRight className="w-3.5 h-3.5 text-emerald-500 group-hover:text-yellow-400 group-hover:translate-x-0.5 transition-all" />
-                </a>
+                </Link>
               </li>
               <li>
                 <button
@@ -150,28 +150,37 @@ export default function AppFooter() {
               <li className="flex items-start gap-2.5">
                 <Mail className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
                 <a 
-                  href="mailto:support@siet.ac.in" 
+                  href="mailto:verification@siet.ac.in" 
                   className="hover:text-yellow-400 transition-colors"
                 >
-                  support@siet.ac.in
+                  verification@siet.ac.in
                 </a>
               </li>
               <li className="flex items-start gap-2.5">
                 <MapPin className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
-                <span>Sri Shakthi Nagar, Coimbatore, Tamil Nadu, India</span>
+                <span>Sri Shakthi Nagar, L&T By-pass, Chinniyampalayam Post, Coimbatore, Tamil Nadu – 641062, India</span>
               </li>
               <li className="flex items-center gap-2.5">
                 <Phone className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                <a 
-                  href="tel:+919876543210" 
-                  className="hover:text-yellow-400 transition-colors font-mono text-xs sm:text-sm"
-                >
-                  +91 98765 43210
-                </a>
+                <div className="flex flex-wrap items-center gap-1 font-mono text-xs sm:text-sm">
+                  <a 
+                    href="tel:+914222369900" 
+                    className="hover:text-yellow-400 transition-colors"
+                  >
+                    +91 422 2369900
+                  </a>
+                  <span>/</span>
+                  <a 
+                    href="tel:+917598093333" 
+                    className="hover:text-yellow-400 transition-colors"
+                  >
+                    +91 75980 93333
+                  </a>
+                </div>
               </li>
-              <li className="flex items-center gap-2.5">
-                <Clock className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                <span className="text-xs sm:text-sm">Mon – Fri, 9:00 AM – 6:00 PM</span>
+              <li className="flex items-start gap-2.5">
+                <Clock className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                <span className="text-xs sm:text-sm">Mon – Fri, 9:00 AM – 5:00 PM IST (Office of Academic Records & COE)</span>
               </li>
             </ul>
           </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, type FormEvent } from 'react';
+import React, { useState, useEffect, useRef, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageContainer from '../components/PageContainer';
 import FormField from '../components/FormField';
@@ -9,7 +9,7 @@ import { ROUTES } from '../utils/routes';
 import type { CandidateDetails } from '../types/api';
 import { ApiError } from '../types/api';
 import { useAuth } from '../context/AuthContext';
-import { initiateVerification } from '../api/verification';
+import { initiateVerification, getProgrammesAndBranches } from '../api/verification';
 import StatusMessage from '../components/StatusMessage';
 
 const CANDIDATE_DRAFT_KEY = 'siet_candidate_draft';
@@ -62,6 +62,26 @@ interface FormErrors {
   certificate?: string;
 }
 
+function formatToDisplayDob(val: string): string {
+  if (!val) return '';
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(val)) return val;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(val);
+  if (match) {
+    return `${match[3]}/${match[2]}/${match[1]}`;
+  }
+  return val;
+}
+
+function formatToIsoDob(val: string): string {
+  if (!val) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(val);
+  if (match) {
+    return `${match[3]}-${match[2]}-${match[1]}`;
+  }
+  return val;
+}
+
 /**
  * Replicates server-side CandidateDetails schema validation logic.
  */
@@ -83,12 +103,15 @@ function validateForm(
   const dob = values.dob.trim();
   if (!dob) {
     errors.dob = 'Date of birth is required.';
-  } else if (!/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
-    errors.dob = 'Date of birth must be in YYYY-MM-DD format.';
   } else {
-    const parsedDate = new Date(dob);
-    if (isNaN(parsedDate.getTime()) || parsedDate > new Date()) {
-      errors.dob = 'Please enter a valid past date of birth.';
+    const iso = formatToIsoDob(dob);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+      errors.dob = 'Please select a valid date of birth (DD/MM/YYYY).';
+    } else {
+      const parsedDate = new Date(iso);
+      if (isNaN(parsedDate.getTime()) || parsedDate > new Date()) {
+        errors.dob = 'Please enter a valid past date of birth.';
+      }
     }
   }
 
@@ -150,14 +173,180 @@ function validateForm(
 const DEGREES = ['B.E.', 'B.Tech', 'M.E.', 'MBA', 'MCA', 'B.Sc.', 'M.Sc.', 'Ph.D'];
 const RECENT_YEARS = Array.from({ length: 35 }, (_, i) => new Date().getFullYear() - i);
 
+const DEFAULT_BRANCHES_BY_DEGREE: Record<string, string[]> = {
+  'B.E.': [
+    'Computer Science and Engineering',
+    'Electronics and Communication Engineering',
+    'Electrical and Electronics Engineering',
+    'Mechanical Engineering',
+    'Civil Engineering',
+    'Biomedical Engineering',
+    'Agricultural Engineering',
+    'Artificial Intelligence and Machine Learning',
+  ],
+  'B.Tech': [
+    'Information Technology',
+    'Artificial Intelligence and Data Science',
+    'Computer Science and Business Systems',
+    'Biotechnology',
+    'Food Technology',
+  ],
+  'M.E.': [
+    'Computer Science and Engineering (M.E.)',
+    'VLSI Design',
+    'Embedded System Technologies',
+    'CAD/CAM',
+    'Structural Engineering',
+  ],
+  'MBA': ['Master of Business Administration'],
+  'MCA': ['Master of Computer Applications'],
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DobField — custom DD/MM/YYYY date input
+// Visible input always shows/accepts DD/MM/YYYY.
+// A hidden <input type="date"> is synced behind the scenes for the native
+// calendar picker (opened by clicking the calendar icon).
+// ─────────────────────────────────────────────────────────────────────────────
+interface DobFieldProps {
+  value: string;           // always DD/MM/YYYY or empty
+  error?: string;
+  onChange: (ddmmyyyy: string) => void;
+}
+
+function DobField({ value, error, onChange }: DobFieldProps) {
+  const hiddenRef = useRef<HTMLInputElement>(null);
+
+  // Auto-format keystrokes → DD/MM/YYYY mask
+  function handleTextInput(e: React.ChangeEvent<HTMLInputElement>) {
+    const raw = e.target.value.replace(/[^\d]/g, '').slice(0, 8); // digits only, max 8
+    let masked = raw;
+    if (raw.length > 4) {
+      masked = `${raw.slice(0, 2)}/${raw.slice(2, 4)}/${raw.slice(4)}`;
+    } else if (raw.length > 2) {
+      masked = `${raw.slice(0, 2)}/${raw.slice(2)}`;
+    }
+    onChange(masked);
+  }
+
+  // When the hidden native picker changes, convert ISO→DD/MM/YYYY
+  function handleNativePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const iso = e.target.value; // YYYY-MM-DD
+    if (!iso) return;
+    const [y, m, d] = iso.split('-');
+    onChange(`${d}/${m}/${y}`);
+  }
+
+  // ISO value for the hidden input (so the calendar pre-selects the right day)
+  const isoValue = formatToIsoDob(value); // '' or YYYY-MM-DD
+
+  return (
+    <div className="space-y-1">
+      <label htmlFor="dob-text" className="form-label">
+        Date of Birth <span className="text-siet-error">*</span>{' '}
+        <span className="font-normal text-slate-400">(DD/MM/YYYY)</span>
+      </label>
+
+      <div className={`relative flex items-center ${error ? 'ring-2 ring-red-400 rounded-lg' : ''}`}>
+        {/* Visible masked text input */}
+        <input
+          id="dob-text"
+          type="text"
+          inputMode="numeric"
+          className={`form-input pr-10 tracking-widest font-mono ${error ? 'border-red-400' : ''}`}
+          placeholder="DD/MM/YYYY"
+          maxLength={10}
+          value={value}
+          onChange={handleTextInput}
+          autoComplete="bday"
+          aria-required="true"
+          aria-invalid={!!error}
+          aria-describedby={error ? 'dob-error' : undefined}
+        />
+
+        {/* Calendar icon button — opens the hidden native picker */}
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-label="Open date picker calendar"
+          onClick={() => hiddenRef.current?.showPicker?.()}
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
+        >
+          {/* Calendar SVG */}
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+            <line x1="16" y1="2" x2="16" y2="6" />
+            <line x1="8" y1="2" x2="8" y2="6" />
+            <line x1="3" y1="10" x2="21" y2="10" />
+          </svg>
+        </button>
+
+        {/* Hidden native date input — calendar popup only */}
+        <input
+          ref={hiddenRef}
+          type="date"
+          className="sr-only absolute inset-0 w-full h-full opacity-0 pointer-events-none"
+          tabIndex={-1}
+          value={isoValue}
+          max={new Date().toISOString().split('T')[0]}
+          onChange={handleNativePick}
+          aria-hidden="true"
+        />
+      </div>
+
+      {/* Live format preview + error */}
+      <div className="flex items-center justify-between text-xs text-slate-500 mt-1">
+        <span>Format: DD/MM/YYYY (e.g. 15/05/2002)</span>
+        {value && /^\d{2}\/\d{2}\/\d{4}$/.test(value) && (
+          <span className="font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+            ✓ {value}
+          </span>
+        )}
+      </div>
+      {error && (
+        <p id="dob-error" className="text-xs text-red-600 font-medium mt-0.5">{error}</p>
+      )}
+    </div>
+  );
+}
+
 export default function CandidatePage() {
   const navigate = useNavigate();
+
+  const [branchesByDegree, setBranchesByDegree] = useState<Record<string, string[]>>(
+    DEFAULT_BRANCHES_BY_DEGREE
+  );
+
+  useEffect(() => {
+    let mounted = true;
+    getProgrammesAndBranches()
+      .then((res: any) => {
+        const data = res?.data || res;
+        if (mounted && data?.branches_by_degree) {
+          setBranchesByDegree((prev) => ({
+            ...prev,
+            ...data.branches_by_degree,
+          }));
+        }
+      })
+      .catch((err) => {
+        console.warn('Using default programmes/branches list:', err);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const [formData, setFormData] = useState<CandidateDraftState>(() => {
     try {
       const cached = sessionStorage.getItem(CANDIDATE_DRAFT_KEY);
       if (cached) {
-        return { ...defaultDraft, ...JSON.parse(cached) };
+        const parsed = JSON.parse(cached);
+        if (parsed.dob) {
+          parsed.dob = formatToDisplayDob(parsed.dob);
+        }
+        return { ...defaultDraft, ...parsed };
       }
     } catch (err) {
       console.error('Failed to load candidate draft from sessionStorage:', err);
@@ -178,9 +367,24 @@ export default function CandidatePage() {
   const [apiError, setApiError] = useState<string | null>(null);
   const [errors, setErrors] = useState<FormErrors>({});
 
+  const availableSpecializations = formData.degree
+    ? branchesByDegree[formData.degree] || []
+    : [];
+
+
   function handleChange(field: keyof FormValues) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-      setFormData((prev) => ({ ...prev, [field]: e.target.value }));
+      const val = e.target.value;
+      setFormData((prev) => {
+        const next = { ...prev, [field]: val };
+        if (field === 'degree') {
+          const specsForNewDegree = branchesByDegree[val] || [];
+          if (!specsForNewDegree.includes(prev.specialization)) {
+            next.specialization = '';
+          }
+        }
+        return next;
+      });
       setErrors((prev) => ({ ...prev, [field]: undefined }));
       setApiError(null);
     };
@@ -213,10 +417,12 @@ export default function CandidatePage() {
 
     setIsLoading(true);
 
+    const isoDob = formatToIsoDob(formData.dob.trim());
+
     // Exact backend CandidateDetails payload structure
     const candidatePayload: CandidateDetails = {
       candidate_name: formData.candidate_name.trim(),
-      dob: formData.dob.trim(),
+      dob: isoDob,
       register_number: formData.register_number.trim().toUpperCase(),
       degree: formData.degree.trim(),
       degree_course: formData.degree.trim(),
@@ -336,17 +542,15 @@ export default function CandidatePage() {
             />
           </FormField>
 
-          <FormField id="dob" label="Date of Birth" required error={errors.dob}>
-            <input
-              id="dob"
-              type="date"
-              className="form-input"
-              value={formData.dob}
-              onChange={handleChange('dob')}
-              aria-required="true"
-              aria-invalid={!!errors.dob}
-            />
-          </FormField>
+          <DobField
+            value={formData.dob}
+            error={errors.dob}
+            onChange={(val) => {
+              setFormData((prev) => ({ ...prev, dob: val }));
+              setErrors((prev) => ({ ...prev, dob: undefined }));
+              setApiError(null);
+            }}
+          />
 
           <FormField id="register-number" label="Register Number / Roll Number" required error={errors.register_number}>
             <input
@@ -380,17 +584,29 @@ export default function CandidatePage() {
           </FormField>
 
           <FormField id="specialization" label="Field of Study / Specialization" required error={errors.specialization}>
-            <input
+            <select
               id="specialization"
-              type="text"
               className="form-input"
-              placeholder="e.g. Computer Science and Engineering"
-              maxLength={150}
               value={formData.specialization}
               onChange={handleChange('specialization')}
+              disabled={!formData.degree}
               aria-required="true"
               aria-invalid={!!errors.specialization}
-            />
+            >
+              {!formData.degree ? (
+                <option value="" disabled>Select degree first</option>
+              ) : (
+                <>
+                  <option value="" disabled>Select Specialization</option>
+                  {availableSpecializations.map((spec) => (
+                    <option key={spec} value={spec}>
+                      {spec}
+                    </option>
+                  ))}
+                  <option value="Other">Other / Not Listed</option>
+                </>
+              )}
+            </select>
           </FormField>
 
           <FormField id="year-of-passing" label="Year of Graduation / Passing" required error={errors.year_of_passing}>
@@ -489,7 +705,7 @@ export default function CandidatePage() {
         {/* Verification Fee Notice Card */}
         <div className="p-4 bg-brand-light border border-emerald-200 rounded-xl text-center">
           <p className="text-brand-forest font-bold mb-1">
-            Verification Fee: ₹1,500.00 <span className="font-normal text-brand-green mx-2">|</span> Standard Processing: 3-5 Working Days
+            Verification Fee: ₹1,500.00 <span className="font-normal text-brand-green mx-2">|</span> Standard Processing: 2–5 Business Days
           </p>
           <p className="text-brand-forest/80 text-sm">
             You will be redirected to the secure payment portal upon submission.

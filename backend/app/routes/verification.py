@@ -49,7 +49,7 @@ from app.schemas.verification import (
     PublicVerificationStatusResponse,
 )
 from app.services import verification_service
-from app.services.email_service import send_verification_report_email
+from app.services.email_service import send_verification_report_email, send_submission_acknowledgment_email
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/verification", tags=["Verification"])
@@ -162,23 +162,36 @@ async def confirm_verification(
 
     if data.status == "VERIFIED":
         message = "Verification successful. The official report has been sent to your verified email."
+    elif data.status == "PENDING_ADMIN_REVIEW":
+        message = data.message or "Verification request submitted for official institutional review."
     else:
         message = (
             "The submitted candidate details could not be verified "
             "against the official institutional records."
         )
 
-    # Enqueue report email as a background task so the response
-    # is returned immediately to the frontend regardless of SMTP latency.
-    background_tasks.add_task(
-        send_verification_report_email,
-        hr_email=session["hr_email"],
-        company_name=session["company_name"],
-        report=data.model_dump(),
-    )
+    if data.status == "VERIFIED":
+        background_tasks.add_task(
+            send_verification_report_email,
+            hr_email=session["hr_email"],
+            company_name=session["company_name"],
+            report=data.model_dump(),
+        )
+    elif data.status == "PENDING_ADMIN_REVIEW":
+        background_tasks.add_task(
+            send_submission_acknowledgment_email,
+            hr_email=session["hr_email"],
+            company_name=session.get("company_name", "Requester"),
+            request_id=data.display_request_id,
+            candidate_name=data.candidate_name or "N/A",
+            register_number=data.register_number or "N/A",
+        )
 
     return APIResponse(
         success=True,
+        status="success",
+        request_id=data.display_request_id,
+        current_state=data.status,
         message=message,
         data=data,
     )
@@ -407,10 +420,16 @@ async def download_verification_pdf(
     from fastapi.responses import StreamingResponse
     from fastapi import HTTPException
     import json
+    from sqlalchemy import select
     from app.db.models import VerificationRequest
     from app.services.pdf_service import generate_verification_pdf
     
     vr = await db.get(VerificationRequest, request_id)
+    if not vr:
+        stmt = select(VerificationRequest).where(VerificationRequest.display_request_id == request_id)
+        result = await db.execute(stmt)
+        vr = result.scalar_one_or_none()
+
     if not vr:
         raise HTTPException(status_code=404, detail="Verification request not found")
         
@@ -447,6 +466,63 @@ async def download_verification_pdf(
         media_type="application/pdf",
         headers={
             "Content-Disposition": f'attachment; filename="SIET_Verification_{vr.display_request_id}.pdf"'
+        }
+    )
+
+
+@router.get(
+    "/{request_id}/acknowledgment-pdf",
+    summary="Download official submission acknowledgment PDF",
+    description="Returns the generated submission acknowledgment PDF directly as an application/pdf stream.",
+)
+async def download_acknowledgment_pdf(
+    request_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    from fastapi.responses import StreamingResponse
+    from fastapi import HTTPException
+    import json
+    from sqlalchemy import select
+    from app.db.models import VerificationRequest
+    from app.services.pdf_service import generate_acknowledgment_slip_pdf
+
+    vr = await db.get(VerificationRequest, request_id)
+    if not vr:
+        stmt = select(VerificationRequest).where(VerificationRequest.display_request_id == request_id)
+        result = await db.execute(stmt)
+        vr = result.scalar_one_or_none()
+
+    if not vr:
+        raise HTTPException(status_code=404, detail="Verification request not found")
+
+    cdata = {}
+    if vr.candidate_data:
+        try:
+            cdata = json.loads(vr.candidate_data)
+        except Exception:
+            pass
+
+    record_data = {
+        "verification_request_id": vr.id,
+        "display_request_id": vr.display_request_id,
+        "company_name": vr.company_name,
+        "hr_email": vr.hr_email,
+        "status": "PENDING INSTITUTIONAL REVIEW",
+        "candidate_name": vr.hr_submitted_name or cdata.get("candidate_name") or "N/A",
+        "register_number": vr.hr_submitted_register_number or cdata.get("register_number") or "N/A",
+        "degree": vr.hr_submitted_programme or cdata.get("degree") or cdata.get("degree_course") or "N/A",
+        "branch": vr.hr_submitted_branch or cdata.get("specialization") or "N/A",
+        "year_of_passing": vr.hr_submitted_year_of_passing or cdata.get("year_of_passing") or "N/A",
+        "dob": cdata.get("dob") or "N/A",
+    }
+
+    pdf_buffer = generate_acknowledgment_slip_pdf(record_data)
+
+    return StreamingResponse(
+        pdf_buffer,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="SIET_Acknowledgment_{vr.display_request_id}.pdf"'
         }
     )
 

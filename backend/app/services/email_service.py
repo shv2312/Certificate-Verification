@@ -586,3 +586,104 @@ async def send_verification_report_email(
             _mask_email(hr_email),
             exc,
         )
+
+
+async def send_submission_acknowledgment_email(
+    hr_email: str,
+    company_name: str,
+    request_id: str,
+    candidate_name: str,
+    register_number: str,
+) -> None:
+    """
+    Dispatch an automated confirmation email to the requester when their
+    verification request transitions to PENDING_ADMIN_REVIEW.
+    """
+    try:
+        if settings.DEV_MOCK_OTP:
+            logger.warning(
+                "[DEV-ONLY] Submission acknowledgment email simulated for %s (%s). Request ID: %s",
+                _mask_email(hr_email),
+                company_name,
+                request_id,
+            )
+            return
+
+        import aiosmtplib
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.text import MIMEText
+
+        subject = f"[SIET Academic Verification] Request Acknowledgment - {request_id}"
+
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = f"{settings.SMTP_FROM_NAME} <{settings.SMTP_FROM_EMAIL}>"
+        msg["To"] = hr_email
+
+        html_body = f"""<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Request Acknowledgment</title></head>
+<body style="font-family:Arial,sans-serif;background:#f5f5f5;margin:0;padding:24px;">
+  <div style="max-width:650px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.12);">
+    <!-- Header -->
+    <div style="background:#064e3b;padding:20px 28px;color:#fff;">
+      <h2 style="margin:0;font-size:17px;font-weight:700;">
+        SRI SHAKTHI INSTITUTE OF ENGINEERING AND TECHNOLOGY
+      </h2>
+      <p style="margin:4px 0 0;color:#a7f3d0;font-size:12px;">
+        Office of Academic Records &amp; Controller of Examinations
+      </p>
+    </div>
+    <!-- Body -->
+    <div style="padding:24px 28px;color:#334155;line-height:1.5;">
+      <p style="margin-top:0;">Dear Requester,</p>
+      <p>Your academic background verification request has been successfully submitted and queued for institutional ledger review.</p>
+      
+      <div style="background: #f4fbf7; border-left: 4px solid #0B6A3E; padding: 14px 18px; margin: 18px 0; border-radius: 0 4px 4px 0;">
+        <p style="margin: 5px 0;"><strong>Tracking Number:</strong> <span style="font-family:monospace; color:#064e3b; font-size:14px; font-weight:bold;">{request_id}</span></p>
+        <p style="margin: 5px 0;"><strong>Candidate Name:</strong> {candidate_name}</p>
+        <p style="margin: 5px 0;"><strong>Register Number:</strong> {register_number}</p>
+        <p style="margin: 5px 0;"><strong>Status:</strong> Under Review (Office of Academic Records)</p>
+        <p style="margin: 5px 0;"><strong>Estimated Turnaround:</strong> 2–5 business days</p>
+      </div>
+
+      <p>You can monitor the live verification progress at any time using your tracking code:</p>
+      
+      <div style="margin: 20px 0;">
+        <a href="http://localhost:5173/status?tracking_id={request_id}" style="background: #0B6A3E; color: #ffffff; padding: 12px 22px; text-decoration: none; border-radius: 4px; display: inline-block; font-weight: bold; font-size: 14px;">Track Verification Status &rarr;</a>
+      </div>
+
+      <p style="font-size:12px;color:#64748b;margin-top:28px;border-top:1px solid #e2e8f0;padding-top:14px;">
+        For questions or expedited inquiries, contact the Academic Records team at <a href="mailto:verification@siet.ac.in" style="color:#0B6A3E;">verification@siet.ac.in</a> quoting tracking reference <strong>{request_id}</strong>.
+      </p>
+    </div>
+    <!-- Footer -->
+    <div style="background:#f8fafc;padding:12px 28px;border-top:1px solid #e2e8f0;text-align:center;">
+      <p style="margin:0;color:#94a3b8;font-size:11px;">
+        &copy; Sri Shakthi Institute of Engineering and Technology &bull; Coimbatore, Tamil Nadu
+      </p>
+    </div>
+  </div>
+</body>
+</html>"""
+
+        msg.attach(MIMEText(html_body, "html"))
+
+        logger.info(
+            "[SMTP] Connecting to %s:%s to dispatch submission acknowledgment to %s (request: %s) ...",
+            settings.SMTP_HOST, settings.SMTP_PORT, _mask_email(hr_email), request_id,
+        )
+        await aiosmtplib.send(
+            msg,
+            hostname=settings.SMTP_HOST,
+            port=settings.SMTP_PORT,
+            username=settings.SMTP_USERNAME,
+            password=settings.SMTP_PASSWORD,
+            start_tls=True,
+        )
+        logger.info("[SMTP] Submission acknowledgment email successfully delivered to %s for %s", _mask_email(hr_email), request_id)
+    except Exception as exc:
+        logger.error(
+            "Failed to send submission acknowledgment email to %s for %s: %s",
+            _mask_email(hr_email), request_id, exc,
+        )

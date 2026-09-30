@@ -197,3 +197,25 @@ export async function uploadCertificate(file: File): Promise<string> {
   }
   throw new Error('Server response missing uploaded certificate URL.');
 }
+
+export interface ProgrammesBranchesData {
+  programmes: Array<{
+    id: number;
+    code: string;
+    full_name: string;
+    degree_type: string;
+    branches: Array<{ id: number; code: string; name: string }>;
+  }>;
+  branches_by_degree: Record<string, string[]>;
+}
+
+/**
+ * Fetch approved institutional degree programmes and branches.
+ * Backend endpoint: GET /api/v1/programmes/branches
+ */
+export async function getProgrammesAndBranches(): Promise<ProgrammesBranchesData> {
+  return apiClient<ProgrammesBranchesData>('/api/v1/programmes/branches', {
+    method: 'GET',
+  });
+}
+

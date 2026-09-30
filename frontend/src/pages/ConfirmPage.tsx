@@ -120,6 +120,16 @@ export default function ConfirmPage() {
                     <span className="text-xs text-slate-500 block">Year of Passing</span>
                     <span className="text-slate-800">{candidate.year_of_passing}</span>
                   </div>
+                  {candidate.dob && (
+                    <div>
+                      <span className="text-xs text-slate-500 block">Date of Birth</span>
+                      <span className="font-mono text-slate-800">
+                        {candidate.dob.includes('-')
+                          ? candidate.dob.split('-').reverse().join('/')
+                          : candidate.dob}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             );

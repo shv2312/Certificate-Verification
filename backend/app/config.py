@@ -15,9 +15,9 @@ All secrets must come from environment variables / .env.
 from __future__ import annotations
 
 from functools import lru_cache
-from typing import List
+from typing import List, Any
 
-from pydantic import AnyHttpUrl, EmailStr, field_validator
+from pydantic import AnyHttpUrl, EmailStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -69,9 +69,11 @@ class Settings(BaseSettings):
     SMTP_HOST: str = "smtp.gmail.com"
     SMTP_PORT: int = 587
     SMTP_USERNAME: str = ""
+    SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
     SMTP_FROM_NAME: str = "SIET Background Verification"
     SMTP_FROM_EMAIL: str = "noreply@siet.ac.in"
+    SMTP_TLS: bool = True
 
     # Sprint 1: When True, OTP is logged to console and NOT sent via SMTP.
     # Set to False only when real SMTP credentials are configured.
@@ -102,6 +104,8 @@ class Settings(BaseSettings):
     PAYMENT_GATEWAY_KEY_ID: str = ""
     PAYMENT_GATEWAY_KEY_SECRET: str = ""
     PAYMENT_GATEWAY_WEBHOOK_SECRET: str = ""
+    RAZORPAY_KEY_ID: str = ""
+    RAZORPAY_KEY_SECRET: str = ""
 
     # Sprint 1: When True, payment is simulated in-process (no real gateway).
     # Set to False only after the college has approved a payment gateway.
@@ -119,6 +123,18 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------------ #
     # Guards                                                               #
     # ------------------------------------------------------------------ #
+    @model_validator(mode="before")
+    @classmethod
+    def resolve_aliases(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if not data.get("SMTP_USERNAME") and data.get("SMTP_USER"):
+                data["SMTP_USERNAME"] = data["SMTP_USER"]
+            if not data.get("PAYMENT_GATEWAY_KEY_ID") and data.get("RAZORPAY_KEY_ID"):
+                data["PAYMENT_GATEWAY_KEY_ID"] = data["RAZORPAY_KEY_ID"]
+            if not data.get("PAYMENT_GATEWAY_KEY_SECRET") and data.get("RAZORPAY_KEY_SECRET"):
+                data["PAYMENT_GATEWAY_KEY_SECRET"] = data["RAZORPAY_KEY_SECRET"]
+        return data
+
     @field_validator("APP_SECRET_KEY")
     @classmethod
     def secret_key_must_be_strong(cls, v: str) -> str:

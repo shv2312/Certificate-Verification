@@ -11,10 +11,32 @@ class Institution(Base):
     admin_email = Column(String(255), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
 
+class Programme(Base):
+    __tablename__ = "programmes"
+    
+    id = Column(Integer, primary_key=True)
+    code = Column(String(10), nullable=False)
+    full_name = Column(String(100), nullable=False)
+    degree_type = Column(String(20), nullable=False)
+
+class Branch(Base):
+    __tablename__ = "branches"
+    
+    id = Column(Integer, primary_key=True)
+    programme_id = Column(Integer, ForeignKey("programmes.id"), nullable=False)
+    code = Column(String(10), nullable=False)
+    full_name = Column(String(100), nullable=False)
+
+class BranchAlias(Base):
+    __tablename__ = "branch_aliases"
+    
+    alias = Column(String(100), primary_key=True)
+    branch_id = Column(Integer, ForeignKey("branches.id"), nullable=False)
+
 class Student(Base):
     __tablename__ = "students"
     
-    id = Column(BigInteger, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
     register_number = Column(String(30), unique=True, index=True, nullable=False)
     full_name = Column(String(200), nullable=False)
     full_name_normalized = Column(String(200), nullable=False)

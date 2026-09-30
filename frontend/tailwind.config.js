@@ -53,6 +53,8 @@ export default {
         'fade-in':      'fadeIn 0.3s ease-in-out',
         'slide-up':     'slideUp 0.4s ease-out',
         'step-pulse':   'stepPulse 2s ease-in-out infinite',
+        'scan':         'scan 1.2s ease-in-out infinite',
+        'laser-sweep':  'laserSweep 2.4s ease-in-out infinite',
       },
       keyframes: {
         fadeIn: {
@@ -66,6 +68,15 @@ export default {
         stepPulse: {
           '0%, 100%': { opacity: '1' },
           '50%':      { opacity: '0.6' },
+        },
+        scan: {
+          '0%':   { transform: 'translateY(-100%)' },
+          '100%': { transform: 'translateY(200%)' },
+        },
+        laserSweep: {
+          '0%':   { top: '4%',  opacity: '0.7' },
+          '50%':  { top: '88%', opacity: '1'   },
+          '100%': { top: '4%',  opacity: '0.7' },
         },
       },
     },

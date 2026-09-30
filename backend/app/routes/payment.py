@@ -55,6 +55,12 @@ router = APIRouter(prefix="/api/v1/payment", tags=["Payment"])
         "to open the payment widget.  Requires email verification."
     ),
 )
+@router.post(
+    "/create-order",
+    response_model=APIResponse[PaymentInitiateResponse],
+    summary="Create Razorpay test order",
+    description="Alias endpoint to create Razorpay test order.",
+)
 async def initiate_payment(
     _body: PaymentInitiateRequest,
     session: dict = Depends(require_role(["HR"])),
