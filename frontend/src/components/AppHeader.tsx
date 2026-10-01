@@ -18,7 +18,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Lock, LockOpen, Bell } from 'lucide-react';
+import { Bell } from 'lucide-react';
 import { ROUTES } from '../utils/routes';
 import AdminLoginModal from './AdminLoginModal';
 import FAQModal from './FAQModal';
@@ -63,6 +63,22 @@ export default function AppHeader() {
       window.removeEventListener('siet:admin-logout', handleLogout);
     };
   }, []);
+
+  // Keyboard shortcut listener (Ctrl + Shift + A) to open admin login / portal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
+        e.preventDefault();
+        if (isAdmin) {
+          navigate('/admin');
+        } else {
+          setAdminModalOpen(true);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isAdmin, navigate]);
 
   // Close notification popover when clicking outside it
   useEffect(() => {
@@ -136,13 +152,6 @@ export default function AppHeader() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  function handleAdminButtonClick() {
-    if (isAdmin) {
-      navigate('/admin');
-    } else {
-      setAdminModalOpen(true);
-    }
-  }
 
   function handleAdminLogout() {
     localStorage.removeItem('siet_admin_token');
@@ -216,28 +225,8 @@ export default function AppHeader() {
               </nav>
             )}
 
-            {/* ── Right: Admin Portal button / Sign Out button ── */}
+            {/* ── Right: Navigation Actions (Admin notification & sign out only when on admin route) ── */}
             <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-              {/* Yellow pill-shaped "Admin Portal" button (hidden on Admin routes) */}
-              {!isAdminRoute && (
-                <button
-                  id="admin-portal-header-btn"
-                  type="button"
-                  onClick={handleAdminButtonClick}
-                  className="hidden sm:inline-flex items-center gap-2 bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-bold px-5 py-2 rounded-full shadow-xs hover:shadow-md transition-all active:scale-[0.98] text-xs sm:text-sm"
-                  title={isAdmin ? 'Go to Admin Dashboard' : 'Access Administrative Portal'}
-                >
-                  {isAdmin
-                    ? <LockOpen className="w-4 h-4 text-slate-950" />
-                    : <Lock className="w-4 h-4 text-slate-950" />}
-                  <span>Admin Portal</span>
-                  {isAdmin && (
-                    <span className="bg-emerald-800 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
-                      ✓
-                    </span>
-                  )}
-                </button>
-              )}
 
               {/* Admin Notification Bell (shown when on admin route or admin logged in) */}
               {(isAdmin || isAdminRoute) && (
@@ -400,24 +389,6 @@ export default function AppHeader() {
                 </li>
               ))}
 
-              <li className="py-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    handleAdminButtonClick();
-                  }}
-                  className="w-full flex items-center justify-center gap-2 bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-bold text-sm px-4 py-2.5 rounded-full shadow-xs transition-colors"
-                >
-                  {isAdmin
-                    ? <LockOpen className="w-4 h-4 text-slate-950" />
-                    : <Lock className="w-4 h-4 text-slate-950" />}
-                  <span>Admin Portal</span>
-                  {isAdmin && (
-                    <span className="bg-emerald-800 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">✓</span>
-                  )}
-                </button>
-              </li>
               {isAdmin && (
                 <li className="pt-2 border-t border-slate-200 mt-1">
                   <button

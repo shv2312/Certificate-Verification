@@ -49,15 +49,14 @@ function AdminAccessPrompt() {
         The login panel is opening…
       </p>
       <p className="text-sm text-slate-400">
-        If the login panel didn't open, click the{' '}
+        If the login panel did not open automatically,{' '}
         <button
           type="button"
           onClick={() => window.dispatchEvent(new CustomEvent('siet:open-admin-login'))}
-          className="text-brand-green hover:text-brand-forest underline hover:no-underline font-bold"
+          className="text-[#0B6A3E] hover:text-[#074828] underline font-semibold"
         >
-          Admin
-        </button>{' '}
-        button in the top navigation bar.
+          click here to open the sign-in modal
+        </button>.
       </p>
     </main>
   );

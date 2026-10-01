@@ -58,6 +58,14 @@ class InitiateVerificationRequest(BaseModel):
         description="Register or roll number.",
         examples=["710621104001"],
     )
+    register_no: Optional[str] = Field(
+        None,
+        description="Alias for register_number.",
+    )
+    roll_number: Optional[str] = Field(
+        None,
+        description="Alias for register_number.",
+    )
     degree: Optional[str] = Field(
         None,
         min_length=2,
@@ -78,11 +86,24 @@ class InitiateVerificationRequest(BaseModel):
         description="Specialization or branch.",
         examples=["Computer Science and Engineering"],
     )
+    branch: Optional[str] = Field(
+        None,
+        max_length=150,
+        description="Alias for specialization.",
+        examples=["Computer Science and Engineering"],
+    )
     year_of_passing: Optional[int] = Field(
         None,
         ge=1990,
         le=2100,
         description="Year of passing.",
+        examples=[2024],
+    )
+    passing_year: Optional[int] = Field(
+        None,
+        ge=1990,
+        le=2100,
+        description="Alias for year_of_passing.",
         examples=[2024],
     )
     dob: Optional[str] = Field(
@@ -95,6 +116,11 @@ class InitiateVerificationRequest(BaseModel):
         max_length=100,
         description="Certificate number.",
     )
+    degree_certificate_number: Optional[str] = Field(
+        None,
+        max_length=100,
+        description="Alias for certificate_no.",
+    )
     year_of_enrolment: Optional[int] = Field(
         None,
         ge=1990,
@@ -106,31 +132,104 @@ class InitiateVerificationRequest(BaseModel):
     certificate_url: Optional[str] = Field(
         None,
     )
+    entry_mode: Optional[str] = Field(
+        "Regular",
+        description="Admission Type / Entry Mode: 'Regular' or 'Lateral'.",
+        examples=["Regular"],
+    )
+    admission_type: Optional[str] = Field(
+        None,
+        description="Alias for entry_mode.",
+        examples=["Regular"],
+    )
 
     @model_validator(mode="before")
     @classmethod
     def normalize_fields(cls, data: Any) -> Any:
         if isinstance(data, dict):
-            # Normalize degree / degree_course
-            if "degree" not in data or not data.get("degree"):
-                if "degree_course" in data:
-                    data["degree"] = data["degree_course"]
-                elif "course" in data:
-                    data["degree"] = data["course"]
-                else:
-                    data["degree"] = "B.E."
-            if "degree_course" not in data or not data.get("degree_course"):
-                data["degree_course"] = data.get("degree")
+            # register_number aliases
+            reg = data.get("register_number") or data.get("register_no") or data.get("roll_number")
+            if reg:
+                data["register_number"] = reg
+                data["register_no"] = reg
+                data["roll_number"] = reg
+
+            # degree aliases
+            deg = data.get("degree") or data.get("degree_course") or data.get("course")
+            if deg:
+                data["degree"] = deg
+                data["degree_course"] = deg
+            else:
+                data["degree"] = "B.E."
+                data["degree_course"] = "B.E."
+
+            # specialization aliases
+            spec = data.get("specialization") or data.get("branch")
+            if spec:
+                data["specialization"] = spec
+                data["branch"] = spec
+            else:
+                data["specialization"] = "General"
+                data["branch"] = "General"
+
+            # year_of_passing aliases
+            yop = data.get("year_of_passing") or data.get("passing_year")
+            if yop:
+                try:
+                    data["year_of_passing"] = int(yop)
+                    data["passing_year"] = int(yop)
+                except (ValueError, TypeError):
+                    data["year_of_passing"] = 2024
+                    data["passing_year"] = 2024
+            else:
+                data["year_of_passing"] = 2024
+                data["passing_year"] = 2024
+
+            # certificate_no aliases
+            cert = data.get("certificate_no") or data.get("degree_certificate_number")
+            if cert:
+                data["certificate_no"] = cert
+                data["degree_certificate_number"] = cert
+            else:
+                gen_cert = f"CERT-{secrets.token_hex(4).upper()}"
+                data["certificate_no"] = gen_cert
+                data["degree_certificate_number"] = gen_cert
+
+            # entry_mode / admission_type
+            raw_entry = data.get("entry_mode") or data.get("admission_type") or "Regular"
+            data["entry_mode"] = raw_entry
+            data["admission_type"] = raw_entry
 
             if not data.get("dob"):
                 data["dob"] = "2000-01-01"
-            if not data.get("specialization"):
-                data["specialization"] = "General"
-            if not data.get("certificate_no"):
-                data["certificate_no"] = f"CERT-{secrets.token_hex(4).upper()}"
-            if not data.get("year_of_passing"):
-                data["year_of_passing"] = 2024
         return data
+
+    @field_validator("degree", "degree_course", mode="before")
+    @classmethod
+    def normalize_degree(cls, v: Any) -> Any:
+        if not v:
+            return v
+        v_str = str(v)
+        if "B.E." in v_str:
+            return "B.E."
+        if "B.Tech" in v_str:
+            return "B.Tech"
+        if "M.E." in v_str:
+            return "M.E."
+        if "M.Tech" in v_str:
+            return "M.Tech"
+        if "Ph.D" in v_str or "Doctor" in v_str:
+            return "Ph.D."
+        return v_str
+
+    @field_validator("entry_mode", "admission_type", mode="before")
+    @classmethod
+    def normalize_entry_mode(cls, v: Any) -> Any:
+        if not v:
+            return "Regular"
+        if "lateral" in str(v).lower():
+            return "Lateral"
+        return "Regular"
 
     @field_validator("register_number", mode="after")
     @classmethod
@@ -191,17 +290,33 @@ class CandidateDetails(BaseModel):
         description="Register / roll number assigned by SIET.",
         examples=["710621104001"],
     )
+    register_no: Optional[str] = Field(
+        None,
+        description="Alias for register_number.",
+    )
+    roll_number: Optional[str] = Field(
+        None,
+        description="Alias for register_number.",
+    )
     degree: str = Field(
         ...,
         min_length=2,
         max_length=100,
         description="Degree/Course Title (e.g. B.E., B.Tech).",
     )
+    degree_course: Optional[str] = Field(
+        None,
+        description="Alias for degree.",
+    )
     specialization: str = Field(
         ...,
         min_length=2,
         max_length=150,
         description="Field of Study/Specialization name.",
+    )
+    branch: Optional[str] = Field(
+        None,
+        description="Alias for specialization.",
     )
     year_of_passing: int = Field(
         ...,
@@ -210,11 +325,19 @@ class CandidateDetails(BaseModel):
         description="Year of passing.",
         examples=[2025],
     )
+    passing_year: Optional[int] = Field(
+        None,
+        description="Alias for year_of_passing.",
+    )
     certificate_no: str = Field(
         ...,
         min_length=2,
         max_length=100,
         description="Degree Certificate Number.",
+    )
+    degree_certificate_number: Optional[str] = Field(
+        None,
+        description="Alias for certificate_no.",
     )
     year_of_enrolment: Optional[int] = Field(
         None,
@@ -226,6 +349,79 @@ class CandidateDetails(BaseModel):
         None,
         description="Class Obtained (e.g., First Class).",
     )
+    entry_mode: Optional[str] = Field(
+        "Regular",
+        description="Admission Type / Entry Mode: 'Regular' or 'Lateral'.",
+    )
+    admission_type: Optional[str] = Field(
+        None,
+        description="Alias for entry_mode.",
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_aliases(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            reg = data.get("register_number") or data.get("register_no") or data.get("roll_number")
+            if reg:
+                data["register_number"] = reg
+                data["register_no"] = reg
+                data["roll_number"] = reg
+
+            deg = data.get("degree") or data.get("degree_course") or data.get("course") or "B.E."
+            data["degree"] = deg
+            data["degree_course"] = deg
+
+            spec = data.get("specialization") or data.get("branch") or "General"
+            data["specialization"] = spec
+            data["branch"] = spec
+
+            yop = data.get("year_of_passing") or data.get("passing_year") or 2024
+            try:
+                data["year_of_passing"] = int(yop)
+                data["passing_year"] = int(yop)
+            except (ValueError, TypeError):
+                data["year_of_passing"] = 2024
+                data["passing_year"] = 2024
+
+            if not data.get("dob"):
+                data["dob"] = "2000-01-01"
+
+            cert = data.get("certificate_no") or data.get("degree_certificate_number") or "CERT-DEFAULT"
+            data["certificate_no"] = cert
+            data["degree_certificate_number"] = cert
+
+            raw_entry = data.get("entry_mode") or data.get("admission_type") or "Regular"
+            data["entry_mode"] = raw_entry
+            data["admission_type"] = raw_entry
+        return data
+
+    @field_validator("degree", "degree_course", mode="before")
+    @classmethod
+    def normalize_degree(cls, v: Any) -> Any:
+        if not v:
+            return v
+        v_str = str(v)
+        if "B.E." in v_str:
+            return "B.E."
+        if "B.Tech" in v_str:
+            return "B.Tech"
+        if "M.E." in v_str:
+            return "M.E."
+        if "M.Tech" in v_str:
+            return "M.Tech"
+        if "Ph.D" in v_str or "Doctor" in v_str:
+            return "Ph.D."
+        return v_str
+
+    @field_validator("entry_mode", "admission_type", mode="before")
+    @classmethod
+    def normalize_entry_mode(cls, v: Any) -> Any:
+        if not v:
+            return "Regular"
+        if "lateral" in str(v).lower():
+            return "Lateral"
+        return "Regular"
 
     @field_validator("candidate_name", "register_number", mode="before")
     @classmethod

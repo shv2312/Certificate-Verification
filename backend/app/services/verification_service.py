@@ -163,6 +163,7 @@ async def initiate_verification(
             "candidate_name": request.candidate_name.strip(),
             "register_number": request.register_number.strip().upper(),
             "degree_course": degree_val.strip(),
+            "entry_mode": request.admission_type or request.entry_mode or "Regular Entry (1st Year)",
             "year_of_passing": request.year_of_passing or 2024,
         },
     )

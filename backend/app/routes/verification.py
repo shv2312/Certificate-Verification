@@ -30,8 +30,10 @@ ONE-PAYMENT-ONE-CANDIDATE:
 """
 
 import logging
+import os
+import uuid
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, UploadFile, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, File, UploadFile, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
@@ -66,14 +68,120 @@ router = APIRouter(prefix="/api/v1/verification", tags=["Verification"])
     status_code=200,
 )
 async def initiate_verification(
-    body: InitiateVerificationRequest,
+    request: Request,
     session: dict = Depends(verify_session_token),
     db: AsyncSession = Depends(get_db),
 ) -> APIResponse[InitiateVerificationResponse]:
     """
     Requires: Authorization: Bearer <session_token>
     Creates VerificationRequest in PAYMENT_PENDING state and creates PaymentSession.
+    Supports JSON or multipart/form-data with attached files.
     """
+    content_type = request.headers.get("content-type", "")
+    if "multipart/form-data" in content_type or "application/x-www-form-urlencoded" in content_type:
+        form = await request.form()
+        candidate_name = form.get("candidate_name") or ""
+        dob = form.get("dob") or ""
+        register_number = (
+            form.get("register_number")
+            or form.get("register_no")
+            or form.get("roll_number")
+            or ""
+        )
+        degree = (
+            form.get("degree")
+            or form.get("degree_course")
+            or form.get("course")
+            or ""
+        )
+        degree_course = form.get("degree_course") or degree
+        admission_type = (
+            form.get("admission_type")
+            or form.get("entry_mode")
+            or "Regular"
+        )
+        entry_mode = form.get("entry_mode") or admission_type
+        specialization = (
+            form.get("specialization")
+            or form.get("branch")
+            or ""
+        )
+        branch = form.get("branch") or specialization
+        year_of_passing_val = (
+            form.get("year_of_passing")
+            or form.get("passing_year")
+            or 0
+        )
+        try:
+            year_of_passing = int(year_of_passing_val)
+        except (ValueError, TypeError):
+            year_of_passing = 2024
+        
+        certificate_no = (
+            form.get("certificate_no")
+            or form.get("degree_certificate_number")
+            or ""
+        )
+        degree_certificate_number = form.get("degree_certificate_number") or certificate_no
+        yoe_val = form.get("year_of_enrolment")
+        year_of_enrolment = int(yoe_val) if yoe_val and str(yoe_val).isdigit() else None
+        class_obtained = form.get("class_obtained") or None
+        
+        uploaded_files = form.getlist("files")
+        saved_urls = []
+        if uploaded_files:
+            upload_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads", "certificates")
+            os.makedirs(upload_dir, exist_ok=True)
+            for f in uploaded_files:
+                if hasattr(f, "read") and getattr(f, "filename", None):
+                    content = await f.read()
+                    safe_filename = f"{uuid.uuid4()}_{f.filename}"
+                    file_path = os.path.join(upload_dir, safe_filename)
+                    with open(file_path, "wb") as out_f:
+                        out_f.write(content)
+                    saved_urls.append(f"/uploads/certificates/{safe_filename}")
+        
+        cert_url = form.get("certificate_url")
+        if saved_urls:
+            cert_url = ",".join(saved_urls)
+
+        from pydantic import ValidationError as PydanticValidationError
+        from fastapi.exceptions import RequestValidationError
+        try:
+            body = InitiateVerificationRequest(
+                candidate_name=str(candidate_name),
+                dob=str(dob),
+                register_number=str(register_number),
+                register_no=str(register_number),
+                roll_number=str(register_number),
+                degree=str(degree),
+                degree_course=str(degree_course),
+                admission_type=str(admission_type),
+                entry_mode=str(entry_mode),
+                specialization=str(specialization),
+                branch=str(branch),
+                year_of_passing=year_of_passing,
+                passing_year=year_of_passing,
+                certificate_no=str(certificate_no),
+                degree_certificate_number=str(degree_certificate_number),
+                year_of_enrolment=year_of_enrolment,
+                class_obtained=class_obtained,
+                certificate_url=cert_url
+            )
+        except PydanticValidationError as exc:
+            raise RequestValidationError(exc.errors())
+    else:
+        from pydantic import ValidationError as PydanticValidationError
+        from fastapi.exceptions import RequestValidationError
+        try:
+            body_data = await request.json()
+        except Exception:
+            body_data = {}
+        try:
+            body = InitiateVerificationRequest(**body_data)
+        except PydanticValidationError as exc:
+            raise RequestValidationError(exc.errors())
+
     data = await verification_service.initiate_verification(
         db=db,
         request=body,
@@ -443,6 +551,7 @@ async def download_verification_pdf(
         except Exception:
             pass
             
+    remarks = vr.admin_remarks or "All academic credentials verified and matched against autonomous institutional records."
     # Assemble record_data
     record_data = {
         "verification_request_id": vr.id,
@@ -450,6 +559,10 @@ async def download_verification_pdf(
         "company_name": vr.company_name,
         "hr_email": vr.hr_email,
         "status": vr.status,
+        "remarks": remarks,
+        "admin_remarks": remarks,
+        "verification_remarks": remarks,
+        "comments": remarks,
         "candidate_name": engine_result.get("candidate_name") or vr.hr_submitted_name,
         "register_number": engine_result.get("register_number") or vr.hr_submitted_register_number,
         "course": engine_result.get("course") or vr.hr_submitted_programme,
@@ -602,10 +715,10 @@ alias_router = APIRouter(prefix="/api/verification", tags=["Verification Alias"]
     status_code=200,
 )
 async def initiate_verification_alias(
-    body: InitiateVerificationRequest,
+    request: Request,
     session: dict = Depends(verify_session_token),
     db: AsyncSession = Depends(get_db),
 ) -> APIResponse[InitiateVerificationResponse]:
-    return await initiate_verification(body=body, session=session, db=db)
+    return await initiate_verification(request=request, session=session, db=db)
 
 

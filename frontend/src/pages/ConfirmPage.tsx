@@ -117,6 +117,10 @@ export default function ConfirmPage() {
                     <span className="text-slate-800">{candidate.degree || candidate.degree_course}</span>
                   </div>
                   <div>
+                    <span className="text-xs text-slate-500 block">Admission / Entry Mode</span>
+                    <span className="text-slate-800">{candidate.admission_type || candidate.entry_mode || 'Regular Entry (1st Year Admission)'}</span>
+                  </div>
+                  <div>
                     <span className="text-xs text-slate-500 block">Year of Passing</span>
                     <span className="text-slate-800">{candidate.year_of_passing}</span>
                   </div>

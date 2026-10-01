@@ -57,7 +57,7 @@ export type VerificationHistoryItem = VerificationStatusResponse;
  * Authorization: Bearer <session_token>
  */
 export async function initiateVerification(
-  payload: InitiateVerificationRequest,
+  payload: InitiateVerificationRequest | FormData,
   token?: string
 ): Promise<APIResponse<InitiateVerificationResponse>> {
   const headers: Record<string, string> = {};
@@ -65,12 +65,14 @@ export async function initiateVerification(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
+  const body = payload instanceof FormData ? payload : JSON.stringify(payload);
+
   return await apiClient<APIResponse<InitiateVerificationResponse>>(
     '/api/verification/initiate',
     {
       method: 'POST',
       headers,
-      body: JSON.stringify(payload),
+      body,
     }
   );
 }

@@ -8,7 +8,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
   GraduationCap, 
-  Search, 
   Upload, 
   FileSpreadsheet, 
   CheckCircle, 
@@ -26,7 +25,9 @@ export default function AdminStudentsView() {
   const [totalStudents, setTotalStudents] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedBranch, setSelectedBranch] = useState('');
+  const [selectedYear, setSelectedYear] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Bulk import modal state
@@ -41,11 +42,11 @@ export default function AdminStudentsView() {
   } | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
 
-  const fetchStudentsList = async (searchTerm = search) => {
+  const fetchStudentsList = async (searchQuery = searchTerm) => {
     setLoading(true);
     setError(null);
     try {
-      const res = await getStudents({ search: searchTerm, limit: 100 });
+      const res = await getStudents({ search: searchQuery, limit: 100 });
       if (res.success && res.data) {
         setStudents(res.data.students);
         setTotalStudents(res.data.total);
@@ -61,10 +62,27 @@ export default function AdminStudentsView() {
     fetchStudentsList();
   }, []);
 
-  const handleSearchSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    fetchStudentsList(search);
-  };
+  // Filter students by searchTerm, selectedBranch, and selectedYear
+  const filteredStudents = React.useMemo(() => {
+    return students.filter((st) => {
+      if (searchTerm.trim()) {
+        const q = searchTerm.trim().toLowerCase();
+        const matchesReg = st.register_number.toLowerCase().includes(q);
+        const matchesName = st.full_name.toLowerCase().includes(q);
+        if (!matchesReg && !matchesName) return false;
+      }
+      if (selectedBranch) {
+        const b = selectedBranch.toLowerCase();
+        const matchesBranch = (st.branch_name || '').toLowerCase().includes(b);
+        if (!matchesBranch) return false;
+      }
+      if (selectedYear) {
+        const matchesYear = String(st.year_of_passing) === selectedYear;
+        if (!matchesYear) return false;
+      }
+      return true;
+    });
+  }, [students, searchTerm, selectedBranch, selectedYear]);
 
   const handleCopy = (regNo: string) => {
     navigator.clipboard.writeText(regNo);
@@ -177,37 +195,66 @@ export default function AdminStudentsView() {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="surface-card p-4 border border-slate-200">
-        <form onSubmit={handleSearchSubmit} className="flex flex-col sm:flex-row items-center gap-3">
-          <div className="relative flex-1 w-full">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              type="search"
-              placeholder="Search by Register Number or Student Name..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="form-input pl-9 py-2 text-sm w-full"
-            />
-          </div>
-          <button
-            type="submit"
-            className="btn-primary py-2 px-5 text-xs w-full sm:w-auto"
+      <div className="flex flex-wrap items-center gap-3 w-full bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-6">
+        {/* Search Input */}
+        <div className="relative flex-1 min-w-[260px]">
+          <input
+            type="text"
+            placeholder="Search by Register Number or Student Name..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-4 pr-4 py-2 border border-slate-300 rounded-lg text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+          />
+        </div>
+
+        {/* Inline Branch Filter */}
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-semibold text-slate-600 whitespace-nowrap">Degree / Branch:</label>
+          <select
+            value={selectedBranch}
+            onChange={(e) => setSelectedBranch(e.target.value)}
+            className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
           >
-            Filter Records
+            <option value="">All Branches</option>
+            <option value="Computer Science">B.E. CSE</option>
+            <option value="Electronics and Communication">B.E. ECE</option>
+            <option value="Electrical and Electronics">B.E. EEE</option>
+            <option value="Mechanical">B.E. Mech</option>
+            <option value="Civil">B.E. Civil</option>
+            <option value="Agricultural">B.E. Agri</option>
+          </select>
+        </div>
+
+        {/* Inline Year of Passing Filter */}
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-semibold text-slate-600 whitespace-nowrap">Passing Year:</label>
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(e.target.value)}
+            className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+          >
+            <option value="">All Years</option>
+            <option value="2024">2024</option>
+            <option value="2023">2023</option>
+            <option value="2022">2022</option>
+            <option value="2021">2021</option>
+            <option value="2020">2020</option>
+          </select>
+        </div>
+
+        {(searchTerm || selectedBranch || selectedYear) && (
+          <button
+            type="button"
+            onClick={() => {
+              setSearchTerm('');
+              setSelectedBranch('');
+              setSelectedYear('');
+            }}
+            className="text-xs text-slate-500 hover:text-slate-800 underline px-2 py-1"
+          >
+            Reset Filters
           </button>
-          {search && (
-            <button
-              type="button"
-              onClick={() => {
-                setSearch('');
-                fetchStudentsList('');
-              }}
-              className="text-xs text-slate-500 hover:text-slate-700 underline px-2"
-            >
-              Clear
-            </button>
-          )}
-        </form>
+        )}
       </div>
 
       {/* Student Table */}
@@ -222,11 +269,11 @@ export default function AdminStudentsView() {
             <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-2" />
             {error}
           </div>
-        ) : students.length === 0 ? (
+        ) : filteredStudents.length === 0 ? (
           <div className="py-16 text-center text-slate-500 text-sm">
             <FileSpreadsheet className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-            <p className="font-semibold text-slate-700">No student records found</p>
-            <p className="text-xs text-slate-400 mt-1">Try clearing search or import an Excel/CSV roster.</p>
+            <p className="font-semibold text-slate-700">No matching student records found</p>
+            <p className="text-xs text-slate-400 mt-1">Try adjusting your search query, degree/branch, or passing year filter.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -243,7 +290,7 @@ export default function AdminStudentsView() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {students.map((st) => (
+                {filteredStudents.map((st) => (
                   <tr key={st.id} className="hover:bg-emerald-50/30 transition-colors">
                     <td className="px-4 py-3 font-mono text-xs font-bold text-slate-900 whitespace-nowrap">
                       <div className="inline-flex items-center gap-2">

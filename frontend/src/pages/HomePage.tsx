@@ -43,12 +43,6 @@ export default function HomePage() {
           <div className="absolute inset-0 bg-gradient-to-t from-[#042414] via-transparent to-transparent" />
         </div>
 
-        {/* Diagonal yellow accent overlays */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden z-[1]" aria-hidden="true">
-          <div className="absolute -top-[50%] right-[10%] lg:right-[20%] w-64 lg:w-96 h-[200%] bg-gradient-to-r from-yellow-400/10 via-yellow-400/5 to-transparent rotate-[30deg] transform-gpu mix-blend-overlay blur-md" />
-          <div className="absolute -top-[50%] right-[25%] lg:right-[28%] w-1 sm:w-[3px] h-[200%] bg-yellow-400/40 rotate-[30deg] transform-gpu shadow-[0_0_15px_rgba(250,204,21,0.2)]" />
-          <div className="absolute -bottom-24 -right-16 w-64 sm:w-80 h-40 bg-yellow-400 rotate-[-15deg] transform-gpu shadow-2xl" />
-        </div>
 
         {/* ── Hero content: tight flex row — card sits directly beside headline ── */}
         <div className="relative z-10 w-full max-w-[1520px] mx-auto px-6 sm:px-10 lg:px-12">

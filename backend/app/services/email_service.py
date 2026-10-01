@@ -36,6 +36,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import html
 import logging
 import secrets
 import time
@@ -401,26 +402,57 @@ def _build_report_html(report: dict, company_name: str) -> str:
     """
     Render a clean HTML email body summarising a completed verification.
     Works for both VERIFIED and NOT_VERIFIED outcomes.
+    Uses responsive fixed-layout table geometry optimized for mobile screens.
     """
     status = report.get("status", "UNKNOWN")
-    status_color = "#2e7d32" if status == "VERIFIED" else "#c62828"
+    status_color = "#073822" if status == "VERIFIED" else "#991b1b"
     status_label = "✔ VERIFIED" if status == "VERIFIED" else "✘ NOT VERIFIED"
 
-    def row(label: str, value, verify_val="Y") -> str:
-        display = value if value not in (None, "", "null") else "-"
+    verifier_comment = str(
+        report.get("verification_remarks")
+        or report.get("admin_remarks")
+        or report.get("comments")
+        or report.get("remarks")
+        or (
+            "All academic credentials verified and matched against autonomous institutional records."
+            if status == "VERIFIED"
+            else "Discrepancy noted: Candidate record not found in the autonomous institutional ledger."
+        )
+    ).strip()
+
+    def row(field_title: str, candidate_value, status_badge="YES", comment="—") -> str:
+        display = html.escape(str(candidate_value)) if candidate_value not in (None, "", "null") else "—"
+        badge_color = "#047857" if status_badge in ("YES", "Y", "✔") else "#dc2626"
+        c_text = html.escape(str(comment)) if comment not in (None, "", "null") else "—"
         return (
-            f"<tr>"
-            f"<td style='padding:8px 12px;border-bottom:1px solid #e0e0e0;font-weight:600;color:#37474f;'>{label}</td>"
-            f"<td style='padding:8px 12px;border-bottom:1px solid #e0e0e0;color:#212121;'>{display}</td>"
-            f"<td style='padding:8px 12px;border-bottom:1px solid #e0e0e0;text-align:center;font-weight:bold;color:#2e7d32;'>{verify_val}</td>"
-            f"<td style='padding:8px 12px;border-bottom:1px solid #e0e0e0;text-align:center;'>-</td>"
-            f"</tr>"
+            '<tr style="border-bottom: 1px solid #e2e8f0;">'
+            f'<td style="padding: 8px 4px; font-weight: 600; color: #1e293b;">{html.escape(str(field_title))}</td>'
+            f'<td style="padding: 8px 4px; color: #334155;">{display}</td>'
+            f'<td style="padding: 8px 2px; text-align: center; font-weight: bold; color: {badge_color};">{html.escape(str(status_badge))}</td>'
+            f'<td style="padding: 8px 2px; text-align: center; color: #475569;">{c_text}</td>'
+            '</tr>'
         )
 
     rows_html = ""
     if status == "VERIFIED":
-        backlog_val = report.get("backlog_status", "No Backlogs")
-        verify_backlog = "NO" if "No" in str(backlog_val) else "YES"
+        standing_arrears = report.get("standing_arrears", 0)
+        has_arrears = False
+        if isinstance(standing_arrears, int) and standing_arrears > 0:
+            has_arrears = True
+        else:
+            raw_backlog = str(report.get("backlog_status", "")).strip().lower()
+            if raw_backlog and raw_backlog not in ("no backlogs", "none", "0", "no", "clear", "no standing arrears", "-"):
+                has_arrears = True
+
+        if not has_arrears:
+            backlog_input = "No Standing Arrears"
+            backlog_verif = "Verified Clear"
+            backlog_notes = "All semesters cleared"
+        else:
+            arrears_count = standing_arrears if (isinstance(standing_arrears, int) and standing_arrears > 0) else 1
+            backlog_input = f"{arrears_count} Standing Arrear(s)"
+            backlog_verif = "YES"
+            backlog_notes = "Pending backlogs"
         
         rows_html = "".join([
             row("Candidate Name", report.get("candidate_name")),
@@ -430,75 +462,96 @@ def _build_report_html(report: dict, company_name: str) -> str:
             row("Specialization", report.get("branch")),
             row("Roll No/ Reg. No", report.get("register_number")),
             row("Year of Passing", report.get("year_of_passing")),
-            row("Backlog Status", "Confirmed", verify_backlog),
+            row("Backlog Status", backlog_input, backlog_verif, backlog_notes),
             row("Date Attend / Period of Study", report.get("period_of_study")),
-            row("Mode Of Education", "Regular"),
+            row("Mode Of Education", report.get("entry_mode") or "Regular"),
+            row("Verifier's Remarks", "Official Record Match", "YES", verifier_comment),
         ])
         
-        table_html = (
-            "<table style='width:100%;border-collapse:collapse;margin-top:16px;font-size:13px;'>"
-            "<thead><tr style='background:#f1f5f9;'>"
-            "<th style='padding:10px 12px;text-align:left;border-bottom:2px solid #cbd5e1;'>Details</th>"
-            "<th style='padding:10px 12px;text-align:left;border-bottom:2px solid #cbd5e1;'>Candidate's Input</th>"
-            "<th style='padding:10px 12px;text-align:center;border-bottom:2px solid #cbd5e1;'>Verification (Y/N)</th>"
-            "<th style='padding:10px 12px;text-align:center;border-bottom:2px solid #cbd5e1;'>Comments</th>"
-            "</tr></thead>"
-            "<tbody>" + rows_html + "</tbody></table>"
-        )
+        table_html = f"""
+  <div style="background: #f0fdf4; border-left: 4px solid #059669; padding: 12px 16px; margin: 16px 0; border-radius: 0 6px 6px 0;">
+    <p style="margin: 0 0 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #065f46;">Verifier's Remarks</p>
+    <p style="margin: 0; font-size: 13px; color: #1e293b; line-height: 1.4;">{html.escape(verifier_comment)}</p>
+  </div>
+  <div style="width: 100%; max-width: 600px; margin: 0 auto; padding: 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; box-sizing: border-box;">
+    <table style="width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 12px; margin-top: 15px; word-break: break-word;">
+      <thead>
+        <tr style="border-bottom: 2px solid #073822; background-color: #f8fafc;">
+          <th style="width: 26%; text-align: left; padding: 8px 4px; font-size: 11px; color: #475569; text-transform: uppercase;">Details</th>
+          <th style="width: 38%; text-align: left; padding: 8px 4px; font-size: 11px; color: #475569; text-transform: uppercase;">Candidate's Input</th>
+          <th style="width: 12%; text-align: center; padding: 8px 2px; font-size: 11px; color: #475569; text-transform: uppercase;">Status</th>
+          <th style="width: 24%; text-align: center; padding: 8px 2px; font-size: 11px; color: #475569; text-transform: uppercase;">Comments</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows_html}
+      </tbody>
+    </table>
+  </div>
+"""
     else:
-        table_html = '<p style="color:#c62828;font-weight:600;">The submitted candidate details could not be matched against the official institutional records.</p>'
+        table_html = f"""
+  <div style="background: #fef2f2; border-left: 4px solid #dc2626; padding: 12px 16px; margin: 16px 0; border-radius: 0 6px 6px 0;">
+    <p style="margin: 0 0 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #991b1b;">Verifier's Remarks / Audit Finding</p>
+    <p style="margin: 0; font-size: 13px; color: #1e293b; line-height: 1.4;">{html.escape(verifier_comment)}</p>
+  </div>
+  <p style="color:#c62828;font-weight:600;margin:18px 0;">The submitted candidate details could not be verified against the official autonomous institutional records.</p>
+"""
 
     return f"""
     <!DOCTYPE html>
     <html lang="en">
-    <head><meta charset="UTF-8"><title>Verification Report</title></head>
-    <body style="font-family:Arial,sans-serif;background:#f5f5f5;margin:0;padding:24px;">
-      <div style="max-width:800px;margin:0 auto;background:#fff;
-                  border-radius:8px;overflow:hidden;
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Verification Report</title>
+    </head>
+    <body style="font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;background:#f5f5f5;margin:0;padding:12px;box-sizing:border-box;">
+      <div style="width:100%;max-width:650px;margin:0 auto;background:#fff;
+                  border-radius:8px;overflow:hidden;box-sizing:border-box;
                   box-shadow:0 2px 8px rgba(0,0,0,.12);">
 
         <!-- Header -->
-        <div style="background:#1a237e;padding:24px 32px;">
-          <h1 style="margin:0;color:#fff;font-size:18px;">
+        <div style="background:#073822;padding:20px 24px;color:#fff;">
+          <h1 style="margin:0;color:#fff;font-size:17px;font-weight:700;">
             SRI SHAKTHI INSTITUTE OF ENGINEERING AND TECHNOLOGY
           </h1>
-          <p style="margin:4px 0 0;color:#c5cae9;font-size:13px;">
+          <p style="margin:4px 0 0;color:#a7f3d0;font-size:12px;">
             COIMBATORE - 641 062 (Affiliated to Anna University, Chennai)
           </p>
         </div>
 
         <!-- Status banner -->
-        <div style="background:{status_color};padding:16px 32px;">
-          <p style="margin:0;color:#fff;font-size:16px;font-weight:700;">
+        <div style="background:{status_color};padding:14px 24px;">
+          <p style="margin:0;color:#fff;font-size:15px;font-weight:700;">
             {status_label}
           </p>
         </div>
 
         <!-- Body -->
-        <div style="padding:24px 32px;">
-          <p style="color:#37474f;margin-top:0;">
-            Dear <strong>{company_name}</strong>,<br/>
+        <div style="padding:20px 16px;box-sizing:border-box;">
+          <p style="color:#37474f;margin-top:0;font-size:14px;line-height:1.5;">
+            Dear <strong>{html.escape(str(company_name))}</strong>,<br/>
             Please find attached the official academic background verification report for your candidate.
           </p>
 
           {table_html}
 
-          <div style="margin-top:40px;text-align:right;">
-             <p style="margin:0;font-weight:bold;color:#1e293b;font-size:14px;">DR K E KANNAMMAL</p>
-             <p style="margin:4px 0;color:#475569;font-size:13px;">HOD / Academic Verification Officer</p>
-             <p style="margin:0;color:#475569;font-size:13px;">verification@siet.ac.in</p>
+          <div style="margin-top:30px;text-align:right;">
+             <p style="margin:0;font-weight:bold;color:#1e293b;font-size:13px;">DR K E KANNAMMAL</p>
+             <p style="margin:3px 0;color:#475569;font-size:12px;">HOD / Academic Verification Officer</p>
+             <p style="margin:0;color:#475569;font-size:12px;">verification@siet.ac.in</p>
           </div>
 
-          <p style="color:#78909c;font-size:12px;margin-top:24px;border-top:1px solid #e0e0e0;padding-top:16px;">
+          <p style="color:#78909c;font-size:11px;margin-top:20px;border-top:1px solid #e0e0e0;padding-top:12px;">
             This report was generated automatically. Do not reply to this email.
             For disputes, contact the institution directly.
           </p>
         </div>
 
-
         <!-- Footer -->
-        <div style="background:#f5f5f5;padding:16px 32px;border-top:1px solid #e0e0e0;">
-          <p style="margin:0;color:#9e9e9e;font-size:11px;">
+        <div style="background:#f8fafc;padding:14px 20px;border-top:1px solid #e0e0e0;text-align:center;">
+          <p style="margin:0;color:#94a3b8;font-size:11px;">
             © Sri Shakthi Institute of Engineering and Technology — Confidential
           </p>
         </div>

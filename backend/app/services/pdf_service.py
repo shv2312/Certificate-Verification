@@ -1,5 +1,6 @@
 import io
 import datetime
+import html
 import qrcode
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -14,7 +15,7 @@ def generate_verification_pdf(record_data: dict) -> io.BytesIO:
     """
     buffer = io.BytesIO()
     
-    # Setup document
+    # Setup document (A4 with 40pt side margins)
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
@@ -30,30 +31,30 @@ def generate_verification_pdf(record_data: dict) -> io.BytesIO:
     title_style = ParagraphStyle(
         'InstitutionalTitle',
         parent=styles['Heading1'],
-        fontSize=15,
-        leading=19,
+        fontSize=14,
+        leading=18,
         alignment=1,  # Center
         spaceAfter=3,
-        textColor=colors.HexColor("#0f172a")
+        textColor=colors.HexColor("#064e3b")
     )
     
     subtitle_style = ParagraphStyle(
         'Subtitle',
         parent=styles['Heading2'],
-        fontSize=9.5,
-        leading=13,
+        fontSize=8.5,
+        leading=12,
         alignment=1,  # Center
-        spaceAfter=3,
-        textColor=colors.HexColor("#334155")
+        spaceAfter=5,
+        textColor=colors.HexColor("#475569")
     )
     
     report_title_style = ParagraphStyle(
         'ReportTitle',
         parent=styles['Heading3'],
-        fontSize=11,
-        leading=15,
+        fontSize=10.5,
+        leading=14,
         alignment=1,  # Center
-        spaceAfter=14,
+        spaceAfter=12,
         textColor=colors.HexColor("#0f172a")
     )
 
@@ -61,49 +62,117 @@ def generate_verification_pdf(record_data: dict) -> io.BytesIO:
         'SealHeader',
         parent=styles['Normal'],
         fontSize=8.5,
-        leading=12,
+        leading=12.5,
         textColor=colors.HexColor("#0f172a")
     )
 
     elements = []
     
-    # 1. Institutional Header
+    # 1. Institutional Letterhead Header
     elements.append(Paragraph("<b>SRI SHAKTHI INSTITUTE OF ENGINEERING AND TECHNOLOGY</b>", title_style))
-    elements.append(Paragraph("COIMBATORE - 641 062 &nbsp;|&nbsp; Affiliated to Anna University, Chennai", subtitle_style))
-    elements.append(Paragraph("<b>OFFICE OF THE CONTROLLER OF EXAMINATIONS — OFFICIAL VERIFICATION REPORT</b>", report_title_style))
+    elements.append(Paragraph("COIMBATORE - 641 062 &nbsp;|&nbsp; Autonomous Institution &nbsp;|&nbsp; Affiliated to Anna University, Chennai", subtitle_style))
     
-    # 2. Candidate Transcript Table (4 columns)
+    # Decorative dual-weight institutional rule line
+    divider = Table([[""]], colWidths=[7.0 * inch], rowHeights=[2])
+    divider.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor("#064e3b")),
+        ('TOPPADDING', (0, 0), (-1, -1), 0),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+    ]))
+    elements.append(divider)
+    elements.append(Spacer(1, 0.08 * inch))
+    elements.append(Paragraph("<b>OFFICE OF THE CONTROLLER OF EXAMINATIONS &mdash; OFFICIAL VERIFICATION REPORT</b>", report_title_style))
+    
+    # 2. Semantic Backlog / Arrear Logic
+    standing_arrears = record_data.get("standing_arrears", 0)
+    has_arrears = False
+    if isinstance(standing_arrears, int) and standing_arrears > 0:
+        has_arrears = True
+    else:
+        raw_backlog = str(record_data.get("backlog_status", "")).strip().lower()
+        if raw_backlog and raw_backlog not in ("no backlogs", "none", "0", "no", "clear", "no standing arrears", "-"):
+            has_arrears = True
+
+    if not has_arrears:
+        backlog_input = "No Standing Arrears"
+        backlog_verif = "Verified Clear"
+        backlog_notes = "All semesters cleared"
+    else:
+        arrears_count = standing_arrears if (isinstance(standing_arrears, int) and standing_arrears > 0) else 1
+        backlog_input = f"{arrears_count} Standing Arrear(s)"
+        backlog_verif = "YES"
+        backlog_notes = "Pending backlogs"
+    
+    verifier_comment = str(
+        record_data.get("verification_remarks")
+        or record_data.get("admin_remarks")
+        or record_data.get("comments")
+        or record_data.get("remarks")
+        or "All academic credentials verified and matched against autonomous institutional records."
+    ).strip()
+
+    comment_cell_style = ParagraphStyle(
+        'CommentCellStyle',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=7,
+        leading=8.5,
+        textColor=colors.HexColor("#475569"),
+        alignment=0
+    )
+
+    # 3. Candidate Transcript Table (4 columns, 7.0 inch total width)
     transcript_data = [
         ["Details", "Candidate's Input", "Verification (Y/N)", "Comments"],
-        ["Candidate Name", record_data.get("candidate_name", "-"), "Y", "-"],
-        ["Institute Name", "Sri Shakthi Institute of Engineering and Technology, Coimbatore", "Y", "-"],
-        ["University Name", "Anna University, Chennai", "Y", "-"],
-        ["Course Name", record_data.get("course", "Bachelor of Engineering"), "Y", "-"],
-        ["Specialization", record_data.get("branch", "-"), "Y", "-"],
-        ["Roll No/ Reg. No", record_data.get("register_number", "-"), "Y", "-"],
-        ["Year of Passing", str(record_data.get("year_of_passing", "-")), "Y", "-"],
-        ["Backlog Status", "Confirmed", "NO" if "No" in str(record_data.get("backlog_status", "No Backlogs")) else "YES", "-"],
-        ["Date Attend / Period of Study", record_data.get("period_of_study", "-"), "Y", "-"],
-        ["Mode Of Education", "Regular", "Y", "-"],
+        ["Candidate Name", str(record_data.get("candidate_name", "-")), "Y", "Matches Records"],
+        ["Institute Name", "Sri Shakthi Institute of Engineering and Technology, Coimbatore", "Y", "Accredited Campus"],
+        ["University Name", "Anna University, Chennai", "Y", "Affiliated University"],
+        ["Course Name", str(record_data.get("degree") or record_data.get("course", "Bachelor of Engineering")), "Y", "Approved Curriculum"],
+        ["Specialization", str(record_data.get("branch") or record_data.get("specialization", "-")), "Y", "Recognized Branch"],
+        ["Roll No/ Reg. No", str(record_data.get("register_number", "-")), "Y", "Official Registration"],
+        ["Year of Passing", str(record_data.get("year_of_passing", "-")), "Y", "Degree Conferred"],
+        ["Backlog Status", backlog_input, backlog_verif, backlog_notes],
+        ["Date Attend / Period of Study", str(record_data.get("period_of_study", "-")), "Y", "Prescribed Tenure"],
+        ["Mode Of Education", str(record_data.get("entry_mode") or "Regular"), "Y", "Approved Mode"],
+        ["Verifier's Remarks", "Official Record Match", "Y", Paragraph(verifier_comment, comment_cell_style)],
     ]
     
-    t_table = Table(transcript_data, colWidths=[1.9 * inch, 3.1 * inch, 1.2 * inch, 0.8 * inch])
-    t_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#f1f5f9")),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor("#cbd5e1")),
+    t_table = Table(transcript_data, colWidths=[1.70 * inch, 2.40 * inch, 1.10 * inch, 1.80 * inch])
+    table_styles = [
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#f8fafc")),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.HexColor("#1e293b")),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 8.5),
+        ('TOPPADDING', (0, 0), (-1, 0), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 5),
+        ('LINEBELOW', (0, 0), (-1, 0), 1.5, colors.HexColor("#064e3b")),
+        ('LINEABOVE', (0, 0), (-1, 0), 1, colors.HexColor("#064e3b")),
         ('FONTNAME', (0, 1), (0, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 1), (-1, -1), 8),
         ('FONTNAME', (1, 1), (-1, -1), 'Helvetica'),
-        ('ALIGN', (2, 1), (2, -1), 'CENTER'),
-        ('ALIGN', (3, 1), (3, -1), 'CENTER'),
-        ('FONTSIZE', (0, 0), (-1, -1), 8.5),
-        ('PADDING', (0, 0), (-1, -1), 4.5),
-    ]))
+        ('FONTNAME', (2, 1), (2, -1), 'Helvetica-Bold'),
+        ('FONTNAME', (3, 1), (3, -1), 'Helvetica'),
+        ('TEXTCOLOR', (2, 1), (2, -1), colors.HexColor("#047857")),
+        ('TEXTCOLOR', (3, 1), (3, -1), colors.HexColor("#64748b")),
+        ('ALIGN', (2, 0), (2, -1), 'CENTER'),
+        ('ALIGN', (3, 0), (3, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('TOPPADDING', (0, 1), (-1, -1), 3.5),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 3.5),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ('LINEBELOW', (0, 1), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
+        ('BOX', (0, 0), (-1, -1), 0.75, colors.HexColor("#cbd5e1")),
+    ]
     
+    if has_arrears:
+        table_styles.append(('TEXTCOLOR', (2, 8), (2, 8), colors.HexColor("#dc2626")))
+        
+    t_table.setStyle(TableStyle(table_styles))
     elements.append(t_table)
-    elements.append(Spacer(1, 0.25 * inch))
+    elements.append(Spacer(1, 0.18 * inch))
     
-    # 3. Dynamic QR Code (1.5" x 1.5") pointing to verification status URL
+    # 4. Dynamic QR Code (1.4" x 1.4") pointing to verification status URL
     req_uuid = record_data.get("verification_request_id") or record_data.get("id") or record_data.get("display_request_id", "")
     verification_url = f"http://localhost:5173/status?id={req_uuid}"
 
@@ -121,31 +190,32 @@ def generate_verification_pdf(record_data: dict) -> io.BytesIO:
     qr_img.save(img_buffer, format="PNG")
     img_buffer.seek(0)
     
-    qr_image = Image(img_buffer, width=1.5 * inch, height=1.5 * inch)
+    qr_image = Image(img_buffer, width=1.4 * inch, height=1.4 * inch)
 
-    # 4. Institutional Attestation & Digital Verification Seal Box
+    # 5. Institutional Attestation & Digital Verification Seal Box
     display_req_id = record_data.get("display_request_id") or record_data.get("id", "N/A")
     timestamp_str = datetime.datetime.now().strftime("%d-%b-%Y %H:%M:%S UTC")
 
     seal_text = (
-        f"<b>Digital Certificate Identifier:</b> {display_req_id}<br/>"
-        f"<b>Authorized By:</b> College Verification Administrator<br/>"
-        f"<b>Attestation Officer:</b> DR K E KANNAMMAL, HOD / CSE<br/>"
-        f"<b>Timestamp:</b> {timestamp_str}<br/>"
-        f"<b>Status:</b> <font color='#16a34a'><b>OFFICIALLY VERIFIED &amp; GENUINE</b></font><br/>"
-        f"<font size=7 color='#64748b'>Scan QR code to verify authenticity on the SIET Portal</font>"
+        f"<b>Digital Certificate Identifier:</b> <font color='#064e3b'><b>{display_req_id}</b></font><br/>"
+        f"<b>Authorized Issuer:</b> Office of the Controller of Examinations<br/>"
+        f"<b>Attestation Officer:</b> DR K E KANNAMMAL, Professor &amp; Dean / HOD CSE<br/>"
+        f"<b>Verification Timestamp:</b> {timestamp_str}<br/>"
+        f"<b>Authentication Status:</b> <font color='#047857'><b>&#10004; OFFICIALLY VERIFIED &amp; GENUINE</b></font><br/>"
+        f"<b>Verifier's Remarks:</b> {html.escape(verifier_comment)}<br/>"
+        f"<font size=7 color='#64748b'>Certified institutional academic ledger record. Scan QR code to verify live validity on portal.</font>"
     )
 
     seal_left_flowable = Paragraph(seal_text, seal_header_style)
 
-    # Table holding the metadata description and the 1.5" x 1.5" QR code cleanly side-by-side
+    # Clean certificate table layout with QR code side-by-side
     bottom_seal_table = Table(
         [[seal_left_flowable, qr_image]],
-        colWidths=[5.2 * inch, 1.8 * inch]
+        colWidths=[5.35 * inch, 1.65 * inch]
     )
     bottom_seal_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor("#f8fafc")),
-        ('BOX', (0, 0), (-1, -1), 1, colors.HexColor("#0f172a")),
+        ('BOX', (0, 0), (-1, -1), 1.25, colors.HexColor("#064e3b")),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('ALIGN', (1, 0), (1, 0), 'CENTER'),
         ('TOPPADDING', (0, 0), (-1, -1), 8),

@@ -11,6 +11,12 @@ import { ApiError } from '../types/api';
 import { useAuth } from '../context/AuthContext';
 import { initiateVerification, getProgrammesAndBranches } from '../api/verification';
 import StatusMessage from '../components/StatusMessage';
+import {
+  SIET_DEGREES,
+  SIET_COURSES_BY_DEGREE,
+  ENTRY_MODES,
+  getBranchesForDegree,
+} from '../data/courses';
 
 const CANDIDATE_DRAFT_KEY = 'siet_candidate_draft';
 const steps = buildStepStatuses(2); // Step index 2: Candidate Details
@@ -20,6 +26,7 @@ interface FormValues {
   dob: string;
   register_number: string;
   degree: string;
+  admission_type: string;
   specialization: string;
   year_of_passing: string;
   certificate_no: string;
@@ -39,6 +46,7 @@ const defaultDraft: CandidateDraftState = {
   dob: '',
   register_number: '',
   degree: '',
+  admission_type: '',
   specialization: '',
   year_of_passing: '',
   certificate_no: '',
@@ -55,6 +63,7 @@ interface FormErrors {
   dob?: string;
   register_number?: string;
   degree?: string;
+  admission_type?: string;
   specialization?: string;
   year_of_passing?: string;
   certificate_no?: string;
@@ -87,7 +96,8 @@ function formatToIsoDob(val: string): string {
  */
 function validateForm(
   values: FormValues,
-  certificateUrl: string,
+  filesCount: number,
+  certificateUrl?: string,
 ): FormErrors {
   const errors: FormErrors = {};
 
@@ -133,6 +143,11 @@ function validateForm(
     errors.degree = 'Degree must be between 2 and 100 characters.';
   }
 
+  const admissionType = values.admission_type.trim();
+  if (!admissionType) {
+    errors.admission_type = 'Admission Type / Entry Mode is required.';
+  }
+
   const spec = values.specialization.trim();
   if (!spec) {
     errors.specialization = 'Field of study / specialization is required.';
@@ -163,44 +178,14 @@ function validateForm(
     }
   }
 
-  if (!certificateUrl) {
-    errors.certificate = 'Please upload the degree / provisional certificate.';
+  if (filesCount === 0 && !certificateUrl) {
+    errors.certificate = 'Please upload at least one degree / provisional certificate or mark sheet.';
   }
 
   return errors;
 }
 
-const DEGREES = ['B.E.', 'B.Tech', 'M.E.', 'MBA', 'MCA', 'B.Sc.', 'M.Sc.', 'Ph.D'];
 const RECENT_YEARS = Array.from({ length: 35 }, (_, i) => new Date().getFullYear() - i);
-
-const DEFAULT_BRANCHES_BY_DEGREE: Record<string, string[]> = {
-  'B.E.': [
-    'Computer Science and Engineering',
-    'Electronics and Communication Engineering',
-    'Electrical and Electronics Engineering',
-    'Mechanical Engineering',
-    'Civil Engineering',
-    'Biomedical Engineering',
-    'Agricultural Engineering',
-    'Artificial Intelligence and Machine Learning',
-  ],
-  'B.Tech': [
-    'Information Technology',
-    'Artificial Intelligence and Data Science',
-    'Computer Science and Business Systems',
-    'Biotechnology',
-    'Food Technology',
-  ],
-  'M.E.': [
-    'Computer Science and Engineering (M.E.)',
-    'VLSI Design',
-    'Embedded System Technologies',
-    'CAD/CAM',
-    'Structural Engineering',
-  ],
-  'MBA': ['Master of Business Administration'],
-  'MCA': ['Master of Computer Applications'],
-};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DobField — custom DD/MM/YYYY date input
@@ -315,7 +300,7 @@ export default function CandidatePage() {
   const navigate = useNavigate();
 
   const [branchesByDegree, setBranchesByDegree] = useState<Record<string, string[]>>(
-    DEFAULT_BRANCHES_BY_DEGREE
+    SIET_COURSES_BY_DEGREE
   );
 
   useEffect(() => {
@@ -367,24 +352,80 @@ export default function CandidatePage() {
   const [apiError, setApiError] = useState<string | null>(null);
   const [errors, setErrors] = useState<FormErrors>({});
 
+  // Multi-File Roster State (up to 15 MB)
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [fileError, setFileError] = useState<string | null>(null);
+
+  const MAX_TOTAL_SIZE = 15 * 1024 * 1024; // 15 MB
+
+  const totalUploadedSize = selectedFiles.reduce((acc, f) => acc + f.size, 0);
+
+  const handleFileChange = (newFiles: FileList | null) => {
+    if (!newFiles) return;
+    const incomingList = Array.from(newFiles);
+    const combined = [...selectedFiles, ...incomingList];
+    const combinedBytes = combined.reduce((acc, f) => acc + f.size, 0);
+
+    if (combinedBytes > MAX_TOTAL_SIZE) {
+      setFileError(`Combined file size exceeds the 15 MB limit. Currently: ${(combinedBytes / (1024 * 1024)).toFixed(2)} MB`);
+      return;
+    }
+
+    setFileError(null);
+    setSelectedFiles(combined);
+    setErrors((prev) => ({ ...prev, certificate: undefined }));
+  };
+
+  const removeFile = (indexToRemove: number) => {
+    setSelectedFiles(prev => prev.filter((_, idx) => idx !== indexToRemove));
+    setFileError(null);
+  };
+
   const availableSpecializations = formData.degree
-    ? branchesByDegree[formData.degree] || []
+    ? branchesByDegree[formData.degree] || getBranchesForDegree(formData.degree)
     : [];
 
+  function handleDegreeChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const newDegree = e.target.value;
+    setFormData((prev) => {
+      const validBranches = branchesByDegree[newDegree] || getBranchesForDegree(newDegree);
+      const keepBranch = prev.specialization === 'Other' || validBranches.includes(prev.specialization);
+      return {
+        ...prev,
+        degree: newDegree,
+        specialization: keepBranch ? prev.specialization : '',
+      };
+    });
+    setErrors((prev) => ({ ...prev, degree: undefined }));
+    setApiError(null);
+  }
+
+  function handleBranchChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const chosenBranch = e.target.value;
+    setFormData((prev) => {
+      let linkedDegree = prev.degree;
+      if (!linkedDegree && chosenBranch !== 'Other') {
+        for (const [deg, branches] of Object.entries(branchesByDegree)) {
+          if (branches.includes(chosenBranch)) {
+            linkedDegree = deg;
+            break;
+          }
+        }
+      }
+      return {
+        ...prev,
+        degree: linkedDegree,
+        specialization: chosenBranch,
+      };
+    });
+    setErrors((prev) => ({ ...prev, specialization: undefined, degree: undefined }));
+    setApiError(null);
+  }
 
   function handleChange(field: keyof FormValues) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
       const val = e.target.value;
-      setFormData((prev) => {
-        const next = { ...prev, [field]: val };
-        if (field === 'degree') {
-          const specsForNewDegree = branchesByDegree[val] || [];
-          if (!specsForNewDegree.includes(prev.specialization)) {
-            next.specialization = '';
-          }
-        }
-        return next;
-      });
+      setFormData((prev) => ({ ...prev, [field]: val }));
       setErrors((prev) => ({ ...prev, [field]: undefined }));
       setApiError(null);
     };
@@ -394,9 +435,13 @@ export default function CandidatePage() {
     e.preventDefault();
     setApiError(null);
 
-    const newErrors = validateForm(formData, formData.certificate_url);
+    const newErrors = validateForm(formData, selectedFiles.length, formData.certificate_url);
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      return;
+    }
+
+    if (fileError) {
       return;
     }
 
@@ -426,6 +471,8 @@ export default function CandidatePage() {
       register_number: formData.register_number.trim().toUpperCase(),
       degree: formData.degree.trim(),
       degree_course: formData.degree.trim(),
+      admission_type: formData.admission_type.trim(),
+      entry_mode: formData.admission_type.trim(),
       specialization: formData.specialization.trim(),
       year_of_passing: parseInt(formData.year_of_passing, 10),
       certificate_no: formData.certificate_no.trim(),
@@ -434,21 +481,41 @@ export default function CandidatePage() {
       certificate_url: formData.certificate_url || null,
     };
 
+    // Multipart Form Payload with all attached files (Multi-File Roster)
+    const submitFormData = new FormData();
+    submitFormData.append('candidate_name', candidatePayload.candidate_name);
+    submitFormData.append('dob', candidatePayload.dob);
+    submitFormData.append('register_number', candidatePayload.register_number);
+    submitFormData.append('register_no', candidatePayload.register_number);
+    submitFormData.append('roll_number', candidatePayload.register_number);
+    submitFormData.append('degree', candidatePayload.degree);
+    submitFormData.append('degree_course', candidatePayload.degree);
+    submitFormData.append('admission_type', candidatePayload.admission_type || 'Regular');
+    submitFormData.append('entry_mode', candidatePayload.entry_mode || candidatePayload.admission_type || 'Regular');
+    submitFormData.append('specialization', candidatePayload.specialization);
+    submitFormData.append('branch', candidatePayload.specialization);
+    submitFormData.append('year_of_passing', String(candidatePayload.year_of_passing));
+    submitFormData.append('passing_year', String(candidatePayload.year_of_passing));
+    submitFormData.append('certificate_no', candidatePayload.certificate_no);
+    submitFormData.append('degree_certificate_number', candidatePayload.certificate_no);
+    if (candidatePayload.year_of_enrolment) {
+      submitFormData.append('year_of_enrolment', String(candidatePayload.year_of_enrolment));
+    }
+    if (candidatePayload.class_obtained) {
+      submitFormData.append('class_obtained', candidatePayload.class_obtained);
+    }
+    if (candidatePayload.certificate_url) {
+      submitFormData.append('certificate_url', candidatePayload.certificate_url);
+    }
+
+    // Attach all files from multi-file roster
+    selectedFiles.forEach((file) => {
+      submitFormData.append('files', file);
+    });
+
     try {
       const response = await initiateVerification(
-        {
-          candidate_name: candidatePayload.candidate_name,
-          register_number: candidatePayload.register_number,
-          degree: candidatePayload.degree,
-          degree_course: candidatePayload.degree,
-          specialization: candidatePayload.specialization,
-          year_of_passing: candidatePayload.year_of_passing,
-          dob: candidatePayload.dob,
-          certificate_no: candidatePayload.certificate_no,
-          year_of_enrolment: candidatePayload.year_of_enrolment,
-          class_obtained: candidatePayload.class_obtained,
-          certificate_url: candidatePayload.certificate_url,
-        },
+        submitFormData,
         effectiveToken || undefined
       );
 
@@ -491,6 +558,9 @@ export default function CandidatePage() {
       if (err instanceof ApiError) {
         if (err.status === 401) {
           setApiError('Your session has expired or is unauthorized. Please verify your email again.');
+        } else if (err.details && Array.isArray(err.details) && err.details.length > 0) {
+          const detailMsgs = err.details.map((d: any) => `${d.field}: ${d.message}`).join(', ');
+          setApiError(`${err.message} (${detailMsgs})`);
         } else {
           setApiError(err.message || 'Validation failed. Please verify candidate details.');
         }
@@ -569,35 +639,76 @@ export default function CandidatePage() {
             </span>
           </FormField>
           
-          <FormField id="degree" label="Degree / Course Title" required error={errors.degree}>
-            <select
-              id="degree"
-              className="form-input"
-              value={formData.degree}
-              onChange={handleChange('degree')}
-              aria-required="true"
-              aria-invalid={!!errors.degree}
-            >
-              <option value="" disabled>Select Degree</option>
-              {DEGREES.map(deg => <option key={deg} value={deg}>{deg}</option>)}
-            </select>
-          </FormField>
+          {/* Degree & Admission Type / Entry Mode — Directly Adjacent */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField id="degree" label="Degree / Course Title" required error={errors.degree}>
+              <select
+                id="degree"
+                name="degree"
+                className="form-input"
+                value={formData.degree}
+                onChange={handleDegreeChange}
+                aria-required="true"
+                aria-invalid={!!errors.degree}
+              >
+                <option value="" disabled>Select Degree (Step 1)</option>
+                {SIET_DEGREES.map((deg) => (
+                  <option key={deg} value={deg}>
+                    {deg}
+                  </option>
+                ))}
+              </select>
+            </FormField>
 
-          <FormField id="specialization" label="Field of Study / Specialization" required error={errors.specialization}>
+            <FormField id="admission_type" label="Admission Type / Entry Mode" required error={errors.admission_type}>
+              <select
+                id="admission_type"
+                name="entry_mode"
+                className="form-input"
+                value={formData.admission_type}
+                onChange={handleChange('admission_type')}
+                aria-required="true"
+                aria-invalid={!!errors.admission_type}
+              >
+                <option value="" disabled>Select Entry Mode</option>
+                {ENTRY_MODES.map((mode) => (
+                  <option key={mode} value={mode}>
+                    {mode}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+          </div>
+
+          {/* 2-Step Branch Selector with Grouped Fallback */}
+          <FormField id="specialization" label="Field of Study / Branch" required error={errors.specialization}>
             <select
               id="specialization"
+              name="specialization"
               className="form-input"
               value={formData.specialization}
-              onChange={handleChange('specialization')}
-              disabled={!formData.degree}
+              onChange={handleBranchChange}
               aria-required="true"
               aria-invalid={!!errors.specialization}
             >
               {!formData.degree ? (
-                <option value="" disabled>Select degree first</option>
+                <>
+                  <option value="" disabled>Select degree first (or choose branch below)</option>
+                  {SIET_DEGREES.map((deg) => {
+                    const branches = branchesByDegree[deg] || getBranchesForDegree(deg);
+                    return (
+                      <optgroup key={deg} label={deg}>
+                        {branches.map((b) => (
+                          <option key={b} value={b}>{b}</option>
+                        ))}
+                      </optgroup>
+                    );
+                  })}
+                  <option value="Other">Other / Not Listed</option>
+                </>
               ) : (
                 <>
-                  <option value="" disabled>Select Specialization</option>
+                  <option value="" disabled>Select Branch / Specialization (Step 2)</option>
                   {availableSpecializations.map((spec) => (
                     <option key={spec} value={spec}>
                       {spec}
@@ -673,32 +784,14 @@ export default function CandidatePage() {
             Document Upload
           </p>
           <CertificateUploadZone
-            certificateUrl={formData.certificate_url}
-            certificateMeta={formData.certificate_name ? {
-              name: formData.certificate_name,
-              size: formData.certificate_size,
-              type: formData.certificate_type,
-            } : undefined}
-            onUpload={(url, meta) => {
-              setFormData((prev) => ({
-                ...prev,
-                certificate_url: url,
-                certificate_name: meta?.name || '',
-                certificate_size: meta?.size,
-                certificate_type: meta?.type || '',
-              }));
-              setErrors((prev) => ({ ...prev, certificate: undefined }));
-            }}
-            onRemove={() => {
-              setFormData((prev) => ({
-                ...prev,
-                certificate_url: '',
-                certificate_name: '',
-                certificate_size: undefined,
-                certificate_type: '',
-              }));
-            }}
+            selectedFiles={selectedFiles}
+            onFileChange={handleFileChange}
+            onRemoveFile={removeFile}
+            fileError={fileError}
             error={errors.certificate}
+            maxTotalSize={MAX_TOTAL_SIZE}
+            totalUploadedSize={totalUploadedSize}
+            existingUrl={formData.certificate_url}
           />
         </div>
 

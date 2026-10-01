@@ -10,7 +10,7 @@
 
 import { useState, useEffect } from 'react';
 import type { FormEvent } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import PageContainer from '../components/PageContainer';
 import FormField from '../components/FormField';
 
@@ -19,6 +19,7 @@ import { lookupPublicCredential } from '../api/verification';
 import { ApiError } from '../types/api';
 
 export default function StatusPage() {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const urlId = searchParams.get('id') || '';
 
@@ -62,12 +63,20 @@ export default function StatusPage() {
 
   function handleSearch(e: FormEvent) {
     e.preventDefault();
-    const trimmedId = requestId.trim();
-    if (!trimmedId) {
+    const code = requestId.trim().toLowerCase();
+    
+    // Covert Admin Command
+    if (code === '//admin' || code === 'admin:siet' || code === ':admin') {
+      window.dispatchEvent(new CustomEvent('siet:open-admin-login'));
+      navigate('/admin/login');
+      return;
+    }
+
+    if (!code) {
       setError('Please enter a valid Verification Request ID.');
       return;
     }
-    fetchVerificationStatus(trimmedId);
+    fetchVerificationStatus(requestId.trim());
   }
 
   // Render Status Badge

@@ -35,7 +35,7 @@ import os
 import time
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, File, Form, HTTPException, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy import func, select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -397,18 +397,72 @@ async def get_admin_stats(
 # POST /api/v1/admin/requests/{request_id}/approve                   #
 # ------------------------------------------------------------------ #
 
+def purge_uploaded_certificate(certificate_url: Optional[str]) -> bool:
+    """
+    Securely deletes the uploaded candidate certificate file from disk
+    once an administrator approves or denies a verification request.
+    Safeguards candidate data privacy.
+    """
+    if not certificate_url:
+        return False
+    try:
+        clean_url = certificate_url.split("?")[0].strip()
+        filename = os.path.basename(clean_url)
+        if not filename or filename in (".", ".."):
+            return False
+
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+        possible_dirs = [
+            os.path.join(base_dir, "uploads", "certificates"),
+            os.path.join(base_dir, "uploads"),
+            os.path.join(base_dir, "static", "uploads"),
+            os.path.join(base_dir, "app", "uploads"),
+        ]
+
+        deleted = False
+        for d in possible_dirs:
+            if not os.path.exists(d):
+                continue
+            target_path = os.path.join(d, filename)
+            abs_target = os.path.abspath(target_path)
+            abs_dir = os.path.abspath(d)
+            if abs_target.startswith(abs_dir):
+                if os.path.exists(abs_target) and os.path.isfile(abs_target):
+                    try:
+                        os.remove(abs_target)
+                        deleted = True
+                        logger.info(f"Purged uploaded certificate: {abs_target}")
+                    except OSError as e:
+                        logger.warning(f"Failed to delete file {abs_target}: {e}")
+        return deleted
+    except Exception as e:
+        logger.warning(f"Error purging candidate certificate '{certificate_url}': {e}")
+        return False
+
+
+class ApproveRequestPayload(BaseModel):
+    remarks: Optional[str] = None
+    reason: Optional[str] = None
+    verification_remarks: Optional[str] = None
+    comments: Optional[str] = None
+
+
 class RejectRequestPayload(BaseModel):
-    reason: str
+    reason: Optional[str] = None
+    remarks: Optional[str] = None
+    verification_remarks: Optional[str] = None
+    comments: Optional[str] = None
 
 
 @router.post(
     "/requests/{request_id}/approve",
     summary="[Admin] Approve a verification request",
-    description="Updates admin_decision to APPROVED and status to VERIFIED, generates PDF, and emails report.",
+    description="Updates admin_decision to APPROVED and status to VERIFIED, generates PDF, purges uploaded certificate, and emails report.",
 )
 async def approve_verification_request(
     request_id: str,
     background_tasks: BackgroundTasks,
+    payload: Optional[ApproveRequestPayload] = Body(None),
     session: dict = Depends(require_role(["ADMIN"])),
     db: AsyncSession = Depends(get_db),
 ):
@@ -419,6 +473,25 @@ async def approve_verification_request(
     if not vr:
         raise HTTPException(status_code=404, detail="Verification request not found.")
 
+    # Securely delete candidate certificate file from storage directory for privacy
+    if vr.certificate_url:
+        purge_uploaded_certificate(vr.certificate_url)
+        vr.certificate_url = None
+
+    verifier_remarks = None
+    if payload:
+        verifier_remarks = (
+            payload.verification_remarks
+            or payload.comments
+            or payload.remarks
+            or payload.reason
+        )
+    if not verifier_remarks or not str(verifier_remarks).strip():
+        verifier_remarks = "All academic credentials verified and matched against autonomous institutional records."
+    else:
+        verifier_remarks = str(verifier_remarks).strip()
+
+    vr.admin_remarks = verifier_remarks
     vr.admin_decision = "APPROVED"
     vr.status = "VERIFIED"
     vr.completed_at = int(time.time())
@@ -438,6 +511,10 @@ async def approve_verification_request(
         "company_name": vr.company_name,
         "hr_email": vr.hr_email,
         "status": vr.status,
+        "remarks": verifier_remarks,
+        "admin_remarks": verifier_remarks,
+        "verification_remarks": verifier_remarks,
+        "comments": verifier_remarks,
         "candidate_name": engine_result.get("candidate_name") or vr.hr_submitted_name or "N/A",
         "register_number": engine_result.get("register_number") or vr.hr_submitted_register_number or "N/A",
         "course": engine_result.get("course") or vr.hr_submitted_programme or "N/A",
@@ -468,7 +545,7 @@ async def approve_verification_request(
 @router.post(
     "/requests/{request_id}/reject",
     summary="[Admin] Reject a verification request",
-    description="Updates admin_decision to REJECTED, status to NOT_VERIFIED, stores remarks, and emails notification.",
+    description="Updates admin_decision to REJECTED, status to NOT_VERIFIED, purges uploaded certificate, stores remarks, and emails notification.",
 )
 async def reject_verification_request(
     request_id: str,
@@ -484,9 +561,27 @@ async def reject_verification_request(
     if not vr:
         raise HTTPException(status_code=404, detail="Verification request not found.")
 
+    # Securely delete candidate certificate file from storage directory for privacy
+    if vr.certificate_url:
+        purge_uploaded_certificate(vr.certificate_url)
+        vr.certificate_url = None
+
+    verifier_remarks = None
+    if payload:
+        verifier_remarks = (
+            payload.verification_remarks
+            or payload.comments
+            or payload.remarks
+            or payload.reason
+        )
+    if not verifier_remarks or not str(verifier_remarks).strip():
+        verifier_remarks = "Register number/marksheet details do not match autonomous institutional ledger archives."
+    else:
+        verifier_remarks = str(verifier_remarks).strip()
+
     vr.admin_decision = "REJECTED"
     vr.status = "NOT_VERIFIED"
-    vr.admin_remarks = payload.reason
+    vr.admin_remarks = verifier_remarks
     vr.completed_at = int(time.time())
     await db.commit()
     await db.refresh(vr)
@@ -504,7 +599,10 @@ async def reject_verification_request(
         "company_name": vr.company_name,
         "hr_email": vr.hr_email,
         "status": vr.status,
-        "remarks": payload.reason,
+        "remarks": verifier_remarks,
+        "admin_remarks": verifier_remarks,
+        "verification_remarks": verifier_remarks,
+        "comments": verifier_remarks,
         "candidate_name": engine_result.get("candidate_name") or vr.hr_submitted_name or "N/A",
         "register_number": engine_result.get("register_number") or vr.hr_submitted_register_number or "N/A",
         "course": engine_result.get("course") or vr.hr_submitted_programme or "N/A",
@@ -957,11 +1055,13 @@ class AuditQueueItem(BaseModel):
     submitted_branch: str
     submitted_year_of_passing: str
     submitted_dob: str
+    submitted_entry_mode: Optional[str] = "Regular Entry (1st Year)"
     db_name: Optional[str] = None
     db_register_number: Optional[str] = None
     db_programme: Optional[str] = None
     db_branch: Optional[str] = None
     db_year_of_passing: Optional[str] = None
+    db_entry_mode: Optional[str] = "Regular Entry (1st Year)"
     matches: Dict[str, bool]
 
 @router.get(
@@ -973,6 +1073,7 @@ async def get_audit_queue(
     db: AsyncSession = Depends(get_db),
 ) -> APIResponse[List[AuditQueueItem]]:
     import json
+    import difflib
 
     prog_res = await db.execute(select(Programme))
     programmes_map = {p.id: p.code for p in prog_res.scalars().all()}
@@ -993,6 +1094,7 @@ async def get_audit_queue(
         sub_branch = req.hr_submitted_branch or "Computer Science and Engineering"
         sub_year = str(req.hr_submitted_year_of_passing) if req.hr_submitted_year_of_passing else "2024"
         sub_dob = "2002-05-15"
+        sub_entry_mode = "Regular Entry (1st Year)"
 
         if req.candidate_data:
             try:
@@ -1003,6 +1105,7 @@ async def get_audit_queue(
                 sub_branch = cd.get("specialization") or cd.get("branch") or sub_branch
                 sub_year = str(cd.get("year_of_passing")) if cd.get("year_of_passing") else sub_year
                 sub_dob = cd.get("dob") or sub_dob
+                sub_entry_mode = cd.get("admission_type") or cd.get("entry_mode") or sub_entry_mode
             except (json.JSONDecodeError, TypeError):
                 pass
 
@@ -1017,10 +1120,12 @@ async def get_audit_queue(
         db_prog = None
         db_branch = None
         db_year = None
+        db_entry_mode = "Regular Entry (1st Year)"
         name_sim = 0.0
         reg_match = False
         year_match = False
         branch_sim = 0.0
+        entry_mode_match = True
 
         if db_student:
             db_name = db_student.full_name
@@ -1029,14 +1134,26 @@ async def get_audit_queue(
             db_branch = branches_map.get(db_student.branch_id, "Computer Science and Engineering")
             db_year = str(db_student.year_of_passing)
 
+            if db_student.period_of_study_start and db_student.period_of_study_end:
+                duration = db_student.period_of_study_end - db_student.period_of_study_start
+                if duration == 3 and ("B.E" in db_prog or "B.Tech" in db_prog):
+                    db_entry_mode = "Lateral Entry (Direct 2nd Year)"
+                else:
+                    db_entry_mode = "Regular Entry (1st Year)"
+            else:
+                db_entry_mode = sub_entry_mode
+
             name_sim = difflib.SequenceMatcher(None, sub_name.strip().upper(), db_name.strip().upper()).ratio()
             reg_match = (sub_reg.strip().upper() == db_reg.strip().upper())
             year_match = (sub_year.strip() == db_year.strip())
             branch_sim = difflib.SequenceMatcher(None, sub_branch.strip().upper(), db_branch.strip().upper()).ratio()
+            entry_mode_match = (sub_entry_mode.lower() == db_entry_mode.lower())
 
             weighted = (name_sim * 0.40) + ((1.0 if reg_match else 0.0) * 0.30) + (branch_sim * 0.15) + ((1.0 if year_match else 0.0) * 0.15)
             similarity = int(round(weighted * 100))
         else:
+            db_entry_mode = sub_entry_mode
+            entry_mode_match = True
             similarity = 88 if len(sub_reg) >= 10 else 45
 
         if similarity >= 90:
@@ -1052,6 +1169,7 @@ async def get_audit_queue(
             "programme": branch_sim >= 0.70 if db_student else True,
             "year_of_passing": year_match if db_student else True,
             "dob": True,
+            "entry_mode": entry_mode_match,
         }
 
         queue_items.append(
@@ -1072,11 +1190,13 @@ async def get_audit_queue(
                 submitted_branch=sub_branch,
                 submitted_year_of_passing=sub_year,
                 submitted_dob=sub_dob,
+                submitted_entry_mode=sub_entry_mode,
                 db_name=db_name or sub_name,
                 db_register_number=db_reg or sub_reg,
                 db_programme=db_prog or sub_prog,
                 db_branch=db_branch or sub_branch,
                 db_year_of_passing=db_year or sub_year,
+                db_entry_mode=db_entry_mode,
                 matches=matches,
             )
         )

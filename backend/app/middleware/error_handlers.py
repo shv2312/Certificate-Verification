@@ -82,12 +82,7 @@ def register_error_handlers(app: FastAPI) -> None:
                 "message": error["msg"],
             })
 
-        logger.info(
-            "Validation error on %s %s: %s",
-            request.method,
-            request.url.path,
-            field_errors,
-        )
+        logger.error(f"Validation error on {request.url.path}: {exc.errors()}")
 
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -96,6 +91,8 @@ def register_error_handlers(app: FastAPI) -> None:
                 "message": "The submitted data contains validation errors. Please check the fields.",
                 "error_code": "VALIDATION_ERROR",
                 "details": field_errors,
+                "detail": exc.errors(),
+                "body": str(getattr(exc, "body", "")),
             },
         )
 

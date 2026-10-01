@@ -117,6 +117,8 @@ class SendOTPRequest(BaseModel):
                     data["requester_role"] = data["role"]
                 elif "hr_role" in data and data["hr_role"]:
                     data["requester_role"] = data["hr_role"]
+                else:
+                    data["requester_role"] = "HR Manager"
 
             # Phone mapping
             if "requester_phone" not in data or not data.get("requester_phone"):

@@ -20,6 +20,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Sector, Tooltip } from 'recha
 import AdminStudentsView from '../../components/admin/AdminStudentsView';
 import AdminAuditQueueView from '../../components/admin/AdminAuditQueueView';
 import AdminSystemOverviewView from '../../components/admin/AdminSystemOverviewView';
+import AdminPaymentsView from '../../components/admin/AdminPaymentsView';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -177,10 +178,6 @@ export default function AdminDashboard() {
   const [search,       setSearch]       = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
 
-  // Payments filtering + search
-  const [paymentSearch, setPaymentSearch] = useState('');
-  const [paymentStatusFilter, setPaymentStatusFilter] = useState('ALL');
-
   // Fetch stats on mount
   useEffect(() => {
     apiClient<StatsResponse>('/api/v1/admin/stats')
@@ -270,26 +267,7 @@ export default function AdminDashboard() {
     });
   }, [requests]);
 
-  const filteredPayments = useMemo(() => {
-    let rows = paymentRows;
-    if (paymentStatusFilter !== 'ALL') {
-      rows = rows.filter((r) => r.status === paymentStatusFilter);
-    }
-    if (paymentSearch.trim()) {
-      const q = paymentSearch.trim().toLowerCase();
-      rows = rows.filter(
-        (r) =>
-          r.transaction_id.toLowerCase().includes(q) ||
-          r.company_name.toLowerCase().includes(q) ||
-          (r.candidate_name ?? '').toLowerCase().includes(q)
-      );
-    }
-    return rows;
-  }, [paymentRows, paymentSearch, paymentStatusFilter]);
 
-  const totalRevenue = paymentRows.filter(p => p.status === 'SUCCESS').reduce((sum, p) => sum + p.amount, 0);
-  const totalPaidTransactions = paymentRows.filter(p => p.status === 'SUCCESS').length;
-  const avgFee = totalPaidTransactions > 0 ? (paymentRows.reduce((sum, p) => sum + (p.amount * 0.02), 0) / paymentRows.length) : 0; // assuming 2% avg fee
 
 
 
@@ -411,151 +389,7 @@ export default function AdminDashboard() {
   );
 
   const renderPaymentsView = () => (
-    <section className="animate-slide-up space-y-6">
-      {/* Summary Ribbon */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="surface-card p-5 border-l-4 border-green-500">
-          <p className="text-xs font-medium text-siet-muted uppercase tracking-wider mb-1">Total Revenue</p>
-          <p className="text-2xl font-bold text-siet-navy">₹ {totalRevenue.toLocaleString()}</p>
-        </div>
-        <div className="surface-card p-5 border-l-4 border-brand-green">
-          <p className="text-xs font-medium text-siet-muted uppercase tracking-wider mb-1">Paid Transactions</p>
-          <p className="text-2xl font-bold text-siet-navy">{totalPaidTransactions}</p>
-        </div>
-        <div className="surface-card p-5 border-l-4 border-amber-500">
-          <p className="text-xs font-medium text-siet-muted uppercase tracking-wider mb-1">Avg Transaction Fee</p>
-          <p className="text-2xl font-bold text-siet-navy">₹ {avgFee.toFixed(2)}</p>
-        </div>
-        <div className="surface-card p-5 border-l-4 border-purple-500">
-          <p className="text-xs font-medium text-siet-muted uppercase tracking-wider mb-1">Gateway Status</p>
-          <p className="text-sm font-bold text-purple-700 mt-1 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></span>
-            Razorpay - Sandbox / Test Mode
-          </p>
-        </div>
-      </div>
-
-      {/* Filter & Search Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <h2 className="text-lg font-semibold text-siet-navy">
-          Payment Transactions
-          {!loadingReqs && (
-            <span className="ml-2 text-sm font-normal text-siet-muted">
-              ({filteredPayments.length} of {paymentRows.length})
-            </span>
-          )}
-        </h2>
-
-        <div className="flex flex-col sm:flex-row gap-2">
-          <select
-            value={paymentStatusFilter}
-            onChange={(e) => setPaymentStatusFilter(e.target.value)}
-            className="form-input text-sm py-1.5 transition duration-200 focus:outline-none focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green"
-            aria-label="Filter by payment status"
-          >
-            <option value="ALL">All Statuses</option>
-            <option value="SUCCESS">Successful</option>
-            <option value="REFUNDED">Refunded</option>
-            <option value="FAILED">Failed</option>
-            <option value="PENDING">Pending</option>
-          </select>
-
-          <div className="relative">
-            <svg
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-siet-muted"
-              fill="none" stroke="currentColor" viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input
-              type="search"
-              placeholder="Search ID, requester, candidate…"
-              value={paymentSearch}
-              onChange={(e) => setPaymentSearch(e.target.value)}
-              className="form-input pl-8 text-sm py-1.5 w-full sm:w-64 transition duration-200 focus:outline-none focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green"
-              aria-label="Search payment records"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Table */}
-      <div className="surface-card overflow-hidden">
-        {loadingReqs ? (
-          <div className="flex items-center justify-center py-16 gap-3 text-siet-slate">
-            <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-            </svg>
-            Loading payments…
-          </div>
-        ) : filteredPayments.length === 0 ? (
-          <div className="py-16 text-center text-siet-slate text-sm">
-            No payment transactions found.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm" aria-label="Payment records">
-              <thead>
-                <tr className="bg-siet-silver border-b border-siet-border">
-                  {['Transaction ID', 'Requester / Company', 'Candidate Verified', 'Amount', 'Gateway / Mode', 'Date & Time', 'Status'].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-siet-slate uppercase tracking-wider whitespace-nowrap">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-siet-border">
-                {filteredPayments.map((row) => (
-                  <tr
-                    key={row.id}
-                    className="hover:bg-siet-silver/50 transition-colors duration-100"
-                  >
-                    <td className="px-4 py-3 font-mono text-xs text-siet-navy font-semibold whitespace-nowrap flex items-center gap-2">
-                      {row.transaction_id}
-                      <button 
-                        onClick={() => navigator.clipboard.writeText(row.transaction_id)}
-                        className="text-siet-muted hover:text-brand-green transition-colors"
-                        title="Copy Transaction ID"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <rect width="8" height="8" x="8" y="8" rx="1" />
-                          <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
-                        </svg>
-                      </button>
-                    </td>
-                    <td className="px-4 py-3 text-siet-navy max-w-[160px] truncate" title={row.company_name}>
-                      {row.company_name}
-                    </td>
-                    <td className="px-4 py-3 text-siet-slate">
-                      {row.candidate_name ?? <span className="text-siet-muted italic text-xs">Unknown</span>}
-                    </td>
-                    <td className="px-4 py-3 font-medium text-siet-navy">
-                      ₹ {row.amount.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-siet-slate">
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200">
-                        {row.gateway}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-siet-muted whitespace-nowrap text-xs">
-                      {formatDate(row.created_at)}
-                    </td>
-                    <td className="px-4 py-3">
-                      {row.status === 'SUCCESS' && <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700">SUCCESS</span>}
-                      {row.status === 'FAILED' && <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700">FAILED</span>}
-                      {row.status === 'PENDING' && <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">PENDING</span>}
-                      {row.status === 'REFUNDED' && <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">REFUNDED</span>}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-    </section>
+    <AdminPaymentsView requests={requests} loading={loadingReqs} />
   );
 
   return (

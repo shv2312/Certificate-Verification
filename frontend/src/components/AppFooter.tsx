@@ -34,12 +34,6 @@ export default function AppFooter() {
       role="contentinfo"
       className="bg-[#052b17] text-white mt-auto border-t border-emerald-950 relative overflow-hidden"
     >
-      {/* Decorative subtle corner yellow accent */}
-      <div 
-        className="absolute -bottom-10 -right-10 w-44 h-44 bg-yellow-400/90 rotate-45 transform origin-bottom-right pointer-events-none hidden md:block"
-        aria-hidden="true" 
-      />
-
       {/* Main footer content */}
       <div className="section-container pt-16 pb-12 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10 lg:gap-14 items-start">
@@ -126,15 +120,6 @@ export default function AppFooter() {
                   <span>Help & FAQs</span>
                   <ArrowRight className="w-3.5 h-3.5 text-emerald-500 group-hover:text-yellow-400 group-hover:translate-x-0.5 transition-all" />
                 </button>
-              </li>
-              <li>
-                <Link
-                  to={ROUTES.ADMIN}
-                  className="text-emerald-100/80 hover:text-yellow-400 transition-colors inline-flex items-center gap-2 group"
-                >
-                  <span>Admin Portal</span>
-                  <ArrowRight className="w-3.5 h-3.5 text-emerald-500 group-hover:text-yellow-400 group-hover:translate-x-0.5 transition-all" />
-                </Link>
               </li>
             </ul>
           </div>

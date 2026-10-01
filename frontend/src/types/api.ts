@@ -215,6 +215,8 @@ export interface CandidateDetails {
   year_of_enrolment?: number | null; // optional integer, 1990-2100
   class_obtained?: string | null;    // optional string (e.g., First Class)
   certificate_url?: string | null;   // optional file URL uploaded
+  admission_type?: string | null;    // Regular Entry (1st Year) or Lateral Entry (Direct 2nd Year)
+  entry_mode?: string | null;        // alias for admission_type
 }
 
 /**
@@ -233,6 +235,8 @@ export interface InitiateVerificationRequest {
   year_of_enrolment?: number | null;
   class_obtained?: string | null;
   certificate_url?: string | null;
+  admission_type?: string | null;
+  entry_mode?: string | null;
 }
 
 /**

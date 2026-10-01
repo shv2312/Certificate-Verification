@@ -33,6 +33,7 @@ import ResultPage from './pages/ResultPage';
 
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminReviewPage from './pages/admin/AdminReviewPage';
+import AdminLoginPage from './pages/admin/AdminLoginPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
 import { ROUTES } from './utils/routes';
@@ -80,7 +81,8 @@ export default function App() {
               <Route path={ROUTES.RESULT} element={<ResultPage />} />
             </Route>
 
-            {/* Protected Admin Routes */}
+            {/* Admin Routes */}
+            <Route path="/admin/login" element={<AdminLoginPage />} />
             <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/review/:id" element={<AdminReviewPage />} />

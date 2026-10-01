@@ -51,17 +51,21 @@ export interface AuditQueueItem {
   submitted_branch: string;
   submitted_year_of_passing: string;
   submitted_dob: string;
+  submitted_entry_mode?: string;
   db_name?: string | null;
   db_register_number?: string | null;
   db_programme?: string | null;
   db_branch?: string | null;
   db_year_of_passing?: string | null;
+  db_dob?: string | null;
+  db_entry_mode?: string | null;
   matches: {
     name: boolean;
     register_number: boolean;
     programme: boolean;
     year_of_passing: boolean;
     dob: boolean;
+    entry_mode?: boolean;
   };
 }
 
@@ -137,10 +141,22 @@ export async function getAuditQueue(): Promise<APIResponse<AuditQueueItem[]>> {
 /**
  * One-click approve verification request
  */
-export async function approveVerification(requestId: string): Promise<{ status: string; message: string }> {
-  return apiClient<{ status: string; message: string }>(`/api/v1/admin/requests/${requestId}/approve`, {
-    method: 'POST',
-  });
+export async function approveVerification(
+  requestId: string,
+  remarks?: string
+): Promise<{ status: string; message: string }> {
+  const val = remarks || '';
+  return apiClient<{ status: string; message: string }>(
+    `/api/v1/admin/requests/${requestId}/approve`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        remarks: val,
+        verification_remarks: val,
+        comments: val,
+      }),
+    }
+  );
 }
 
 /**
@@ -149,7 +165,12 @@ export async function approveVerification(requestId: string): Promise<{ status: 
 export async function rejectVerification(requestId: string, reason: string): Promise<{ status: string }> {
   return apiClient<{ status: string }>(`/api/v1/admin/requests/${requestId}/reject`, {
     method: 'POST',
-    body: JSON.stringify({ reason }),
+    body: JSON.stringify({
+      reason,
+      remarks: reason,
+      verification_remarks: reason,
+      comments: reason,
+    }),
   });
 }
 
