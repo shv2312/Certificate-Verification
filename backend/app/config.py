@@ -110,6 +110,7 @@ class Settings(BaseSettings):
     # Sprint 1: When True, payment is simulated in-process (no real gateway).
     # Set to False only after the college has approved a payment gateway.
     DEV_MOCK_PAYMENT: bool = True
+    VERIFICATION_FEE_PAISE: int = 10000  # ₹100.00 (10000 paise)
 
     # ------------------------------------------------------------------ #
     # Verification / Report                                                #

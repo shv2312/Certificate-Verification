@@ -796,11 +796,11 @@ export default function CandidatePage() {
         </div>
 
         {/* Verification Fee Notice Card */}
-        <div className="p-4 bg-brand-light border border-emerald-200 rounded-xl text-center">
-          <p className="text-brand-forest font-bold mb-1">
-            Verification Fee: ₹1,500.00 <span className="font-normal text-brand-green mx-2">|</span> Standard Processing: 2–5 Business Days
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center">
+          <p className="text-sm font-semibold text-emerald-900">
+            Verification Fee: ₹100.00 <span className="mx-2 text-emerald-300">|</span> Standard Processing: 2–5 Business Days
           </p>
-          <p className="text-brand-forest/80 text-sm">
+          <p className="text-xs text-emerald-700 mt-0.5">
             You will be redirected to the secure payment portal upon submission.
           </p>
         </div>

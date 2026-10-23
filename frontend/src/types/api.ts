@@ -76,7 +76,7 @@ export interface HealthResponse {
  * Defined in backend/app/schemas/email_verification.py: SendOTPRequest
  */
 export interface SendOTPRequest {
-  organization_type?: string | null;
+  organization_type: string;
   organization_name: string; // 2-200 chars
   requester_email: string;   // RFC-5321 email
   requester_name: string;    // 2-255 chars

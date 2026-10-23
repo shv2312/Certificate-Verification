@@ -81,7 +81,7 @@ export default function PaymentPage() {
     null;
 
   const gatewayKeyId = orderDetails?.gateway_key_id || 'DEV_KEY_ID_NOT_REAL';
-  const amountPaise = orderDetails?.amount_paise || 150000;
+  const amountPaise = orderDetails?.amount_paise || 10000;
   const currency = orderDetails?.currency || 'INR';
   const paymentSessionId = orderDetails?.payment_session_id || null;
 

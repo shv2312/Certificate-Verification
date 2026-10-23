@@ -2,7 +2,7 @@
  * RequesterPage — Step 1 of the verification workflow.
  *
  * Collects Requester & Organization Details:
- *  - organization_type (Optional)
+ *  - organization_type (Required)
  *  - organization_name (2-200 chars)
  *  - requester_name (2-255 chars)
  *  - requester_email (RFC-5321 Email)
@@ -59,6 +59,11 @@ interface FormErrors {
  */
 function validateForm(values: FormValues): FormErrors {
   const errors: FormErrors = {};
+
+  const orgType = values.organization_type.trim();
+  if (!orgType) {
+    errors.organization_type = 'Please select who is requesting the verification.';
+  }
 
   const orgName = values.organization_name.trim();
   if (!orgName) {
@@ -163,7 +168,7 @@ export default function RequesterPage() {
     try {
       // Trigger actual asynchronous backend API call to send verification OTP
       const response = await registerRequester({
-        organization_type: values.organization_type.trim() || null,
+        organization_type: values.organization_type.trim(),
         organization_name: values.organization_name.trim(),
         requester_name: values.requester_name.trim(),
         requester_email: values.requester_email.trim(),
@@ -252,12 +257,17 @@ export default function RequesterPage() {
           {' '}are mandatory.
         </p>
 
-        <FormField id="org-type" label="Verification Requested By (Optional)" error={errors.organization_type}>
+        <div>
+          <label htmlFor="org-type" className="block text-xs font-semibold text-slate-700 mb-1.5">
+            Verification Requested By <span className="text-rose-500">*</span>
+          </label>
           <select
             id="org-type"
-            className="form-input"
+            required
+            className={`form-input ${errors.organization_type ? 'border-siet-error ring-1 ring-siet-error' : ''}`}
             value={values.organization_type}
             onChange={handleChange('organization_type')}
+            aria-required="true"
             aria-invalid={!!errors.organization_type}
           >
             <option value="">Select Organization Type</option>
@@ -266,7 +276,15 @@ export default function RequesterPage() {
             <option value="Background Screening Agency">Background Screening Agency</option>
             <option value="Academic Institution">Academic Institution</option>
           </select>
-        </FormField>
+          {errors.organization_type && (
+            <p id="org-type-error" className="text-xs text-siet-error flex items-center gap-1 mt-1" role="alert">
+              <svg className="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              {errors.organization_type}
+            </p>
+          )}
+        </div>
 
         <FormField id="org-name" label="Organization / Entity Name" required error={errors.organization_name}>
           <input

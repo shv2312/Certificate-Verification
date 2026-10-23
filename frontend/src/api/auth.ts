@@ -54,7 +54,7 @@ export async function registerRequester(
   payload: SendOTPRequest
 ): Promise<RequesterRegistrationResponse> {
   const requestBody = {
-    organization_type: payload.organization_type || null,
+    organization_type: payload.organization_type.trim(),
     organization_name: payload.organization_name.trim(),
     requester_name: payload.requester_name.trim(),
     requester_email: payload.requester_email.trim(),

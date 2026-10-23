@@ -19,12 +19,31 @@ import {
   Search, 
   Copy, 
   Check, 
-  ShieldCheck 
+  ShieldCheck,
+  Calendar,
+  CalendarDays,
+  Filter
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Sector, Tooltip } from 'recharts';
 import { apiClient } from '../../api/client';
 
-export type TimeframeFilter = 'daily' | 'weekly' | 'monthly' | 'yearly' | 'overall';
+export type FilterMode = 'daily' | 'monthly' | 'yearly' | 'custom' | 'overall';
+export type TimeframeFilter = FilterMode;
+
+export const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
+export const AVAILABLE_YEARS = [2026, 2025, 2024, 2023, 2022];
+
+const FILTER_CATEGORIES: { mode: FilterMode; label: string }[] = [
+  { mode: 'daily', label: 'Daily' },
+  { mode: 'monthly', label: 'Monthly' },
+  { mode: 'yearly', label: 'Yearly' },
+  { mode: 'custom', label: 'Custom Range' },
+  { mode: 'overall', label: 'Overall (All Time)' },
+];
 
 export interface PaymentRecord {
   id: string;
@@ -105,29 +124,63 @@ function formatDate(ts: number | string): string {
   });
 }
 
-function matchesTimeframe(ts: number | string, timeframe: TimeframeFilter): boolean {
-  if (timeframe === 'overall') return true;
+function parseDateParts(dateStr: string) {
+  if (!dateStr) return null;
+  const parts = dateStr.split('-').map(Number);
+  if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+    return { year: parts[0], month: parts[1] - 1, day: parts[2] };
+  }
+  return null;
+}
+
+function matchesFilterScope(
+  ts: number | string,
+  mode: FilterMode,
+  selectedDate: string,
+  selectedMonth: number,
+  selectedYear: number,
+  customRange: { from: string; to: string }
+): boolean {
+  if (mode === 'overall') return true;
   const ms = parseTimestamp(ts);
   if (!ms) return false;
 
-  const now = new Date();
-
-  switch (timeframe) {
+  switch (mode) {
     case 'daily': {
-      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-      return ms >= todayStart;
-    }
-    case 'weekly': {
-      const weekStart = now.getTime() - 7 * 24 * 60 * 60 * 1000;
-      return ms >= weekStart;
+      if (!selectedDate) return true;
+      const parts = parseDateParts(selectedDate);
+      if (!parts) return true;
+      const startOfDay = new Date(parts.year, parts.month, parts.day, 0, 0, 0, 0).getTime();
+      const endOfDay = new Date(parts.year, parts.month, parts.day, 23, 59, 59, 999).getTime();
+      return ms >= startOfDay && ms <= endOfDay;
     }
     case 'monthly': {
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-      return ms >= monthStart;
+      const startOfMonth = new Date(selectedYear, selectedMonth, 1, 0, 0, 0, 0).getTime();
+      const endOfMonth = new Date(selectedYear, selectedMonth + 1, 0, 23, 59, 59, 999).getTime();
+      return ms >= startOfMonth && ms <= endOfMonth;
     }
     case 'yearly': {
-      const yearStart = new Date(now.getFullYear(), 0, 1).getTime();
-      return ms >= yearStart;
+      const startOfYear = new Date(selectedYear, 0, 1, 0, 0, 0, 0).getTime();
+      const endOfYear = new Date(selectedYear, 11, 31, 23, 59, 59, 999).getTime();
+      return ms >= startOfYear && ms <= endOfYear;
+    }
+    case 'custom': {
+      let matches = true;
+      if (customRange.from) {
+        const fromParts = parseDateParts(customRange.from);
+        if (fromParts) {
+          const startMs = new Date(fromParts.year, fromParts.month, fromParts.day, 0, 0, 0, 0).getTime();
+          if (ms < startMs) matches = false;
+        }
+      }
+      if (customRange.to) {
+        const toParts = parseDateParts(customRange.to);
+        if (toParts) {
+          const endMs = new Date(toParts.year, toParts.month, toParts.day, 23, 59, 59, 999).getTime();
+          if (ms > endMs) matches = false;
+        }
+      }
+      return matches;
     }
     default:
       return true;
@@ -137,7 +190,19 @@ function matchesTimeframe(ts: number | string, timeframe: TimeframeFilter): bool
 export default function AdminPaymentsView({ requests, loading: externalLoading }: AdminPaymentsViewProps) {
   const [internalRequests, setInternalRequests] = useState<any[]>([]);
   const [internalLoading, setInternalLoading] = useState(false);
-  const [timeframe, setTimeframe] = useState<TimeframeFilter>('overall');
+
+  const now = new Date();
+  const currentIsoDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+  const [filterMode, setFilterMode] = useState<FilterMode>('monthly');
+  const [selectedDate, setSelectedDate] = useState<string>(currentIsoDate);
+  const [selectedMonth, setSelectedMonth] = useState<number>(now.getMonth()); // 0-11
+  const [selectedYear, setSelectedYear] = useState<number>(now.getFullYear());
+  const [customRange, setCustomRange] = useState({
+    from: '',
+    to: '',
+  });
+
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [activePieIndex, setActivePieIndex] = useState(-1);
@@ -188,10 +253,42 @@ export default function AdminPaymentsView({ requests, loading: externalLoading }
     });
   }, [rawData]);
 
-  // Filter payments by timeframe
+  // Filter payments by active temporal scope
   const timeframePayments = useMemo(() => {
-    return allPayments.filter((p) => matchesTimeframe(p.created_at, timeframe));
-  }, [allPayments, timeframe]);
+    return allPayments.filter((p) =>
+      matchesFilterScope(p.created_at, filterMode, selectedDate, selectedMonth, selectedYear, customRange)
+    );
+  }, [allPayments, filterMode, selectedDate, selectedMonth, selectedYear, customRange]);
+
+  // Human-readable scope label for metrics, headers and reports
+  const activeScopeLabel = useMemo(() => {
+    switch (filterMode) {
+      case 'daily': {
+        const parts = parseDateParts(selectedDate);
+        if (parts) {
+          const d = new Date(parts.year, parts.month, parts.day);
+          return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+        return selectedDate || 'Selected Day';
+      }
+      case 'monthly':
+        return `${MONTHS[selectedMonth]} ${selectedYear}`;
+      case 'yearly':
+        return `Year ${selectedYear}`;
+      case 'custom':
+        if (customRange.from && customRange.to) {
+          return `${customRange.from} to ${customRange.to}`;
+        } else if (customRange.from) {
+          return `From ${customRange.from}`;
+        } else if (customRange.to) {
+          return `Until ${customRange.to}`;
+        }
+        return 'Custom Date Range';
+      case 'overall':
+      default:
+        return 'Overall (All Time)';
+    }
+  }, [filterMode, selectedDate, selectedMonth, selectedYear, customRange]);
 
   // Metrics for selected timeframe
   const totalRevenue = useMemo(() => {
@@ -261,51 +358,206 @@ export default function AdminPaymentsView({ requests, loading: externalLoading }
     setTimeout(() => setCopiedId(null), 1500);
   };
 
-  const timeframeLabels: Record<TimeframeFilter, string> = {
-    daily: 'Daily (Today)',
-    weekly: 'Weekly (Last 7 Days)',
-    monthly: 'Monthly (This Month)',
-    yearly: 'Yearly (This Year)',
-    overall: 'Overall (All Time)',
-  };
-
   return (
     <div className="space-y-6 animate-slide-up">
-      {/* ── Page Header & Institutional Timeframe Filter Bar ── */}
-      <div className="surface-card p-5 border border-slate-200 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800">
-              <CreditCard className="w-5 h-5 text-[#0B6A3E]" />
+      {/* ── Page Header & Institutional Temporal Filter Toolbar ── */}
+      <div className="surface-card p-5 border border-slate-200 rounded-xl space-y-4 shadow-xs">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800">
+                <CreditCard className="w-5 h-5 text-[#0B6A3E]" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-siet-navy">Institutional Payment Records &amp; Analytics</h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Real-time escrow audits, transaction settlement ledger, and gateway analytics.
+                </p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-siet-navy">Institutional Payment Records &amp; Analytics</h2>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Real-time escrow audits, transaction settlement ledger, and gateway analytics.
-              </p>
-            </div>
+          </div>
+
+          {/* Primary Category Switcher */}
+          <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-xl border border-slate-200/80 overflow-x-auto">
+            {FILTER_CATEGORIES.map(({ mode, label }) => {
+              const isActive = filterMode === mode;
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setFilterMode(mode)}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
+                    isActive
+                      ? 'bg-[#0B6A3E] text-white shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Timeframe Period Filter Controls */}
-        <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200/80 overflow-x-auto">
-          {(['daily', 'weekly', 'monthly', 'yearly', 'overall'] as TimeframeFilter[]).map((tf) => {
-            const isActive = timeframe === tf;
-            return (
+        {/* Secondary Context-Sensitive Selector Panel */}
+        <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
+          {filterMode === 'daily' && (
+            <div className="flex flex-wrap items-center gap-3 w-full">
+              <div className="flex items-center gap-2 text-slate-700 font-semibold">
+                <Calendar className="w-4 h-4 text-[#0B6A3E]" />
+                <span>Audit Date:</span>
+              </div>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                aria-label="Select specific audit date"
+                className="px-3 py-1.5 text-xs font-medium bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0B6A3E]/30 focus:border-[#0B6A3E]"
+              />
               <button
-                key={tf}
                 type="button"
-                onClick={() => setTimeframe(tf)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
-                  isActive
-                    ? 'bg-[#0B6A3E] text-white shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-                }`}
+                onClick={() => setSelectedDate(currentIsoDate)}
+                className="px-2.5 py-1 text-[11px] font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-md border border-emerald-200 transition-colors cursor-pointer"
               >
-                {timeframeLabels[tf]}
+                Today
               </button>
-            );
-          })}
+              <span className="text-slate-500 text-xs sm:ml-auto">
+                Auditing single-day records for <strong className="text-slate-800 font-semibold">{activeScopeLabel}</strong>
+              </span>
+            </div>
+          )}
+
+          {filterMode === 'monthly' && (
+            <div className="flex flex-wrap items-center gap-3 w-full">
+              <div className="flex items-center gap-2 text-slate-700 font-semibold">
+                <CalendarDays className="w-4 h-4 text-[#0B6A3E]" />
+                <span>Select Month &amp; Year:</span>
+              </div>
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                aria-label="Select audit month"
+                className="px-3 py-1.5 text-xs font-medium bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0B6A3E]/30 focus:border-[#0B6A3E]"
+              >
+                {MONTHS.map((m, idx) => (
+                  <option key={m} value={idx}>{m}</option>
+                ))}
+              </select>
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                aria-label="Select audit year"
+                className="px-3 py-1.5 text-xs font-medium bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0B6A3E]/30 focus:border-[#0B6A3E]"
+              >
+                {AVAILABLE_YEARS.map((yr) => (
+                  <option key={yr} value={yr}>{yr}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedMonth(now.getMonth());
+                  setSelectedYear(now.getFullYear());
+                }}
+                className="px-2.5 py-1 text-[11px] font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-md border border-emerald-200 transition-colors cursor-pointer"
+              >
+                This Month
+              </button>
+              <span className="text-slate-500 text-xs sm:ml-auto">
+                Auditing monthly revenue ledger for <strong className="text-slate-800 font-semibold">{activeScopeLabel}</strong>
+              </span>
+            </div>
+          )}
+
+          {filterMode === 'yearly' && (
+            <div className="flex flex-wrap items-center gap-3 w-full">
+              <div className="flex items-center gap-2 text-slate-700 font-semibold">
+                <Calendar className="w-4 h-4 text-[#0B6A3E]" />
+                <span>Financial Year:</span>
+              </div>
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(Number(e.target.value))}
+                aria-label="Select financial year"
+                className="px-3 py-1.5 text-xs font-medium bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0B6A3E]/30 focus:border-[#0B6A3E]"
+              >
+                {AVAILABLE_YEARS.map((yr) => (
+                  <option key={yr} value={yr}>Year {yr}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => setSelectedYear(now.getFullYear())}
+                className="px-2.5 py-1 text-[11px] font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-md border border-emerald-200 transition-colors cursor-pointer"
+              >
+                Current Year
+              </button>
+              <span className="text-slate-500 text-xs sm:ml-auto">
+                Auditing full financial year ledger for <strong className="text-slate-800 font-semibold">{activeScopeLabel}</strong>
+              </span>
+            </div>
+          )}
+
+          {filterMode === 'custom' && (
+            <div className="flex flex-wrap items-center gap-3 w-full">
+              <div className="flex items-center gap-2 text-slate-700 font-semibold">
+                <Filter className="w-4 h-4 text-[#0B6A3E]" />
+                <span>Date Range:</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-slate-500 text-[11px] font-medium">From:</span>
+                <input
+                  type="date"
+                  value={customRange.from}
+                  onChange={(e) => setCustomRange((prev) => ({ ...prev, from: e.target.value }))}
+                  aria-label="From date"
+                  className="px-3 py-1.5 text-xs font-medium bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0B6A3E]/30 focus:border-[#0B6A3E]"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-slate-500 text-[11px] font-medium">To:</span>
+                <input
+                  type="date"
+                  value={customRange.to}
+                  onChange={(e) => setCustomRange((prev) => ({ ...prev, to: e.target.value }))}
+                  aria-label="To date"
+                  className="px-3 py-1.5 text-xs font-medium bg-white border border-slate-300 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#0B6A3E]/30 focus:border-[#0B6A3E]"
+                />
+              </div>
+              {(customRange.from || customRange.to) && (
+                <button
+                  type="button"
+                  onClick={() => setCustomRange({ from: '', to: '' })}
+                  className="px-2.5 py-1 text-[11px] font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-md border border-slate-200 transition-colors cursor-pointer"
+                >
+                  Clear Range
+                </button>
+              )}
+              <span className="text-slate-500 text-xs sm:ml-auto">
+                {customRange.from || customRange.to ? (
+                  <>
+                    Auditing custom range: <strong className="text-slate-800 font-semibold">{activeScopeLabel}</strong>
+                  </>
+                ) : (
+                  'Select From and To dates to filter transactions'
+                )}
+              </span>
+            </div>
+          )}
+
+          {filterMode === 'overall' && (
+            <div className="flex items-center justify-between gap-3 w-full py-0.5">
+              <div className="flex items-center gap-2 text-emerald-800">
+                <ShieldCheck className="w-4 h-4 text-[#0B6A3E]" />
+                <span className="font-medium text-slate-600">
+                  Displaying complete institutional financial audit across all recorded transactions.
+                </span>
+              </div>
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                All-Time Master Ledger
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -323,7 +575,7 @@ export default function AdminPaymentsView({ requests, loading: externalLoading }
             ₹ {totalRevenue.toLocaleString('en-IN')}
           </p>
           <p className="text-[11px] text-slate-400 mt-1">
-            Filtered by {timeframeLabels[timeframe]}
+            Filtered by {activeScopeLabel}
           </p>
         </div>
 
@@ -378,7 +630,7 @@ export default function AdminPaymentsView({ requests, loading: externalLoading }
             <h3 className="text-base font-bold text-siet-navy flex items-center gap-2">
               <span>Transaction Status Analytics</span>
               <span className="text-xs font-medium text-slate-500">
-                ({timeframeLabels[timeframe]})
+                ({activeScopeLabel})
               </span>
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
@@ -395,7 +647,7 @@ export default function AdminPaymentsView({ requests, loading: externalLoading }
           <div className="md:col-span-6 h-[280px] relative flex justify-center items-center">
             {statusChartData.length === 0 ? (
               <div className="text-center p-6 text-slate-400 text-xs">
-                No payment transactions recorded during {timeframeLabels[timeframe].toLowerCase()}.
+                No payment transactions recorded for {activeScopeLabel.toLowerCase()}.
               </div>
             ) : (
               <>
