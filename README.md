@@ -118,13 +118,4 @@ Frontend runs at: http://localhost:5173
 Agile Software Development – Sprint-based delivery.
 
 See `docs/` for individual work logs and integration log.
-
 ---
-
-## Security Notes
-
-- Never commit `.env` files containing real credentials
-- See `.env.example` for required configuration keys
-- Payment gateway credentials must be set via environment variables only
-- Student data must never be committed to this repository
-
