@@ -19,6 +19,9 @@ settings.DEV_MOCK_OTP = True
 settings.DEV_MOCK_PAYMENT = True
 settings.DEV_MOCK_VERIFICATION = True
 
+from app.rate_limit import set_bypass_rate_limiting
+set_bypass_rate_limiting(True)
+
 # Use in-memory SQLite for tests
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 

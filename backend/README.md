@@ -100,27 +100,33 @@ pytest
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| FastAPI foundation | ✅ Done | |
-| Configuration | ✅ Done | Env-based, no committed secrets |
-| Health endpoint | ✅ Done | |
-| CORS | ✅ Done | Dev origins only |
-| Error handling | ✅ Done | No raw exceptions to client |
-| Email OTP (dev mock) | ✅ Done | Real SMTP Sprint 2+ |
-| Payment (dev mock) | ✅ Done | Real gateway Sprint 2+ (pending college approval) |
-| Verification state machine | ✅ Done | |
-| DB session | ✅ Done | Wiring to Parthiban pending |
-| Verification engine | 🔴 Blocked | Awaiting Parthiban's implementation |
-| Real SMTP | 🔴 Blocked | Awaiting SMTP credentials |
-| Real payment gateway | 🔴 Blocked | Awaiting college gateway approval |
-| Tests | ✅ Done | Health, schemas, error handling |
+| FastAPI foundation | Done | |
+| Configuration | Done | Env-based, no committed secrets |
+| Health endpoint | Done | |
+| CORS | Done | Dev origins only |
+| Error handling | Done | No raw exceptions to client |
+| Email OTP (dev mock) | Done | Real SMTP Sprint 2+ |
+| Payment (dev mock) | Done | Real gateway Sprint 2+ (pending college approval) |
+| Verification state machine | Done | |
+| DB session | Done | Wiring to Parthiban pending |
+| Verification engine | Blocked | Awaiting Parthiban's implementation |
+| Real SMTP | Blocked | Awaiting SMTP credentials |
+| Real payment gateway | Blocked | Awaiting college gateway approval |
+| Tests | Done | Health, schemas, error handling |
 
 ---
 
-## Security Notes
+## Security & Hardening Architecture (Phase 1–6)
 
-- `.env` is gitignored – never commit real credentials
-- OTP stored as HMAC (not plain text)
-- Session tokens are HMAC-signed
-- Payment secret key never sent to frontend
-- Error responses never expose stack traces, SQL, or secrets
-- API docs disabled in production (`APP_DEBUG=false`)
+Engineered and hardened with defense-in-depth measures led by **Sampreeth G**:
+- `.env` and sensitive credentials are gitignored — never committed.
+- Role-based access control (RBAC) across HR and Admin routes.
+- Anti-spoofing sliding-window IP rate limiting (`TRUST_PROXY_HEADERS` validation) with automatic memory eviction bounds.
+- Session invalidation & token revocation registry (`jti` checks on protected endpoints).
+- File upload streaming with 5 MB limits (`413 Payload Too Large`) and binary magic-byte inspection (PDF, PNG, JPEG).
+- Authenticated certificate streaming via blob URL with `X-Content-Type-Options: nosniff`.
+- Cryptographic HMAC-SHA256 payment signature verification and replay prevention.
+- Global HTTP security headers middleware (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`).
+- Production API documentation lockdown (`APP_ENV=production` disables `/docs`, `/redoc`, and `/openapi.json`).
+- Automated exploit verification suite in `tests/test_remediation_security.py`.
+

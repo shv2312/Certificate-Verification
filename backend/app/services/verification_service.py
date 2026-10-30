@@ -565,7 +565,7 @@ _STATUS_LABELS: dict[str, str] = {
     "PAID_UNUSED":               "Payment Received — Pending Submission",
     "CANDIDATE_BOUND":           "Details Submitted — Awaiting Confirmation",
     "VERIFICATION_IN_PROGRESS":  "Verification In Progress",
-    "VERIFIED":                  "Verified ✔",
+    "VERIFIED":                  "Verified",
     "NOT_VERIFIED":              "Could Not Be Verified",
     "NAME_MISMATCH":             "Could Not Be Verified",
     "NOT_FOUND":                 "Could Not Be Verified",

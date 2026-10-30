@@ -334,7 +334,7 @@ export default function AdminDashboard() {
                 </div>
               ) : reqsError ? (
                 <div className="p-8 text-center text-sm text-red-600">
-                  ⚠ {reqsError}
+                  {reqsError}
                 </div>
               ) : filtered.length === 0 ? (
                 <div className="py-16 text-center text-siet-slate text-sm">
@@ -413,7 +413,7 @@ export default function AdminDashboard() {
               {/* Stats Cards */}
               {statsError ? (
                 <div className="p-4 rounded-xl text-sm text-red-700 bg-red-50 border border-red-200">
-                  ⚠ Could not load statistics: {statsError}
+                  Could not load statistics: {statsError}
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">

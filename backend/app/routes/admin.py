@@ -104,8 +104,10 @@ def _issue_admin_token(settings: Settings) -> str:
     where payload = "company_name|hr_email|role|issued_at|hr_name|hr_phone"
     """
     issued_at = int(time.time())
+    import uuid
+    jti = uuid.uuid4().hex
     admin_email = settings.ADMIN_USERNAME if "@" in settings.ADMIN_USERNAME else f"{settings.ADMIN_USERNAME}@siet.ac.in"
-    payload = f"SIET Administration|{admin_email}|ADMIN|{issued_at}||"
+    payload = f"SIET Administration|{admin_email}|ADMIN|{issued_at}|||{jti}"
     encoded_payload = base64.urlsafe_b64encode(payload.encode()).rstrip(b"=").decode()
     sig = hmac.new(
         settings.APP_SECRET_KEY.encode(),
@@ -135,10 +137,13 @@ def _verify_admin_password(plain: str, settings: Settings) -> bool:
 # POST /api/v1/admin/login                                             #
 # ------------------------------------------------------------------ #
 
+from app.rate_limit import RateLimiter
+
 @router.post(
     "/login",
     response_model=APIResponse[AdminLoginResponse],
     summary="[Admin] Authenticate and receive a session token",
+    dependencies=[Depends(RateLimiter(max_requests=5, window_seconds=60))],
     description=(
         "Validates admin credentials and returns an HMAC-signed session token. "
         "Supply this token as `Authorization: Bearer <token>` for all admin endpoints. "
@@ -192,6 +197,28 @@ async def admin_login(
         message="Admin authentication successful.",
         data=AdminLoginResponse(session_token=token),
     )
+
+
+from app.revocation import revoke_token
+
+@router.post(
+    "/logout",
+    summary="[Admin] Revoke admin session token",
+    description="Revokes the admin session token server-side.",
+)
+async def admin_logout(
+    session: dict = Depends(require_role(["ADMIN"])),
+):
+    jti = session.get("jti")
+    issued_at = session.get("issued_at", 0)
+    expires_at = issued_at + 3600
+    if jti:
+        await revoke_token(jti, float(expires_at))
+
+    return {
+        "success": True,
+        "message": "Admin session revoked successfully."
+    }
 
 
 # ------------------------------------------------------------------ #
@@ -644,6 +671,7 @@ class DashboardMetricsResponse(BaseModel):
     description="Returns aggregate metrics grouped by admin_decision including total, pending, approved, rejected, and approval rate.",
 )
 async def get_dashboard_metrics(
+    session: dict = Depends(require_role(["ADMIN"])),
     db: AsyncSession = Depends(get_db),
 ) -> DashboardMetricsResponse:
     # Query counts grouped by admin_decision
@@ -710,6 +738,7 @@ class ProcessedVerificationRequestItem(BaseModel):
 async def get_processed_requests_history(
     limit: int = 50,
     offset: int = 0,
+    session: dict = Depends(require_role(["ADMIN"])),
     db: AsyncSession = Depends(get_db),
 ) -> List[ProcessedVerificationRequestItem]:
     import json

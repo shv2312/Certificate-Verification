@@ -379,11 +379,13 @@ async def _issue_session_token(db: AsyncSession, company_name: str, hr_email: st
     role = "ADMIN" if admin_account else "HR"
     
     timestamp = int(time.time())
+    import uuid
+    jti = uuid.uuid4().hex
     
     # Safely handle None values from legacy DB records
     safe_hr_name = hr_name or ""
     safe_hr_phone = hr_phone or ""
-    payload = f"{company_name}|{hr_email}|{role}|{timestamp}|{safe_hr_name}|{safe_hr_phone}"
+    payload = f"{company_name}|{hr_email}|{role}|{timestamp}|{safe_hr_name}|{safe_hr_phone}|{jti}"
     signature = hmac.new(
         settings.APP_SECRET_KEY.encode(),
         payload.encode(),
@@ -406,7 +408,7 @@ def _build_report_html(report: dict, company_name: str) -> str:
     """
     status = report.get("status", "UNKNOWN")
     status_color = "#073822" if status == "VERIFIED" else "#991b1b"
-    status_label = "✔ VERIFIED" if status == "VERIFIED" else "✘ NOT VERIFIED"
+    status_label = "VERIFIED" if status == "VERIFIED" else "NOT VERIFIED"
 
     verifier_comment = str(
         report.get("verification_remarks")

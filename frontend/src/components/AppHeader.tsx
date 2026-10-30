@@ -154,6 +154,19 @@ export default function AppHeader() {
 
 
   function handleAdminLogout() {
+    const adminToken = localStorage.getItem('siet_admin_token');
+    if (adminToken) {
+      try {
+        fetch('/api/v1/admin/logout', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${adminToken}`,
+            'Content-Type': 'application/json',
+          },
+        }).catch(() => {});
+      } catch {}
+    }
+
     localStorage.removeItem('siet_admin_token');
     sessionStorage.removeItem('siet_requester_draft');
     sessionStorage.removeItem('siet_candidate_draft');

@@ -2,7 +2,7 @@
 # SIET Academic Background Verification Portal – .gitignore
 # ============================================================
 
-# ----- Python -----
+# ----- Python / Pytest / Cache -----
 __pycache__/
 *.py[cod]
 *$py.class
@@ -13,6 +13,13 @@ __pycache__/
 *.egg
 *.egg-info/
 .eggs/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.tox/
 
 # Virtual environments
 .venv/
@@ -27,27 +34,26 @@ dist/
 build/
 MANIFEST
 
-# pytest / coverage / mypy / ruff
-.pytest_cache/
-.coverage
-coverage.xml
-htmlcov/
-.mypy_cache/
-.ruff_cache/
-.tox/
-
-# ----- Environment / Secrets -----
-# NEVER commit real .env files
+# ----- Environment & Secret Artifacts -----
+# NEVER commit real .env files or credentials
 .env
 .env.*
+.env.local
 !.env.example
 backend/.env
+backend/.env.*
 !backend/.env.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
 *.pem
 *.key
 *.crt
 secrets.json
 credentials.json
+*Pass*.txt
+*pass*.txt
+scratch_*.json
 
 # ----- Database / Data -----
 # Never commit real DB data
@@ -60,11 +66,19 @@ real_student_data/
 production_exports/
 college_data_import/
 
-# ----- Node / Frontend (Sanjay's work) -----
+# ----- Node / Vite / Frontend -----
 node_modules/
+frontend/node_modules/
 dist/
+frontend/dist/
+.eslintcache
 .next/
 .nuxt/
+
+# ----- Local Uploads & Static Assets -----
+backend/uploads/
+backend/uploads/*
+!backend/uploads/.gitkeep
 
 # ----- IDEs -----
 .idea/
@@ -105,7 +119,3 @@ Student Data/
 
 # ----- Gemini / AI context docs -----
 docs/GEM_PROJECT_MASTER_CONTEXT.md.txt
-
-# ----- Uploads -----
-backend/uploads/*
-!backend/uploads/.gitkeep

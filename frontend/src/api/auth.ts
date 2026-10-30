@@ -82,15 +82,6 @@ export async function registerRequester(
     }
 
     const devOtp = response.data?.dev_otp;
-    if (devOtp) {
-      console.log(
-        `%c[DEV MODE] ✉️ Expected 6-digit verification code for %c${payload.requester_email}%c: %c${devOtp}`,
-        'color: #38bdf8; font-weight: bold;',
-        'color: #f8fafc; font-weight: bold;',
-        'color: #38bdf8; font-weight: bold;',
-        'color: #22c55e; font-weight: bold; font-size: 16px; background: #0f172a; padding: 2px 8px; border-radius: 4px;'
-      );
-    }
 
     return {
       requestId: response.data.challenge_id,
@@ -99,21 +90,6 @@ export async function registerRequester(
       devOtp,
     };
   } catch (err) {
-    if (import.meta.env.DEV) {
-      console.warn(
-        '%c[DEV MODE] Failed to send verification OTP via backend:%c',
-        'color: #ef4444; font-weight: bold;',
-        'color: #f87171;',
-        err
-      );
-      console.log(
-        '%c[DEV MODE] 🔑 Expected 6-digit OTP for testing:%c 123456 %c(Verify backend connection on http://127.0.0.1:8000)%c',
-        'color: #f59e0b; font-weight: bold;',
-        'color: #10b981; font-weight: bold; font-size: 14px;',
-        'color: #94a3b8;',
-        ''
-      );
-    }
     throw err;
   }
 }
@@ -182,8 +158,7 @@ export async function resendVerification(
 ): Promise<{ message: string; resendAllowedAfterSeconds?: number; devOtp?: string | null }> {
   if (challengeId.startsWith('dev_challenge_')) {
     const mockOtp = '123456';
-    console.info('[DEV MODE] Resent dev OTP for challenge:', challengeId, 'Code:', mockOtp);
-    return { message: 'Verification email resent (Dev Mode).', resendAllowedAfterSeconds: 60, devOtp: mockOtp };
+    return { message: 'Verification email resent.', resendAllowedAfterSeconds: 60, devOtp: mockOtp };
   }
 
   // Exact payload matching backend ResendOTPRequest schema
@@ -206,13 +181,6 @@ export async function resendVerification(
   }
 
   const devOtp = response.data?.dev_otp;
-  if (devOtp) {
-    console.log(
-      `%c[DEV MODE] ✉️ Resent 6-digit verification code: %c${devOtp}`,
-      'color: #38bdf8; font-weight: bold;',
-      'color: #22c55e; font-weight: bold; font-size: 16px; background: #0f172a; padding: 2px 8px; border-radius: 4px;'
-    );
-  }
 
   return {
     message: response.message,

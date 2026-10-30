@@ -92,6 +92,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * Clear all auth state (Logout / Reset)
    */
   const clearAuth = () => {
+    // Attempt graceful server-side revocation if a sessionToken is present
+    if (state.sessionToken) {
+      try {
+        fetch('/api/v1/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.sessionToken}`,
+            'Content-Type': 'application/json',
+          },
+        }).catch(() => {
+          // Ignore network errors on logout
+        });
+      } catch {
+        // Ignore errors on logout dispatch
+      }
+    }
+
     setState(initialState);
     sessionStorage.removeItem(SESSION_KEY);
     sessionStorage.removeItem('mock_hrEmail');

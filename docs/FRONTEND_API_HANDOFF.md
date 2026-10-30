@@ -6,7 +6,7 @@
 This document defines the exact API contracts and readiness state for Sanjay V (Frontend) to continue UI integration.
 
 ## 1. Authentication Flow (Email OTP)
-**Status:** ✅ **READY FOR FRONTEND INTEGRATION**
+**Status:** **READY FOR FRONTEND INTEGRATION**
 
 - **POST `/api/v1/email/send-otp`**
   - **Auth:** None
@@ -21,7 +21,7 @@ This document defines the exact API contracts and readiness state for Sanjay V (
   - **Frontend Action:** Save `session_token` securely (React state or secure storage). Use it in the `Authorization: Bearer <token>` header for all following API requests. Route user based on `role` (`'hr'` or `'admin'`). 
 
 ## 2. Payment Flow
-**Status:** 🚧 **PARTIALLY BLOCKED (Pending College Approval)**
+**Status:** **PARTIALLY BLOCKED (Pending College Approval)**
 
 - **POST `/api/v1/payment/initiate`**
   - **Auth:** `Bearer <session_token>`
@@ -40,7 +40,7 @@ This document defines the exact API contracts and readiness state for Sanjay V (
   - **Frontend Action:** Once status is `PAID_UNUSED`, use the `verification_request_id` to bind a candidate.
 
 ## 3. Candidate Details (Binding)
-**Status:** ✅ **READY FOR FRONTEND INTEGRATION**
+**Status:** **READY FOR FRONTEND INTEGRATION**
 
 - **POST `/api/v1/verification/bind-candidate`**
   - **Auth:** `Bearer <session_token>`
@@ -60,7 +60,7 @@ This document defines the exact API contracts and readiness state for Sanjay V (
   - **Response:** Status becomes `CANDIDATE_BOUND`. Displays a warning to confirm details.
 
 ## 4. Verification Confirmation & Results
-**Status:** ✅ **READY FOR FRONTEND INTEGRATION**
+**Status:** **READY FOR FRONTEND INTEGRATION**
 
 - **POST `/api/v1/verification/confirm`**
   - **Auth:** `Bearer <session_token>`

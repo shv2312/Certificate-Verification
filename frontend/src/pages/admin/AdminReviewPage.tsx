@@ -10,7 +10,7 @@
  * Data is mocked locally; replace MOCK_DATA with a real API call when ready.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import AdminSidebar from '../../components/AdminSidebar';
 
@@ -151,6 +151,64 @@ export default function AdminReviewPage() {
   const [zoom, setZoom] = useState(1.0);
   const [rotation, setRotation] = useState(0);
   const [viewerError, setViewerError] = useState(false);
+  const [securePreviewUrl, setSecurePreviewUrl] = useState<string>('');
+
+  useEffect(() => {
+    let active = true;
+    let objectUrl = '';
+
+    async function loadSecureCertificate() {
+      if (!data.submitted.certificateUrl) {
+        setSecurePreviewUrl('');
+        return;
+      }
+
+      // If it's already a blob/data URL, use as is
+      if (data.submitted.certificateUrl.startsWith('blob:') || data.submitted.certificateUrl.startsWith('data:')) {
+        setSecurePreviewUrl(data.submitted.certificateUrl);
+        return;
+      }
+
+      try {
+        const token = localStorage.getItem('siet_admin_token') || sessionStorage.getItem('siet_auth_state');
+        let authHeader = '';
+        if (token) {
+          try {
+            const parsed = JSON.parse(token);
+            if (parsed.sessionToken) authHeader = `Bearer ${parsed.sessionToken}`;
+          } catch {
+            authHeader = `Bearer ${token}`;
+          }
+        }
+
+        const headers: Record<string, string> = {};
+        if (authHeader) {
+          headers['Authorization'] = authHeader;
+        }
+
+        const res = await fetch(data.submitted.certificateUrl, { headers });
+        if (!res.ok) throw new Error('Failed to load certificate document');
+        const blob = await res.blob();
+        if (active) {
+          objectUrl = URL.createObjectURL(blob);
+          setSecurePreviewUrl(objectUrl);
+        }
+      } catch {
+        if (active) {
+          setViewerError(true);
+        }
+      }
+    }
+
+    loadSecureCertificate();
+
+    return () => {
+      active = false;
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [data.submitted.certificateUrl]);
 
   const hasPlaceholderCertificate = !data.submitted.certificateUrl;
   const isPdf =
@@ -351,7 +409,7 @@ export default function AdminReviewPage() {
               ) : isPdf ? (
                 /* PDF embed */
                 <iframe
-                  src={`${data.submitted.certificateUrl}#toolbar=0&view=FitH`}
+                  src={securePreviewUrl ? `${securePreviewUrl}#toolbar=0&view=FitH` : ''}
                   title="Certificate PDF"
                   className="rounded shadow-lg transition-transform duration-300 origin-center"
                   style={{
@@ -369,9 +427,9 @@ export default function AdminReviewPage() {
                   className="overflow-auto flex items-center justify-center w-full h-full"
                   style={{ cursor: zoom > 1 ? 'grab' : 'default' }}
                 >
-                  {!viewerError ? (
+                  {!viewerError && securePreviewUrl ? (
                     <img
-                      src={data.submitted.certificateUrl}
+                      src={securePreviewUrl}
                       alt="Uploaded certificate"
                       className="rounded shadow-xl transition-transform duration-300 origin-center max-w-none"
                       style={{

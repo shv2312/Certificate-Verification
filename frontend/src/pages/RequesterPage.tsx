@@ -224,29 +224,8 @@ export default function RequesterPage() {
         aria-label="Requester registration form"
       >
         {submitError && (
-          <div className="space-y-3 mb-4">
+          <div className="mb-4">
             <StatusMessage type="error" message={submitError} />
-            {import.meta.env.DEV && (
-              <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-amber-200">
-                <div>
-                  <span className="font-semibold text-amber-300 block">Developer Local Testing Fallback</span>
-                  <span>Backend unavailable? Use test OTP <code className="font-mono bg-amber-900/50 px-1 py-0.5 rounded text-amber-100 font-bold">123456</code> to continue testing UI.</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const devOtp = '123456';
-                    console.log(`%c[DEV MODE] 🔑 Bypassed email block with test OTP: ${devOtp}`, 'color: #10b981; font-weight: bold;');
-                    sessionStorage.setItem('siet_dev_otp', devOtp);
-                    setPartialAuth(`dev_challenge_${Date.now()}`, values.requester_email.trim());
-                    navigate(ROUTES.VERIFY_EMAIL);
-                  }}
-                  className="self-start sm:self-auto px-3 py-1.5 rounded bg-amber-600 hover:bg-amber-500 text-white font-medium transition-colors cursor-pointer whitespace-nowrap shadow-xs"
-                >
-                  Dev Bypass (Use 123456)
-                </button>
-              </div>
-            )}
           </div>
         )}
 

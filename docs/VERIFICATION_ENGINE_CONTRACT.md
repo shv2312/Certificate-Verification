@@ -138,9 +138,9 @@ When generating the official verification report, the backend may fetch the foll
 
 | Dependency | Owner | Status |
 |---|---|---|
-| FastAPI endpoint design | Shri Hari | 🔴 Open |
-| Payment schema / `payment_id` UUID format | Shri Hari | 🔴 Open |
-| ORM / DB session technology | Shri Hari | 🔴 Open |
-| Role/Auth model backend integration | Shri Hari | 🔴 Open (Missing backend implementation) |
-| Official student dataset | College Registrar | 🔴 Open |
+| FastAPI endpoint design | Shri Hari | Open |
+| Payment schema / `payment_id` UUID format | Shri Hari | Open |
+| ORM / DB session technology | Shri Hari | Open |
+| Role/Auth model backend integration | Shri Hari | Open (Missing backend implementation) |
+| Official student dataset | College Registrar | Open |
 | Official programme/branch list | College Registrar | Placeholders in place |

@@ -111,9 +111,9 @@ def create_app() -> FastAPI:
         ),
         version="1.0.0-sprint1",
         lifespan=lifespan,
-        docs_url="/docs" if settings.APP_DEBUG else None,
-        redoc_url="/redoc" if settings.APP_DEBUG else None,
-        openapi_url="/openapi.json" if settings.APP_DEBUG else None,
+        docs_url="/docs" if (settings.APP_DEBUG and settings.APP_ENV != "production") else None,
+        redoc_url="/redoc" if (settings.APP_DEBUG and settings.APP_ENV != "production") else None,
+        openapi_url="/openapi.json" if (settings.APP_DEBUG and settings.APP_ENV != "production") else None,
         contact={
             "name": "SIET Backend Team",
             "email": "admin@siet.ac.in",
@@ -122,6 +122,18 @@ def create_app() -> FastAPI:
             "name": "Internal use only – Sri Shakthi Institute of Engineering and Technology",
         },
     )
+
+    # -------------------------------------------------------------- #
+    # Security Headers Middleware                                     #
+    # -------------------------------------------------------------- #
+    @app.middleware("http")
+    async def add_security_headers(request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "SAMEORIGIN"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        return response
 
     # -------------------------------------------------------------- #
     # CORS                                                             #
@@ -158,12 +170,10 @@ def create_app() -> FastAPI:
     app.include_router(programmes.router)
     app.include_router(programmes.metadata_router)
 
-    # Static mount for certificate uploads
+    # Ensure local certificate uploads directory exists
     import os
-    from fastapi.staticfiles import StaticFiles
     uploads_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
     os.makedirs(os.path.join(uploads_dir, "certificates"), exist_ok=True)
-    app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
     return app
 

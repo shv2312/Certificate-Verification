@@ -18,27 +18,29 @@
  *   *                    → 404 not found
  */
 
+import { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import AppHeader from './components/AppHeader';
 import AppFooter from './components/AppFooter';
+import LoadingSpinner from './components/LoadingSpinner';
 import HomePage from './pages/HomePage';
-import RequesterPage from './pages/RequesterPage';
-import EmailVerificationPage from './pages/EmailVerificationPage';
-import PaymentPage from './pages/PaymentPage';
-
-import UnauthorizedPage from './pages/UnauthorizedPage';
-import CandidatePage from './pages/CandidatePage';
-import ConfirmPage from './pages/ConfirmPage';
-import ResultPage from './pages/ResultPage';
-
-import AdminDashboard from './pages/admin/AdminDashboard';
-import AdminReviewPage from './pages/admin/AdminReviewPage';
-import AdminLoginPage from './pages/admin/AdminLoginPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
 import { ROUTES } from './utils/routes';
+import HelpFloatingButton from './components/HelpFloatingButton';
 
-import StatusPage from './pages/StatusPage';
+// Lazy-loaded pages to split bundle and isolate heavy chunks
+const RequesterPage = lazy(() => import('./pages/RequesterPage'));
+const EmailVerificationPage = lazy(() => import('./pages/EmailVerificationPage'));
+const PaymentPage = lazy(() => import('./pages/PaymentPage'));
+const UnauthorizedPage = lazy(() => import('./pages/UnauthorizedPage'));
+const CandidatePage = lazy(() => import('./pages/CandidatePage'));
+const ConfirmPage = lazy(() => import('./pages/ConfirmPage'));
+const ResultPage = lazy(() => import('./pages/ResultPage'));
+const StatusPage = lazy(() => import('./pages/StatusPage'));
+const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
+const AdminReviewPage = lazy(() => import('./pages/admin/AdminReviewPage'));
+const AdminLoginPage = lazy(() => import('./pages/admin/AdminLoginPage'));
 
 // ── 404 Not Found Page ───────────────────────────────────────────────────────
 function NotFoundPage() {
@@ -56,8 +58,6 @@ function NotFoundPage() {
   );
 }
 
-import HelpFloatingButton from './components/HelpFloatingButton';
-
 // ── Root App ─────────────────────────────────────────────────────────────────
 export default function App() {
   return (
@@ -65,33 +65,35 @@ export default function App() {
       <BrowserRouter>
         <div className="min-h-screen flex flex-col">
           <AppHeader />
-          <Routes>
-            {/* Public Routes */}
-            <Route path={ROUTES.HOME}    element={<HomePage />} />
-            <Route path={ROUTES.REQUESTER} element={<RequesterPage />} />
-            <Route path={ROUTES.VERIFY_EMAIL} element={<EmailVerificationPage />} />
-            <Route path="/unauthorized" element={<UnauthorizedPage />} />
-            <Route path={ROUTES.STATUS} element={<StatusPage />} />
-            <Route path={ROUTES.PAYMENT} element={<PaymentPage />} />
+          <Suspense fallback={<LoadingSpinner />}>
+            <Routes>
+              {/* Public Routes */}
+              <Route path={ROUTES.HOME}    element={<HomePage />} />
+              <Route path={ROUTES.REQUESTER} element={<RequesterPage />} />
+              <Route path={ROUTES.VERIFY_EMAIL} element={<EmailVerificationPage />} />
+              <Route path="/unauthorized" element={<UnauthorizedPage />} />
+              <Route path={ROUTES.STATUS} element={<StatusPage />} />
+              <Route path={ROUTES.PAYMENT} element={<PaymentPage />} />
 
-            {/* Protected HR Routes */}
-            <Route element={<ProtectedRoute allowedRoles={['hr']} />}>
-              <Route path={ROUTES.CANDIDATE} element={<CandidatePage />} />
-              <Route path={ROUTES.CONFIRM} element={<ConfirmPage />} />
-              <Route path={ROUTES.RESULT} element={<ResultPage />} />
-            </Route>
+              {/* Protected HR Routes */}
+              <Route element={<ProtectedRoute allowedRoles={['hr']} />}>
+                <Route path={ROUTES.CANDIDATE} element={<CandidatePage />} />
+                <Route path={ROUTES.CONFIRM} element={<ConfirmPage />} />
+                <Route path={ROUTES.RESULT} element={<ResultPage />} />
+              </Route>
 
-            {/* Admin Routes */}
-            <Route path="/admin/login" element={<AdminLoginPage />} />
-            <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/admin/review/:id" element={<AdminReviewPage />} />
-              <Route path="/admin/*" element={<AdminDashboard />} />
-            </Route>
+              {/* Admin Routes */}
+              <Route path="/admin/login" element={<AdminLoginPage />} />
+              <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+                <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/admin/review/:id" element={<AdminReviewPage />} />
+                <Route path="/admin/*" element={<AdminDashboard />} />
+              </Route>
 
-            {/* 404 fallback */}
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
+              {/* 404 fallback */}
+              <Route path="*" element={<NotFoundPage />} />
+            </Routes>
+          </Suspense>
           <AppFooter />
           <HelpFloatingButton />
         </div>

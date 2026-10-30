@@ -88,7 +88,7 @@ Exact integer match of the resolved `branch_id` against `students.branch_id`.
 - No automatic inference of branch from partial text
 
 ### Current Approved Aliases (Sprint 1 — Placeholder)
-> ⚠️ Official programme and branch list must be confirmed with the SIET college registrar. Current aliases are structural placeholders.
+> Note: Official programme and branch list must be confirmed with the SIET college registrar. Current aliases are structural placeholders.
 
 | HR Input (any case) | Resolves To |
 |---|---|

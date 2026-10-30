@@ -423,6 +423,8 @@ class CandidateDetails(BaseModel):
             return "Lateral"
         return "Regular"
 
+
+
     @field_validator("candidate_name", "register_number", mode="before")
     @classmethod
     def strip_whitespace(cls, v: str) -> str:

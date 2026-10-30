@@ -32,10 +32,13 @@ from app.services import email_service
 router = APIRouter(prefix="/api/v1/email", tags=["Email Verification"])
 
 
+from app.rate_limit import RateLimiter
+
 @router.post(
     "/send-otp",
     response_model=APIResponse[SendOTPResponse],
     summary="Send email verification OTP",
+    dependencies=[Depends(RateLimiter(max_requests=5, window_seconds=300))],
     description=(
         "Validates company details and sends a 6-digit OTP to the provided "
         "HR email address. The OTP expires in OTP_EXPIRY_MINUTES minutes."

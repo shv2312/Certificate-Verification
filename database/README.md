@@ -50,7 +50,7 @@ psql -U postgres -d siet_verification -f normalization_maps.sql
 psql -U postgres -d siet_verification -f test_data.sql
 ```
 
-> ⚠️ **Never run `test_data.sql` in production.**
+> Note: **Never run `test_data.sql` in production.**
 
 ### 6. Grant privileges to app user
 
@@ -87,7 +87,7 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO siet_app_user;
 
 ## Pending — Official Data
 
-> ⚠️ The full official list of SIET programmes and branches must be confirmed with the college registrar.
+> Note: The full official list of SIET programmes and branches must be confirmed with the college registrar.
 > Current `normalization_maps.sql` entries are structural placeholders based on common engineering college offerings.
 > They **must** be replaced with verified institutional data before production deployment.
 

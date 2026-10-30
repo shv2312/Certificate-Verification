@@ -33,7 +33,7 @@ import logging
 import os
 import uuid
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, UploadFile, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, File, UploadFile, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
@@ -454,10 +454,13 @@ def _mask_candidate_name(name: Optional[str]) -> Optional[str]:
     return " ".join(masked_tokens)
 
 
+from app.rate_limit import RateLimiter
+
 @router.get(
     "/status/{lookup_id}",
     response_model=PublicVerificationLookupResponse,
     summary="[Public] Verify Academic Credential Authenticity",
+    dependencies=[Depends(RateLimiter(max_requests=20, window_seconds=60))],
     description="Public-facing status verification endpoint supporting lookup by UUID or display_request_id (e.g., QR scan).",
 )
 async def public_lookup_status(
@@ -646,40 +649,74 @@ async def download_acknowledgment_pdf(
     description="Accepts PDF/PNG/JPG certificate file under 5MB and saves it securely with a UUID prefix."
 )
 async def upload_certificate(
-    file: UploadFile = File(...)
+    file: UploadFile = File(...),
+    session: dict = Depends(require_role(["HR", "ADMIN"])),
 ):
     import os
+    import re
     import uuid
-    from fastapi.responses import JSONResponse
 
     allowed_extensions = {".pdf", ".png", ".jpg", ".jpeg"}
-    ext = os.path.splitext(file.filename or "")[1].lower()
+    raw_filename = os.path.basename(file.filename or "certificate")
+    sanitized_name = re.sub(r"[^a-zA-Z0-9_.-]", "_", raw_filename)
+    ext = os.path.splitext(sanitized_name)[1].lower()
     if ext not in allowed_extensions:
         raise HTTPException(
             status_code=400,
             detail=f"Invalid file extension '{ext}'. Allowed extensions: {', '.join(allowed_extensions)}"
         )
 
-    # 5 MB max size check
+    # 5 MB max size check with chunked read to prevent memory exhaustion
     MAX_FILE_SIZE = 5 * 1024 * 1024
-    content = await file.read()
-    if len(content) > MAX_FILE_SIZE:
+    CHUNK_SIZE = 64 * 1024
+
+    total_size = 0
+    chunks = []
+    while True:
+        chunk = await file.read(CHUNK_SIZE)
+        if not chunk:
+            break
+        total_size += len(chunk)
+        if total_size > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail="File size exceeds maximum allowed limit of 5 MB."
+            )
+        chunks.append(chunk)
+
+    content = b"".join(chunks)
+
+    # Magic byte inspection
+    # PDF: %PDF-
+    # PNG: \x89PNG\r\n\x1a\n
+    # JPEG: \xff\xd8\xff
+    is_valid_magic = False
+    if ext == ".pdf" and content.startswith(b"%PDF-"):
+        is_valid_magic = True
+    elif ext == ".png" and content.startswith(b"\x89PNG\r\n\x1a\n"):
+        is_valid_magic = True
+    elif ext in {".jpg", ".jpeg"} and content.startswith(b"\xff\xd8\xff"):
+        is_valid_magic = True
+
+    if not is_valid_magic:
         raise HTTPException(
-            status_code=400,
-            detail="File size exceeds maximum allowed limit of 5 MB."
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or corrupted file signature"
         )
 
-    upload_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads", "certificates")
+    upload_dir = os.path.abspath(
+        os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads", "certificates")
+    )
     os.makedirs(upload_dir, exist_ok=True)
 
-    safe_filename = f"{uuid.uuid4()}_{file.filename}"
+    safe_filename = f"{uuid.uuid4().hex}_{sanitized_name}"
     file_path = os.path.join(upload_dir, safe_filename)
 
     with open(file_path, "wb") as f:
         f.write(content)
 
     return {
-        "file_url": f"/uploads/certificates/{safe_filename}",
+        "file_url": f"/api/v1/verification/certificate/{safe_filename}",
         "filename": safe_filename
     }
 
@@ -689,17 +726,40 @@ async def upload_certificate(
     summary="Stream uploaded certificate file",
     description="Streams the specified uploaded certificate file."
 )
-async def get_certificate_file(filename: str):
+async def get_certificate_file(
+    filename: str,
+    session: dict = Depends(require_role(["HR", "ADMIN"])),
+):
     import os
     from fastapi.responses import FileResponse
 
-    upload_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads", "certificates")
-    file_path = os.path.join(upload_dir, filename)
+    upload_dir = os.path.abspath(
+        os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads", "certificates")
+    )
+    basename = os.path.basename(filename)
+    file_path = os.path.abspath(os.path.join(upload_dir, basename))
 
-    if not os.path.exists(file_path):
+    # Path traversal protection
+    if not file_path.startswith(upload_dir) or not os.path.isfile(file_path):
         raise HTTPException(status_code=404, detail="Certificate file not found.")
 
-    return FileResponse(file_path)
+    ext = os.path.splitext(basename)[1].lower()
+    media_types = {
+        ".pdf": "application/pdf",
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+    }
+    media_type = media_types.get(ext, "application/octet-stream")
+
+    return FileResponse(
+        file_path,
+        media_type=media_type,
+        headers={
+            "Content-Disposition": f'inline; filename="{basename}"',
+            "X-Content-Type-Options": "nosniff"
+        }
+    )
 
 
 # ------------------------------------------------------------------ #
